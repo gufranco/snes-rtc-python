@@ -1,0 +1,20 @@
+{
+  "comment": "The reference implementations both clocks are held to. Pinned by commit so a build is reproducible; the weekly job proposes bumps.",
+  "reference": {
+    "name": "snes9x",
+    "repository": "https://github.com/snes9xgit/snes9x.git",
+    "commit": "2971061cf07fdc6fc7d18883edf4e648eb16a6d2",
+    "sparse": [
+      "."
+    ],
+    "path": ".",
+    "files": [
+      "srtcemu.h",
+      "srtcemu.cpp",
+      "spc7110dec.h",
+      "spc7110dec.cpp",
+      "spc7110emu.h",
+      "spc7110emu.cpp"
+    ]
+  }
+}
