@@ -180,10 +180,10 @@ never zero, and the same every time it is asked.
 from snesrtc import Store
 
 held = Store(seed=1)
-held.read(0)          # some byte, not zero, stable across reads
+held.read(0)  # some byte, not zero, stable across reads
 
-Store(cleared=True)   # a caller who genuinely means zeroes says so
-Store(held=saved)     # the bytes a saved cartridge had
+Store(cleared=True)  # a caller who genuinely means zeroes says so
+Store(held=saved)  # the bytes a saved cartridge had
 ```
 
 Two stores built with different seeds hold different rubbish, so a test can prove
@@ -226,6 +226,7 @@ disagreed. That script can be regenerated exactly:
 
 ```python
 import reference
+
 script = reference.generate(seed=3, length=4000)
 print(reference.render(script))
 ```

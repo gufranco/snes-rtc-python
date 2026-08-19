@@ -103,13 +103,26 @@ class LocalUpstream:
         for step in (
             ["git", "init", "-q", "-b", "main", str(self.where)],
             ["git", "-C", str(self.where), "add", "-A"],
-            ["git", "-C", str(self.where), "-c", "user.name=t", "-c", "user.email=t@t",
-             "commit", "-q", "-m", "seed"],
+            [
+                "git",
+                "-C",
+                str(self.where),
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "commit",
+                "-q",
+                "-m",
+                "seed",
+            ],
         ):
             subprocess.run(step, check=True, capture_output=True)
         self.commit = subprocess.run(
             ["git", "-C", str(self.where), "rev-parse", "HEAD"],
-            check=True, capture_output=True, text=True,
+            check=True,
+            capture_output=True,
+            text=True,
         ).stdout.strip()
 
     def pinned(self):
@@ -155,12 +168,18 @@ class WholeBuildTest(unittest.TestCase):
         upstream = LocalUpstream()
         working = Path(tempfile.mkdtemp())
 
-        answered = build.main([
-            "--pinned", str(upstream.definition()),
-            "--sources", str(working / "sources"),
-            "--output", str(working / "built"),
-            "--driver-source", str(upstream.where / "hello.cpp"),
-        ])
+        answered = build.main(
+            [
+                "--pinned",
+                str(upstream.definition()),
+                "--sources",
+                str(working / "sources"),
+                "--output",
+                str(working / "built"),
+                "--driver-source",
+                str(upstream.where / "hello.cpp"),
+            ]
+        )
 
         self.assertEqual(answered, 0)
         self.assertTrue((working / "built").exists())
