@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+title: snes-rtc-python
+message: >-
+  If you use this work, or the states it was settled against, please cite it.
+type: software
+authors:
+  - given-names: Gustavo
+    family-names: Franco
+    alias: gufranco
+repository-code: https://github.com/gufranco/snes-rtc-python
+url: https://github.com/gufranco/snes-rtc-python
+abstract: >-
+  A model of the two real time clocks that shipped in Super Nintendo cartridges,
+  the Sharp S-RTC and the Epson RTC-4513. Both carry their own calendar rules,
+  their own register layouts, and their own idea of what a stopped clock does,
+  and both are settled against a reference implementation rather than against the
+  calendar the host machine happens to keep.
+keywords:
+  - emulation
+  - super-nintendo
+  - s-rtc
+  - rtc-4513
+  - real-time-clock
+  - hardware-model
+  - conformance
+license: MIT
+version: 1.0.0

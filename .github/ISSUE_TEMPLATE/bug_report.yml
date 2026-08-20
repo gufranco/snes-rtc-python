@@ -1,0 +1,76 @@
+name: Something is wrong
+description: A register reads the wrong thing, or nothing works at all
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Most reports here turn out to be one of a few things that look identical
+        from outside, so the first field asks you to run one command that tells
+        all of us which it is.
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: What the doctor says
+      description: |
+        Run `python3 -m snesrtc.doctor` from the repository and paste all of it,
+        including any line that did not pass. Do not trim it: the lines that
+        failed are the ones worth reading.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      placeholder: |
+        reading 0x2800 after latching should give the seconds digit, not the index
+    validations:
+      required: true
+
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened instead
+      description: |
+        The exact output or the whole traceback. Paste it rather than describing
+        it: a summary of an error loses the part that identifies it.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: The shortest thing that shows it
+      description: Python we can run as it stands, with no editing.
+      render: python
+      placeholder: |
+        from snesrtc import describe
+
+        clock = describe("s-rtc").build()
+        clock.read(0x2800)
+    validations:
+      required: true
+
+  - type: input
+    id: cartridge
+    attributes:
+      label: The game, if one is involved
+      description: |
+        Its name and its SHA-256. Never attach the file itself, and never link
+        to somewhere it can be downloaded: the digest is what identifies it and
+        it is all anybody needs.
+      placeholder: "Daikaijuu Monogatari II (Japan), sha256 ..."
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: The doctor output above is complete rather than trimmed
+          required: true
+        - label: I own anything I am naming, and I have attached none of it
+          required: true

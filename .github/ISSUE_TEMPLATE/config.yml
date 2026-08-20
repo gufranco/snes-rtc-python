@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Which clock is in my cartridge?
+    url: https://github.com/gufranco/snes-rtc-python#faq
+    about: Two parts, two layouts, and the README says which cartridges carry which.
+  - name: The rest of the cartridge
+    url: https://github.com/gufranco/snes-mapper-python
+    about: How the console reaches the clock in the first place.

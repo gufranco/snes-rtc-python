@@ -255,6 +255,34 @@ Feed that to the driver on standard input to see the reference's side alone.
 - Neither chip's crystal drift is modelled. The reference does not model it
   either, and a number invented here would be unverified.
 
+## When something is wrong
+
+```bash
+python3 -m snesrtc.doctor
+```
+
+It looks at this machine and prints what is actually there, and every line is
+something it looked at just now rather than something that ought to be true. A
+check that fails says what it saw. A check that itself throws is reported as what
+it threw rather than taking the report down with it. Paste all of it into an
+issue.
+
+## Contributing
+
+Measurements first. [CONTRIBUTING.md](CONTRIBUTING.md) has the gates a change is
+expected to pass, [SECURITY.md](SECURITY.md) says what belongs in a private
+report, and the [Code of Conduct](CODE_OF_CONDUCT.md) applies wherever this
+project is discussed.
+
+Never attach a copyrighted file, and never link to somewhere one can be
+downloaded. A digest identifies a file without carrying it.
+
+## Citing this
+
+[CITATION.cff](CITATION.cff) is kept in step with the released version by the
+same script that stamps the package, so the version it names is the version that
+shipped.
+
 ## Licence
 
 [MIT](LICENSE).

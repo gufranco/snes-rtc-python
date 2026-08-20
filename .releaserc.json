@@ -12,7 +12,7 @@
     [
       "@semantic-release/git",
       {
-        "assets": ["snesrtc/version.py"],
+        "assets": ["snesrtc/version.py", "CITATION.cff"],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }
     ],
