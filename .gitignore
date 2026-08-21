@@ -3,3 +3,5 @@ __pycache__/
 .coverage
 node_modules/
 conformance/ref/driver
+.mypy_cache/
+.ruff_cache/
