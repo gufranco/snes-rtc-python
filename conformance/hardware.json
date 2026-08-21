@@ -1,0 +1,505 @@
+{
+  "note": "What the manufacturer's own documentation says these clocks are. Every figure here was read out of the document named beside it rather than taken from an implementation of it, and each one carries the sentence or table row it came from so a later reader can check the reading rather than trusting it. This file is the authority on what a part IS. The recording, produced live by running the implementation pinned in pinned.json through the driver in ref/, is the authority on what a part DOES where the document is silent. When an implementation disagrees with this file, the implementation is wrong, no matter how widely used it is; divergences.json records every place that has happened here.",
+  "authority": {
+    "order": [
+      "hardware.json, for anything the manufacturer states: register widths, count ranges, control bit function, power-on state, protocol framing",
+      "the recording, for behaviour the document does not specify: what the counters do when a cartridge holds a value outside a documented range, and how the SPC7110 wraps the Epson part",
+      "neither overrides the other, because they answer different questions"
+    ],
+    "why": "The recording this project compares against is taken from an emulator, named in pinned.json, and is produced live rather than stored, so there is no corpus file to drift. An emulator is a good source for behaviour nobody documented and a poor one for facts the manufacturer printed. Where the two disagree the document wins, and the disagreement is recorded in divergences.json rather than settled quietly."
+  },
+  "parts": [
+    {
+      "part": "Epson RTC-4513",
+      "verified": true,
+      "document": {
+        "publisher": "Seiko Epson Corporation",
+        "title": "Application Manual: Real Time Clock Module RTC-4513",
+        "kind": "Application Manual",
+        "date": "1999-12-01",
+        "readOn": "2026-08-20",
+        "retrievedFrom": "download.epson-europe.com/pub/electronics-de/quartz/manual/rtc4513.pdf",
+        "sha256": "409b8a5a3030fe432dd7dafbf4719944abac890cc5cbebbf96fb8313f9caca33",
+        "bytes": 509740,
+        "pages": 18,
+        "note": "A fax of the manufacturer's application manual, transmitted by Epson Europe Electronics on 1999-12-01. Manual pages 1 through 16 were transmitted and read. The contents page lists a page 17 of handling and packaging notes that the transmission does not include; it covers static electricity, soldering and mounting, and carries no behavioural content.",
+        "corroboration": {
+          "title": "RTC-4513 catalogue extract, Seiko Epson real time clock module databook pages 55 and 56",
+          "retrievedFrom": "download.epsondevice.com/td/pdf/brief/RTC-4513_en.pdf",
+          "sha256": "6496eb35fddc181d4e80832b98b8a45163bf5370eadd1e58002aefc83f12edcf",
+          "bytes": 701040,
+          "readOn": "2026-08-20",
+          "note": "Prints the same sixteen-row register table with the same bit names and count ranges, and marks the part discontinued. Two independent Epson documents agreeing on the register table is what raises the table above a single reading of a fax."
+        }
+      },
+      "facts": {
+        "registerCount": {
+          "value": 16,
+          "quote": "The address incrementation is cyclic. After address F has been written, the selection returns to address 0."
+        },
+        "registerWidthBits": {
+          "value": 4,
+          "quote": "Read and write operations are carried out in 4-bit units after setting the CE input to High."
+        },
+        "bitOrder": {
+          "value": "lsbFirst",
+          "quote": "Both read and write operations are performed in LSB-FIRST order.",
+          "note": "A property of the chip's three-wire serial interface. The SPC7110 presents whole nibbles to the cartridge bus, so bit order is not observable through the mapping this package models."
+        },
+        "writeModeCode": {
+          "value": 3,
+          "quote": "After setting the CE input to High, make the first 4-bit block \"3\" to indicate write mode, and use the next 4-bit block to specify the address."
+        },
+        "readModeCode": {
+          "value": 12,
+          "quote": "After setting the CE input to High, make the first 4-bit block \"C\" to indicate read mode, and use the next 4-bit block to specify the address."
+        },
+        "otherModeCodesIgnored": {
+          "value": true,
+          "quote": "If the mode setting code is set to something other than \"C\" or \"3\", subsequent data are disregarded and the DATA port remains in the input mode."
+        },
+        "addressAutoIncrements": {
+          "value": true,
+          "quote": "The following 4-bit block is written to the specified address. Then the address is automatically incremented, and subsequent 4-bit blocks are written to subsequent addresses."
+        },
+        "incompleteNibbleDiscarded": {
+          "value": true,
+          "quote": "If the CE input is set to Low while a 4-bit input data block is incomplete, this input is disregarded. (Previous data remain valid.)"
+        },
+        "powerOnStateUndefined": {
+          "value": true,
+          "quote": "At power-on, all registers and the STD.P output are undefined.",
+          "why": "This is the manufacturer's own statement of the rule this family applies everywhere: a model that starts its registers at zero is modelling a state the part does not guarantee. snesrtc.store.Store derives every unwritten byte from a seed for exactly this reason."
+        },
+        "encoding": {
+          "value": "bcd",
+          "quote": "The count is in BCD code. For example, if the 1-year digit register (Y1) is (y8, y4, y2, y1) = (0,0,1,0), the register indicates the \"2\" of \"1992\"."
+        },
+        "positiveLogic": {
+          "value": true,
+          "quote": "The relation between register bit 0/1 and input/output is positive logic. 0 = Low; 1 = High."
+        },
+        "outOfRangeValuesNotSpecified": {
+          "value": true,
+          "quote": "Do not set impossible values to prevent the possibility of clock malfunction.",
+          "why": "The manufacturer declines to state what the counters do when a register holds a value outside its count range. Everything this package models about that case therefore rests on corpus.json rather than on this file, and is labelled as such."
+        },
+        "impossibleDateCorrection": {
+          "value": "advancesToTheFollowingMonth",
+          "quote": "If an impossible date below 31 has been set for the day of the month, the settings as shown in the example below will be established as soon as the day-of-the-month increment pulse is generated.",
+          "examples": [
+            {
+              "set": "1993-02-29",
+              "corrects": "1993-03-01"
+            },
+            {
+              "set": "November 31",
+              "corrects": "December 1"
+            }
+          ],
+          "note": "The correction happens on the next day-of-the-month increment, not at the moment of writing."
+        },
+        "leapYearCompensation": {
+          "value": true,
+          "quote": "Automatic leap year compensation is provided for the Gregorian calender and for Japanese-era years of the current era (Heisei)."
+        },
+        "registerTable": {
+          "quote": "Address / Register name / D3 (MSB) / D2 / D1 / D0 (LSB) / Count range / Remarks",
+          "note": "Transcribed row for row from the register table on manual page 5. Bits marked \"*\" are free RAM: \"Bits marked with * can be freely written to and used as RAM.\" digitBits names the bits that carry the BCD digit, which is narrower than the register on six of the thirteen clock registers.",
+          "rows": [
+            {
+              "address": 0,
+              "name": "S1",
+              "d3": "s8",
+              "d2": "s4",
+              "d1": "s2",
+              "d0": "s1",
+              "countRange": [0, 9],
+              "digitBits": 4,
+              "digitMask": 15,
+              "remarks": "1-second digit register"
+            },
+            {
+              "address": 1,
+              "name": "S10",
+              "d3": "fo",
+              "d2": "s40",
+              "d1": "s20",
+              "d0": "s10",
+              "countRange": [0, 5],
+              "digitBits": 3,
+              "digitMask": 7,
+              "remarks": "10-second digit register"
+            },
+            {
+              "address": 2,
+              "name": "MI1",
+              "d3": "mi8",
+              "d2": "mi4",
+              "d1": "mi2",
+              "d0": "mi1",
+              "countRange": [0, 9],
+              "digitBits": 4,
+              "digitMask": 15,
+              "remarks": "1-minute digit register"
+            },
+            {
+              "address": 3,
+              "name": "MI10",
+              "d3": "fr",
+              "d2": "mi40",
+              "d1": "mi20",
+              "d0": "mi10",
+              "countRange": [0, 5],
+              "digitBits": 3,
+              "digitMask": 7,
+              "remarks": "10-minute digit register"
+            },
+            {
+              "address": 4,
+              "name": "H1",
+              "d3": "h8",
+              "d2": "h4",
+              "d1": "h2",
+              "d0": "h1",
+              "countRange": [0, 9],
+              "digitBits": 4,
+              "digitMask": 15,
+              "remarks": "1-hour digit register"
+            },
+            {
+              "address": 5,
+              "name": "H10",
+              "d3": "fr",
+              "d2": "PM/AM",
+              "d1": "h20",
+              "d0": "h10",
+              "countRange": [0, 2],
+              "digitBits": 2,
+              "digitMask": 3,
+              "remarks": "10-hour digit register",
+              "countRangeQuote": "0~1,2"
+            },
+            {
+              "address": 6,
+              "name": "D1",
+              "d3": "d8",
+              "d2": "d4",
+              "d1": "d2",
+              "d0": "d1",
+              "countRange": [0, 9],
+              "digitBits": 4,
+              "digitMask": 15,
+              "remarks": "1-day digit register"
+            },
+            {
+              "address": 7,
+              "name": "D10",
+              "d3": "fr",
+              "d2": "*",
+              "d1": "d20",
+              "d0": "d10",
+              "countRange": [0, 3],
+              "digitBits": 2,
+              "digitMask": 3,
+              "remarks": "10-day digit register"
+            },
+            {
+              "address": 8,
+              "name": "MO1",
+              "d3": "mo8",
+              "d2": "mo4",
+              "d1": "mo2",
+              "d0": "mo1",
+              "countRange": [0, 9],
+              "digitBits": 4,
+              "digitMask": 15,
+              "remarks": "1-month digit register"
+            },
+            {
+              "address": 9,
+              "name": "MO10",
+              "d3": "fr",
+              "d2": "*",
+              "d1": "*",
+              "d0": "mo10",
+              "countRange": [0, 1],
+              "digitBits": 1,
+              "digitMask": 1,
+              "remarks": "10-month digit register"
+            },
+            {
+              "address": 10,
+              "name": "Y1",
+              "d3": "y8",
+              "d2": "y4",
+              "d1": "y2",
+              "d0": "y1",
+              "countRange": [0, 9],
+              "digitBits": 4,
+              "digitMask": 15,
+              "remarks": "1-year digit register"
+            },
+            {
+              "address": 11,
+              "name": "Y10",
+              "d3": "y80",
+              "d2": "y40",
+              "d1": "y20",
+              "d0": "y10",
+              "countRange": [0, 9],
+              "digitBits": 4,
+              "digitMask": 15,
+              "remarks": "10-year digit register"
+            },
+            {
+              "address": 12,
+              "name": "W",
+              "d3": "fr",
+              "d2": "w4",
+              "d1": "w2",
+              "d0": "w1",
+              "countRange": [0, 6],
+              "digitBits": 3,
+              "digitMask": 7,
+              "remarks": "Day-of-the-week register"
+            },
+            {
+              "address": 13,
+              "name": "CD",
+              "d3": "30ADJ.",
+              "d2": "IRQ-F",
+              "d1": "CAL/HW",
+              "d0": "HOLD",
+              "countRange": null,
+              "remarks": "Control register D"
+            },
+            {
+              "address": 14,
+              "name": "CE",
+              "d3": "t1",
+              "d2": "t0",
+              "d1": "INT/STND",
+              "d0": "MASK",
+              "countRange": null,
+              "remarks": "Control register E"
+            },
+            {
+              "address": 15,
+              "name": "CF",
+              "d3": "TEST",
+              "d2": "24/12",
+              "d1": "STOP",
+              "d0": "RESET",
+              "countRange": null,
+              "remarks": "Control register F"
+            }
+          ]
+        },
+        "weekdayCountsZeroToSix": {
+          "value": [0, 6],
+          "quote": "For this register, count-up from 0 to 6 is performed. The table below shows an example for bit weighting.",
+          "namedDaysAreAnExample": true,
+          "exampleTable": {
+            "0": "Monday",
+            "1": "Tuesday",
+            "2": "Wednesday",
+            "3": "Thursday",
+            "4": "Friday",
+            "5": "Saturday",
+            "6": "Sunday"
+          },
+          "why": "The manual introduces the named days as an example for bit weighting, not as a fixed assignment. The chip counts 0 to 6 and attaches no meaning to the number, so a model that counts modulo seven is faithful whichever day a program calls zero. This package's own numbering is a property of the Sharp part, which does derive the weekday, and is recorded under that part."
+        },
+        "oscFlag": {
+          "bit": "S10.D3",
+          "name": "fo",
+          "quote": "The fo (OSC FLAG) bit records any oscillation interruption. It is used to monitor for low battery voltage. The bit can be cleared by setting it to \"0\". (Setting the bit externally to \"1\" is also possible.)"
+        },
+        "readFlag": {
+          "bit": "MI10.D3, H10.D3, D10.D3, MO10.D3, W.D3",
+          "name": "fr",
+          "quote": "The fr (READ FLAG) bit is set to \"0\" when the CE input becomes Low. If the 1-second digit register has been incremented while CE is High, the bit becomes \"1\". This allows testing for a second-increment while the clock register is being used. If the bit is \"1\", the clock register must be read again."
+        },
+        "pmAmBit": {
+          "bit": "H10.D2",
+          "quote": "The PM/AM bit is \"1\" for PM and \"0\" for AM."
+        },
+        "twelveHourNotation": {
+          "quote": "Possible time settings are 12 a.m. to 11 a.m., and 12 p.m. to 11 p.m. The h20 bit cannot be written and is fixed to \"0\". The clock does not increment the h20 bit."
+        },
+        "twentyFourHourNotation": {
+          "quote": "Possible time settings are 0 to 23. A write attempt to the PM/AM bit is disregarded, and the bit will always read \"0\"."
+        },
+        "controlRegisterD": {
+          "address": 13,
+          "bits": {
+            "hold": {
+              "mask": 1,
+              "quote": "This bit stops the 1-second digit incrementation. The clock continues to run, and the first incrementation after HOLD was set to \"1\" is compensated for when the hold condition is released (+1 second). The bit is cleared by writing \"0\".",
+              "why": "HOLD is not a stop. The oscillator and the internal counters keep running behind it; only the visible 1-second digit is frozen. Time spent held is therefore not lost."
+            },
+            "calHw": {
+              "mask": 2,
+              "quote": "When this bit is \"1\": clock range is seconds to 10 years, and weekdays. When this bit is \"0\": clock range is seconds to 10 hours, and weekdays. When the bit is \"0\", the six registers D1 to Y10 can be used as 4-bit RAM. The bits marked with * and the fr flag in the D10 and MO10 registers can also be used separately as RAM."
+            },
+            "irqF": {
+              "mask": 4,
+              "readOnly": true,
+              "quote": "A write instruction for the IRQ-F bit is not executed. This bit is set to \"1\" when the digit increment specified by t1,t0 is executed. The setting is maintained until the CD register has been read, and then returns to \"0\"."
+            },
+            "thirtySecondAdjust": {
+              "mask": 8,
+              "quote": "When this bit is written to, the seconds are reset to 00 of the current minute if currently less than 30, or to 00 of the next minute if currently 30 or more. For 125 microseconds after writing this bit, the bit is held at \"1\" and the internal registers S1 through W cannot be written to. After this interval, the bit is automatically reset to \"0\". Confirm that the bit has reverted to \"0\" before attempting to write to the internal registers S1 through W.",
+              "interactionWithReset": "Note that if \"1\" is written to the RESET bit before the 30-second ADJ bit has reverted to \"0\", 30-second adjustment is not performed, and the 30-second ADJ bit is cleared to \"0\".",
+              "lockoutMicroseconds": 125
+            }
+          }
+        },
+        "controlRegisterE": {
+          "address": 14,
+          "bits": {
+            "mask": {
+              "mask": 1,
+              "quote": "When this bit is \"1\", IRQ-F cannot be \"1\" and the STD.P output is open."
+            },
+            "intStnd": {
+              "mask": 2,
+              "quote": "INT/STND bit = \"1\": interrupt cycle mode. INT/STND bit = \"0\": fixed-period cycle mode"
+            },
+            "t0": {
+              "mask": 4
+            },
+            "t1": {
+              "mask": 8
+            }
+          },
+          "periodTable": {
+            "quote": "Set the timing of the interrupt cycle mode or fixed-period waveform mode.",
+            "rows": [
+              {
+                "t1": 0,
+                "t0": 0,
+                "period": "1/64 s"
+              },
+              {
+                "t1": 0,
+                "t0": 1,
+                "period": "1 second"
+              },
+              {
+                "t1": 1,
+                "t0": 0,
+                "period": "1 minute"
+              },
+              {
+                "t1": 1,
+                "t0": 1,
+                "period": "1 hour"
+              }
+            ]
+          },
+          "fixedPeriodLowMilliseconds": {
+            "value": 7.8,
+            "quote": "The fixed-period Low level cycle is 7.8 ms."
+          },
+          "notModelledHere": "Every bit of CE drives the STD.P output pin. No documentation says the SPC7110 routes STD.P anywhere a Super Nintendo program can observe it, so this package stores the register and models no interrupt. See divergences.json entry epson-std-p-unrouted."
+        },
+        "controlRegisterF": {
+          "address": 15,
+          "bits": {
+            "reset": {
+              "mask": 1,
+              "quote": "When this bit is set to \"1\", the seconds are reset to zero and the clock stops. The TEST bit is forced to \"0\". When the bit is set to \"0\", the clock resumes operation. When writing \"0\" to this bit, take care not to inadvertently set the TEST bit in the same register to \"1\"."
+            },
+            "stop": {
+              "mask": 2,
+              "quote": "When this bit is set to \"1\", the clock stops. When the bit is set to \"0\", the clock resumes operation."
+            },
+            "twentyFourTwelve": {
+              "mask": 4,
+              "quote": "Selection bit for 12-hour or 24-hour notation. \"1\" means 24-hour and \"0\" means 12-hour notation. When this bit is changed, data above H1 can become unstable and must be reset."
+            },
+            "test": {
+              "mask": 8,
+              "quote": "This test bit is used by Epson for internal purposes. It must be set to \"0\" by the user. The bit is cleared by setting CE to Low."
+            }
+          }
+        },
+        "crystalHz": {
+          "value": 32768,
+          "quote": "Built-in frequency adjusted 32-kHz quartz crystal"
+        },
+        "frequencyTolerancePpm": {
+          "value": 25,
+          "sign": "plusMinus",
+          "quote": "Frequency tolerance, Ta=25 degrees C, VDD=3.0V, 0 plus or minus 25 ppm",
+          "quoteIsParaphrasedLayout": "The manual prints this as a table row whose condition column is an empty rule. The figures, symbol and units are transcribed exactly; only the empty cell is dropped.",
+          "why": "A property of the module, which carries its own crystal. This is the figure that bounds how far a real cartridge drifts, and it is recorded here rather than modelled: see divergences.json entry epson-drift-not-modelled."
+        },
+        "temperatureCoefficientPpmPerCelsiusSquared": {
+          "value": -0.035,
+          "tolerance": 0.005,
+          "peakTemperatureCelsius": 25,
+          "peakToleranceCelsius": 5,
+          "quote": "Secondary temperature coefficient (-0.035 plus or minus 0.005 per degree C squared)"
+        },
+        "dailyErrorSeconds": {
+          "value": 1,
+          "atPpm": 11.574,
+          "quote": "At 11.574 ppm, the daily clock error is about one second per day."
+        },
+        "operatingVoltage": {
+          "minimum": 2.7,
+          "maximum": 5.5,
+          "unit": "V",
+          "quote": "Power supply voltage, VDD, 2.7 to 5.5 V"
+        },
+        "dataRetentionVoltage": {
+          "minimum": 2.0,
+          "maximum": 5.5,
+          "unit": "V",
+          "quote": "Clock power supply voltage, VCLK, 2.0 to 5.5 V"
+        }
+      },
+      "notStated": {
+        "centuryWindow": "The manual gives Y1 and Y10 as two BCD digits with no century attached, and states leap-year compensation for the Gregorian calendar and the Heisei era without naming a range of years. Nothing in it says a stored year of 90 means 1990 or that 00 means 2000. The 1990 to 2089 window this package uses is therefore a convention inherited from the reference implementation, not a manufacturer fact. See divergences.json entry epson-century-window.",
+        "outOfRangeCounterBehaviour": "The manual says only to avoid setting impossible values. What the counters do with a register above its count range is not stated anywhere in it, so the underflow this package models rests on the recording and nothing more.",
+        "spc7110Mapping": "The manual describes a three-wire serial interface on CE, CLK and DATA. How the SPC7110 turns that into the three cartridge addresses 0x4840, 0x4841 and 0x4842 is not an Epson matter and appears in no document Epson publishes. Every fact about that mapping is corpus evidence.",
+        "catchUpOnDisable": "Nothing in the manual describes a clock that recomputes elapsed time when CE falls, because a real part counts continuously and has nothing to catch up. The catch-up this package performs is an artefact of modelling a continuously running counter with a wall-clock reading taken at intervals, and its placement is corpus evidence."
+      }
+    },
+    {
+      "part": "Sharp S-RTC",
+      "verified": false,
+      "unverified": {
+        "asserted": "A Sharp-manufactured real-time clock, marked S-RTC, fitted to the Daikaijuu Monogatari II cartridge and reached at cartridge addresses 0x2800 and 0x2801.",
+        "assertedBy": "Emulator source and community catalogues. snescentral.com lists the part under the marking S-RTC with Sharp as the manufacturer and Daikaijuu Monogatari II as the only title, and gives no package, pin count or register description.",
+        "searchedOn": "2026-08-20",
+        "searchedFor": "A Sharp datasheet, data book entry or application manual for a part marked S-RTC, and for any Sharp real-time clock whose register order and protocol match what the cartridge does.",
+        "found": "Nothing. The marking S-RTC is a Nintendo part designation rather than a Sharp catalogue number, in the same style as S-DSP, S-SMP, S-PPU and S-CPU, none of which Sharp documents publicly either. No manufacturer document for this part is known to exist outside Nintendo and Sharp.",
+        "usedInstead": "Every behaviour this package models for the Sharp clock rests on corpus.json, recorded from the implementation pinned in pinned.json, and on the one shipped cartridge that drives the part.",
+        "wouldSettleIt": [
+          "A Sharp data book entry or application manual for the part.",
+          "A die photograph or decapsulation identifying a catalogue part number under the Nintendo marking, which would name a document to look for.",
+          "A logic capture of the cartridge bus while the shipped game reads and writes the clock, which would settle the protocol at rung 2 without any document."
+        ],
+        "why": "A part quietly given an emulator's numbers is indistinguishable from a part given a manufacturer's numbers. This block exists so a reader can tell the two clocks in this package apart at a glance: the Epson part is documented and gated, the Sharp part is not."
+      },
+      "recordedFacts": {
+        "note": "Not manufacturer facts. These are the shape of the part as the reference implementation has it, recorded here so the gate has something to check the model against and so the reader can see exactly which claims rest on rung 3.",
+        "dataAddress": 10240,
+        "controlAddress": 10241,
+        "sequenceLength": 13,
+        "marker": 15,
+        "weekdayIndex": 12,
+        "yearBase": 1000,
+        "weekdayEpoch": {
+          "date": "1900-01-01",
+          "value": 1,
+          "why": "The reference counts days forward from the first of January 1900 with Sunday as zero, which makes that date a Monday. The Epson manual's own weekday table is introduced as an example of bit weighting and assigns no fixed meaning to the number, so it neither confirms nor contradicts this."
+        }
+      }
+    }
+  ]
+}

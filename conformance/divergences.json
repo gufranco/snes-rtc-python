@@ -1,0 +1,360 @@
+{
+  "note": "Every place the manufacturer's documentation and the pinned reference implementation disagree, or where this package models something neither settles. Each entry names what the document says, what the reference does, which one this package follows, and what evidence would close the question. Nothing here is resolved by preference. An entry stays open until a rung the authority ladder recognises settles it.",
+  "authority": "hardware.json holds the ladder. Rung 1 is the manufacturer, rung 2 is the part or its own program, rung 3 is a recording from an independent implementation, rung 4 is nothing. Where rung 1 speaks, it wins and the recording is retaken.",
+  "readOn": "2026-08-20",
+  "divergences": [
+    {
+      "id": "epson-cd-bit1-add-second",
+      "severity": "contradiction",
+      "status": "open",
+      "topic": "What bit 1 of control register D does.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Bit 1 of CD is CAL/HW, which selects how much of the counter chain runs. It does not add time.",
+        "quote": "CAL/HW. When this bit is \"1\": clock range is seconds to 10 years, and weekdays. When this bit is \"0\": clock range is seconds to 10 hours, and weekdays.",
+        "source": "Seiko Epson, Application Manual RTC-4513, manual page 7"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Treats a write of bit 1 to register 13 as a request to add one second, implemented by backdating the recorded moment by a second so the clock gains it on the next catch-up.",
+        "source": "pinned.json"
+      },
+      "packageFollows": "document",
+      "consequence": "A program that sets CAL/HW no longer gains a spurious second. The one shipped Epson cartridge is not known to write this bit, so no observable difference in a real title has been demonstrated either way.",
+      "wouldSettleIt": [
+        "A logic capture of the RTC-4513 on real hardware while CAL/HW is toggled, showing whether the second counter moves.",
+        "A read of the shipped cartridge program establishing whether it ever writes this bit at all, which would bound how much the answer matters."
+      ],
+      "why": "Nothing in the manual attaches any time adjustment to CAL/HW, and the only documented software adjustment is the 30-second adjust on bit 3, which this package already models and the manual confirms. An add-a-second function on bit 1 appears in no Epson document.",
+      "parts": ["Epson RTC-4513"]
+    },
+    {
+      "id": "epson-hold-discards-elapsed-time",
+      "severity": "contradiction",
+      "status": "open",
+      "topic": "Whether time passing while HOLD is set is lost.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "HOLD freezes only the visible 1-second digit. The counters behind it keep running, and releasing HOLD compensates the increment that was suppressed.",
+        "quote": "This bit stops the 1-second digit incrementation. The clock continues to run, and the first incrementation after HOLD was set to \"1\" is compensated for when the hold condition is released (+1 second). The bit is cleared by writing \"0\".",
+        "source": "Seiko Epson, Application Manual RTC-4513, manual page 7",
+        "corroboration": "The manual's own procedure for writing the clock without losing seconds sets HOLD, waits 100 microseconds, writes, clears HOLD, waits 200 microseconds, and warns that the whole procedure must finish within one second or the seconds are lost. A HOLD that discarded elapsed time would make that procedure pointless."
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Treats HOLD as one of two stop conditions, and discards every second that passes while it is set.",
+        "source": "pinned.json"
+      },
+      "packageFollows": "document",
+      "consequence": "A clock held for an hour now returns an hour later when released, rather than an hour behind. This is the divergence most likely to be observable in a shipped title, because setting the clock is the one thing a game does with these bits.",
+      "wouldSettleIt": [
+        "A logic capture of the part with HOLD asserted across a minute boundary and then released.",
+        "A read of the shipped cartridge program's clock-setting routine, to see whether it follows the manual's HOLD procedure or the STOP and RESET procedure."
+      ],
+      "why": "STOP and RESET are the manual's stop conditions and both say so in those words. HOLD says the opposite in its own first sentence.",
+      "parts": ["Epson RTC-4513"]
+    },
+    {
+      "id": "epson-digit-fields-narrower-than-registers",
+      "severity": "contradiction",
+      "status": "open",
+      "topic": "How many bits of each clock register carry the BCD digit.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Six of the thirteen clock registers carry a digit narrower than the four-bit register. S10 bit 3 is the oscillator flag, MI10, D10, MO10 and W bit 3 are the read flag, H10 bit 3 is the read flag and bit 2 is PM/AM, and D10 bit 2 and MO10 bits 2 and 1 are free RAM.",
+        "quote": "Bits marked with * can be freely written to and used as RAM.",
+        "source": "Seiko Epson, Application Manual RTC-4513, register table on manual page 5, corroborated by the catalogue extract",
+        "supportingCountRanges": "The table's own count range column gives 0 to 5 for S10 and MI10, 0 to 1 and 2 for H10, 0 to 3 for D10, 0 to 1 for MO10, and 0 to 6 for W. None of those reaches 9, which a four-bit digit field would."
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Stores and reads all four bits of every register as the digit, so a flag bit or a free-RAM bit written by a program is read back as part of the time.",
+        "source": "pinned.json"
+      },
+      "packageFollows": "document",
+      "consequence": "A program that uses MO10 bits 1 and 2 as the RAM the manual offers no longer shifts the month by tens. Under the reference's reading, setting MO10 to 6 to store a flag reads back as month 60 plus the ones digit.",
+      "wouldSettleIt": [
+        "A logic capture reading back a register after writing a free-RAM bit, showing whether the counter chain was disturbed."
+      ],
+      "why": "The manufacturer both names the bits and prints count ranges that no four-bit digit could produce. Two Epson documents print the same table.",
+      "parts": ["Epson RTC-4513"]
+    },
+    {
+      "id": "epson-irqf-not-writable",
+      "severity": "contradiction",
+      "status": "open",
+      "topic": "Whether a program can write bit 2 of control register D.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "It cannot.",
+        "quote": "A write instruction for the IRQ-F bit is not executed. This bit is set to \"1\" when the digit increment specified by t1,t0 is executed. The setting is maintained until the CD register has been read, and then returns to \"0\".",
+        "source": "Seiko Epson, Application Manual RTC-4513, manual page 5"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Stores all four bits of a write to register 13, including IRQ-F.",
+        "source": "pinned.json"
+      },
+      "packageFollows": "document",
+      "consequence": "Writing register 13 leaves bit 2 holding whatever the increment logic last put there rather than what the program wrote.",
+      "wouldSettleIt": [
+        "A logic capture writing register 13 with bit 2 set and reading it straight back."
+      ],
+      "why": "The manual states it in the imperative and repeats the read-to-clear rule beside it.",
+      "parts": ["Epson RTC-4513"]
+    },
+    {
+      "id": "epson-twelve-hour-mode-unmodelled",
+      "severity": "unmodelled",
+      "status": "open",
+      "topic": "Twelve-hour notation, selected by bit 2 of control register F.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "The part runs in twelve-hour notation whenever CF bit 2 is clear, with PM/AM in H10 bit 2, h20 held at zero and never incremented, and settings running 12 a.m. to 11 a.m. and 12 p.m. to 11 p.m.",
+        "quote": "Selection bit for 12-hour or 24-hour notation. \"1\" means 24-hour and \"0\" means 12-hour notation. When this bit is changed, data above H1 can become unstable and must be reset.",
+        "source": "Seiko Epson, Application Manual RTC-4513, manual pages 6 and 10"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Runs twenty-four hour notation unconditionally and ignores the bit.",
+        "source": "pinned.json"
+      },
+      "packageFollows": "document",
+      "consequence": "Because the register file powers up undefined, a cartridge whose CF bit 2 happens to be clear runs in twelve-hour notation until a program sets it. That is the state the manual's own power-on procedure exists to escape, and a model that ignores the bit cannot reproduce a cartridge that never ran the procedure.",
+      "openQuestion": "The manual says data above H1 can become unstable when the bit is changed and must be reset. Unstable is not a value, so what a real part reads back between the change and the reset is not determined by any document. This package leaves the registers as they were and does not invent an instability.",
+      "wouldSettleIt": [
+        "A logic capture toggling CF bit 2 with a known time loaded, read back immediately."
+      ],
+      "why": "The bit is documented, reachable, and powers up in an undefined state, so it is not safe to assume a program always sets it.",
+      "parts": ["Epson RTC-4513"]
+    },
+    {
+      "id": "epson-read-and-write-flags-unmodelled",
+      "severity": "unmodelled",
+      "status": "open",
+      "topic": "The fr read flag and the fo oscillator flag.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "fr is cleared when CE falls and set when the 1-second digit increments while CE is high, so a program can tell whether the reading it just took straddled a tick. fo records an oscillation interruption and is used to detect a flat battery.",
+        "quote": "The fr (READ FLAG) bit is set to \"0\" when the CE input becomes Low. If the 1-second digit register has been incremented while CE is High, the bit becomes \"1\". This allows testing for a second-increment while the clock register is being used. If the bit is \"1\", the clock register must be read again.",
+        "source": "Seiko Epson, Application Manual RTC-4513, manual pages 5 and 6"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Models neither flag. The bits are whatever the digit write left behind.",
+        "source": "pinned.json"
+      },
+      "packageFollows": "document",
+      "consequence": "fr now clears when the enable register is written low and sets when a catch-up crosses a second boundary during an open session. fo is left as the store holds it, because an oscillation interruption is a battery event this package has no way to originate.",
+      "openQuestion": "fo can only be set by a real power event. A model driven by an injected clock never has one, so the flag is readable and writable here and never set by the model itself. That is a limit of the modelling, not a claim about the part.",
+      "wouldSettleIt": [
+        "A logic capture holding CE high across a second boundary and reading MI10 bit 3."
+      ],
+      "why": "The flag is reachable through the SPC7110 mapping and the manual's own reading procedure tells a program to poll it.",
+      "parts": ["Epson RTC-4513"]
+    },
+    {
+      "id": "epson-thirty-second-adjust-lockout-unmodelled",
+      "severity": "unmodelled",
+      "status": "open",
+      "topic": "The 125 microsecond window after a 30-second adjust.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "For 125 microseconds the adjust bit reads back as 1 and registers S1 through W cannot be written, after which the bit clears itself. A RESET written inside that window cancels the adjustment and clears the bit.",
+        "quote": "For 125 microseconds after writing this bit, the bit is held at \"1\" and the internal registers S1 through W cannot be written to. After this interval, the bit is automatically reset to \"0\".",
+        "source": "Seiko Epson, Application Manual RTC-4513, manual page 7"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Performs the adjustment immediately and stores the written bit, so it reads back as 1 forever rather than for 125 microseconds.",
+        "source": "pinned.json"
+      },
+      "packageFollows": "document, partially",
+      "consequence": "The adjust bit now clears rather than latching, so the manual's polling loop terminates. The 125 microsecond lockout itself is not modelled.",
+      "openQuestion": "Modelling the lockout needs a time base this package does not have. The clock is driven by an injected wall-clock reading in whole seconds, not by a cycle counter, so a 125 microsecond window has no unit to be measured in here. Closing this needs the caller to supply sub-second time, which would change the package's interface.",
+      "wouldSettleIt": [
+        "A decision to give the model a sub-second time base, at which point the window is directly implementable from the quoted figure.",
+        "Evidence from the shipped cartridge program that it polls the bit rather than waiting a fixed interval, which would say how much the lockout matters."
+      ],
+      "why": "The self-clearing half of the rule is observable with the time base that exists. The lockout half is not, and saying so is better than pretending either way.",
+      "parts": ["Epson RTC-4513"]
+    },
+    {
+      "id": "epson-test-bit-not-cleared",
+      "severity": "contradiction",
+      "status": "open",
+      "topic": "When the TEST bit clears.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "TEST clears when CE goes low, and a RESET forces it to zero.",
+        "quote": "This test bit is used by Epson for internal purposes. It must be set to \"0\" by the user. The bit is cleared by setting CE to Low.",
+        "source": "Seiko Epson, Application Manual RTC-4513, manual page 10",
+        "corroboration": "The RESET description on the same page adds: The TEST bit is forced to \"0\"."
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Stores the bit and never clears it.",
+        "source": "pinned.json"
+      },
+      "packageFollows": "document",
+      "consequence": "Closing a session clears TEST, so a cartridge that powered up with the bit set does not carry it forever.",
+      "wouldSettleIt": ["A logic capture setting TEST, dropping CE, and reading CF back."],
+      "why": "Two separate paragraphs of the manual state it, and the bit powers up undefined so it is reachable without any program setting it.",
+      "parts": ["Epson RTC-4513"]
+    },
+    {
+      "id": "epson-century-window",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "Which century a two-digit year means.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing. Y1 and Y10 are two BCD digits. Leap-year compensation is stated for the Gregorian calendar and the Heisei era, with no range of years named.",
+        "quote": "Automatic leap year compensation is provided for the Gregorian calender and for Japanese-era years of the current era (Heisei).",
+        "source": "Seiko Epson, Application Manual RTC-4513, manual page 6"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Reads a stored year of 90 or above as nineteen hundred plus the digits, and below 90 as two thousand plus the digits, giving a window of 1990 to 2089.",
+        "source": "pinned.json"
+      },
+      "packageFollows": "reference",
+      "consequence": "The window decides only which years are leap years, since the digits themselves are what a program reads back. A part with no century has to be given one by something, and the model has to pick.",
+      "wouldSettleIt": [
+        "A statement from Epson naming the window, which the manual does not make.",
+        "A read of the shipped cartridge program showing which century it assumes, which would settle what the cartridge does even if not what the chip does."
+      ],
+      "why": "This is a convention, not a fact, and it is recorded here so it stops looking like one. Following the reference is the right call where the manufacturer is silent and a choice must still be made.",
+      "parts": ["Epson RTC-4513"]
+    },
+    {
+      "id": "epson-std-p-unrouted",
+      "severity": "outOfScope",
+      "status": "closed",
+      "topic": "The interrupt and fixed-period output, and every bit of control register E that drives it.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Control register E selects one of four periods, chooses interrupt or fixed-period mode, and can mask the output. The output appears on the STD.P pin.",
+        "quote": "The fixed-period Low level cycle is 7.8 ms.",
+        "source": "Seiko Epson, Application Manual RTC-4513, manual pages 8 and 9"
+      },
+      "packageFollows": "neither",
+      "consequence": "Control register E is stored and read back and drives nothing. No interrupt is generated.",
+      "why": "STD.P is a pin on the module. No document describes the SPC7110 routing it anywhere a Super Nintendo program can observe, and modelling an interrupt that reaches nothing would be inventing a wire. Closed rather than open because the missing evidence is about the cartridge board, not about the part.",
+      "wouldReopenIt": "A cartridge board trace, or a shipped program that polls something explicable only as an RTC interrupt.",
+      "parts": ["Epson RTC-4513"]
+    },
+    {
+      "id": "epson-drift-not-modelled",
+      "severity": "outOfScope",
+      "status": "closed",
+      "topic": "Crystal drift.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "The module holds 0 plus or minus 25 ppm at 25 degrees C and 3.0 V, with a secondary temperature coefficient of -0.035 ppm per degree C squared about a peak at 25 plus or minus 5 degrees C, which the manual works out to about one second of error per day at 11.574 ppm.",
+        "quote": "At 11.574 ppm, the daily clock error is about one second per day.",
+        "source": "Seiko Epson, Application Manual RTC-4513, manual page 16"
+      },
+      "packageFollows": "neither",
+      "consequence": "The model keeps perfect time. A real cartridge does not.",
+      "why": "The figure is a tolerance, not a value: it bounds a population of modules and says nothing about the one in a given cartridge, and it depends on a temperature the model has no way to know. Reporting a single drift here would be reporting an average as though it were a measurement. The earlier claim that no number existed was wrong, and the number is now recorded even though it is not simulated.",
+      "wouldReopenIt": "A caller that wants a drifting clock and supplies a temperature and a per-unit offset, at which point the quoted equation is directly implementable.",
+      "parts": ["Epson RTC-4513"]
+    },
+    {
+      "id": "epson-catch-up-placement",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "When the model discovers that time has passed.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing, and it could not. A real part counts continuously off its own crystal and has nothing to catch up. The manual describes no event at which the time is recomputed because there is no such event."
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Recomputes the stored time when the chip is disabled rather than when it is enabled, so a session reads the time as the previous session left it and a program that opens the chip and reads immediately gets a stale second.",
+        "source": "pinned.json"
+      },
+      "packageFollows": "reference",
+      "consequence": "An artefact of modelling a continuously running counter from a wall-clock reading taken at intervals. Any placement is an approximation; this one is the reference's and is kept because nothing better is available and a shipped title was written against hardware that had no such seam at all.",
+      "wouldSettleIt": [
+        "Giving the model a continuous time base driven by the caller, at which point the seam disappears rather than moving."
+      ],
+      "why": "Recorded so that a reader does not mistake the placement for a hardware behaviour. It is a modelling choice with no rung above 3 behind it.",
+      "parts": ["Epson RTC-4513"]
+    },
+    {
+      "id": "epson-writes-during-read-mode",
+      "severity": "unstated",
+      "status": "open",
+      "topic": "What a write to the data port does while the chip is in read mode.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing directly. In read mode the DATA pin is an output driven by the chip, so the manual never contemplates the host writing to it. The nearest statement is that a mode code other than the two named leaves the port in input mode, which implies the two named codes take it out of input mode.",
+        "quote": "If the mode setting code is set to something other than \"C\" or \"3\", subsequent data are disregarded and the DATA port remains in the input mode.",
+        "source": "Seiko Epson, Application Manual RTC-4513, manual page 11"
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Treats every write after the mode code as another index selection while in read mode, so the address is re-chosen on each write rather than walking forward.",
+        "source": "pinned.json"
+      },
+      "packageFollows": "document",
+      "consequence": "A write to the data port during a read-mode session is ignored, and the address keeps whatever the single index selection set it to.",
+      "wouldSettleIt": [
+        "A logic capture driving DATA as an input while the chip is in read mode, which is a bus contention a real board would avoid.",
+        "A read of the shipped cartridge program establishing whether it ever does this."
+      ],
+      "why": "The SPC7110 wrapper turns a bidirectional pin into a write-only address, so the host can perform an operation the chip has no pin state for. Neither reading is derivable from the manual, and following it rather than the reference is the smaller invention.",
+      "parts": ["Epson RTC-4513"]
+    },
+    {
+      "id": "sharp-part-undocumented",
+      "severity": "unverified",
+      "status": "open",
+      "topic": "Every behaviour of the Sharp clock.",
+      "documentSays": {
+        "rung": 4,
+        "claim": "No manufacturer document for this part is known to exist publicly."
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Defines the whole protocol: the marker, the thirteen-byte sequence, the command set, the derived weekday and the three-digit year.",
+        "source": "pinned.json"
+      },
+      "packageFollows": "reference",
+      "consequence": "The Sharp half of this package rests entirely on rung 3. It is not held to a manufacturer document because there is not one, and no claim made about it should be read as though it were.",
+      "wouldSettleIt": [
+        "A Sharp data book entry for the part.",
+        "A decapsulation naming a catalogue part number under the Nintendo marking.",
+        "A logic capture of the cartridge bus while the one shipped title reads and writes the clock."
+      ],
+      "why": "The two clocks in this package now rest on very different evidence, and a reader must be able to see that without reading the source. Reporting one strength for both would read as uniform when it is not.",
+      "parts": ["Sharp S-RTC"]
+    },
+    {
+      "id": "stamp-width-platform-dependent",
+      "parts": ["Sharp S-RTC", "Epson RTC-4513"],
+      "severity": "recorderArtefact",
+      "status": "open",
+      "topic": "How an interval longer than half the stamp's range is read.",
+      "documentSays": {
+        "rung": 1,
+        "claim": "Nothing, and it could not. Neither part holds a timestamp at all. A real clock counts continuously from its own crystal, and the four stored bytes both models use to remember when they were last read exist only because a model learns the time from a reading taken at intervals."
+      },
+      "referenceDoes": {
+        "rung": 3,
+        "claim": "Builds the stamp from four stored bytes and then tests for underflow against the maximum of the host's time_t rather than against the range those four bytes can hold. On a build with a 64-bit time_t that test never fires, so an interval of two billion seconds advances the clock; on a build with a 32-bit time_t the same interval is read as an underflow and discards it.",
+        "source": "pinned.json",
+        "referenceOwnComment": "sizeof(time_t) is platform-dependent; though memory::cartrtc needs to be platform-agnostic."
+      },
+      "packageFollows": "neither",
+      "consequence": "This package tests for underflow against the range the four bytes actually hold, so an interval above 2^31 seconds reads as an underflow and advances nothing. That is self-consistent with a 32-bit stored stamp and it disagrees with a 64-bit build of the recording.",
+      "wouldSettleIt": [
+        "Nothing available. There is no hardware answer, because there is no stamp on the hardware. Settling it would mean giving both models a continuous time base, at which point the stamp and the question both disappear."
+      ],
+      "why": "A recording whose answer changes with the width of a type on the build machine is reporting a property of the recorder, not of the part. It is excluded from the comparison and named rather than being allowed to decide, and the exclusion is reported so the summary cannot claim a comparison that could not have been made.",
+      "reachedWhen": "The scripted moment exceeds 2^31, which the generator reaches by chance because a script may jump forward roughly twelve years at a time."
+    }
+  ]
+}

@@ -65,6 +65,27 @@ jobs:
           ACTIONLINT_VERSION: "1.7.12"
           ACTIONLINT_SHA256: "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
 
+  types:
+    name: Types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install the type checker
+        run: pipx install mypy==1.14.1
+
+      # Strict, with every optional error class the version offers turned on. A
+      # model of a clock is arithmetic on masked nibbles end to end, and a checker
+      # that sees the whole register file is the cheapest place to catch a width
+      # or a None crossing a boundary it should not. The settings live in
+      # pyproject.toml so a local run and this one agree.
+      - name: Every annotation has to hold
+        run: mypy
+
   test:
     name: Tests on Python ${{ matrix.python }}
     runs-on: ubuntu-latest

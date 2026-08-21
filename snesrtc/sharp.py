@@ -18,7 +18,13 @@ The year is stored as three digits with a thousand added, so the range is 1000 t
 1999 by the arithmetic and the games use it to mean 1900 to 1999.
 """
 
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import override
+
 from . import calendar
+from .store import Store
 
 DATA = 0x2800
 
@@ -46,7 +52,7 @@ YEAR_BASE = 1000
 STAMP_LIMIT = 0x1_0000_0000
 
 
-def _now():
+def _now() -> int:
     import time
 
     return int(time.time())
@@ -55,21 +61,23 @@ def _now():
 class Clock:
     """One S-RTC, answering at its two addresses."""
 
-    def __init__(self, store, now=_now, open_bus=0x00):
+    model: str
+
+    def __init__(self, store: Store, now: Callable[[], int] = _now, open_bus: int = 0x00) -> None:
         self.store = store
         self.now = now
         self.open_bus = open_bus
         self.mode = READING
         self.index = -1
 
-    def reset(self):
+    def reset(self) -> Clock:
         """What the reset line does, which is less than a power cycle would."""
         self.mode = READING
         self.index = -1
         self.update()
         return self
 
-    def read(self, address):
+    def read(self, address: int) -> int:
         if address != DATA:
             return self.open_bus
         if self.mode != READING:
@@ -85,7 +93,7 @@ class Clock:
         self.index += 1
         return value
 
-    def write(self, address, value):
+    def write(self, address: int, value: int) -> None:
         if address != CONTROL:
             return
         value &= 0x0F
@@ -103,7 +111,7 @@ class Clock:
         elif self.mode == COMMAND:
             self.command(value)
 
-    def accept(self, value):
+    def accept(self, value: int) -> None:
         """One digit of a time being written, and the weekday that follows the last."""
         if not 0 <= self.index < LAST_INDEX:
             return
@@ -117,7 +125,7 @@ class Clock:
         self.store.write(self.index, calendar.weekday(year + YEAR_BASE, month, day))
         self.index += 1
 
-    def command(self, value):
+    def command(self, value: int) -> None:
         if value == COMMAND_WRITE:
             self.mode = WRITING
             self.index = 0
@@ -130,7 +138,7 @@ class Clock:
             return
         self.mode = READY
 
-    def elapsed(self):
+    def elapsed(self) -> int:
         """How long since the clock was last read, measured the way the chip does.
 
         The stamp is four bytes, so it runs out roughly every sixty eight years and
@@ -144,14 +152,14 @@ class Clock:
         gap = current - stamped if current >= stamped else STAMP_LIMIT - stamped + current
         return 0 if gap > STAMP_LIMIT // 2 else gap
 
-    def update(self):
+    def update(self) -> None:
         """Advance the stored time to now, then record when now was."""
         gap = self.elapsed()
         if gap > 0:
             self.store_moment(calendar.advance(self.read_moment(), gap))
         self.store.stamp = self.now() & 0xFFFFFFFF
 
-    def read_moment(self):
+    def read_moment(self) -> calendar.Moment:
         held = self.store
         return calendar.Moment(
             year=held.read(9) + held.read(10) * 10 + held.read(11) * 100 + YEAR_BASE,
@@ -163,7 +171,7 @@ class Clock:
             weekday=held.read(12),
         )
 
-    def store_moment(self, moment):
+    def store_moment(self, moment: calendar.Moment) -> None:
         held = self.store
         year = moment.year - YEAR_BASE
         held.write(0, moment.second % 10)
@@ -180,5 +188,6 @@ class Clock:
         held.write(11, year // 100)
         held.write(12, moment.weekday % calendar.WEEK)
 
-    def __repr__(self):
+    @override
+    def __repr__(self) -> str:
         return f"<S-RTC {self.mode} at {self.index}>"

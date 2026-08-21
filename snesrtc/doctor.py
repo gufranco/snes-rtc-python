@@ -20,11 +20,15 @@ Nothing is inferred. Every line is something looked at on this machine just now,
 including a clock actually told a moment and asked what it holds.
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import platform
 import sys
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import Any, Protocol, override
 
 from . import models
 from .version import VERSION
@@ -44,32 +48,57 @@ WITNESS = "s-rtc"
 """The model the two behavioural checks are run against, since both protocols share them."""
 
 
+class Ticking(Protocol):
+    """A thing that can be asked what time it thinks it is."""
+
+    def now(self) -> int: ...
+
+
+class Addressed(Protocol):
+    """A thing that can be asked what is at an address."""
+
+    def read(self, address: int) -> int: ...
+
+
+Builder = Callable[..., models.Built]
+"""What examine is given: something that builds a real clock by name.
+
+Each check below asks for less than this, naming only the one method it calls.
+The doctor's whole job is to report what is actually on this machine, which
+includes a clock that does not work, so a check that demanded the concrete class
+could only be tested against a working one. Narrowing per check keeps the checks
+testable against a deliberately broken clock without letting any of them reach
+for a method it does not use.
+"""
+
+
 class Finding:
     """One thing that was looked at, and what was there."""
 
-    def __init__(self, name, ok, detail, advice=None):
+    def __init__(self, name: str, ok: bool, detail: str, advice: str | None = None) -> None:
         self.name = name
         self.ok = ok
         self.detail = detail
         self.advice = advice
 
     @property
-    def line(self):
+    def line(self) -> str:
         """The one-line form, which is what a reader scans."""
         return f"  {'ok  ' if self.ok else '   !'}  {self.name}: {self.detail}"
 
     @property
-    def report(self):
+    def report(self) -> str:
         """The same, with what to do about it when there is something to do."""
         if self.ok or not self.advice:
             return self.line
         return f"{self.line}\n         {self.advice}"
 
-    def __repr__(self):
+    @override
+    def __repr__(self) -> str:
         return f"<Finding {self.name} {'ok' if self.ok else 'not ok'}>"
 
 
-def _python():
+def _python() -> Finding:
     return Finding(
         "python",
         sys.version_info[:2] >= OLDEST_PYTHON,
@@ -78,15 +107,15 @@ def _python():
     )
 
 
-def _package():
+def _package() -> Finding:
     return Finding("snesrtc", True, f"version {VERSION}")
 
 
-def _default_build(name, **options):
+def _default_build(name: str, **options: Any) -> models.Built:
     return models.describe(name).build(**options)
 
 
-def _clock(name, build):
+def _clock(name: str, build: Callable[..., object]) -> Finding:
     """Whether that clock builds, saying exactly what stopped it if not."""
     try:
         built = build(name)
@@ -108,10 +137,10 @@ def _clock(name, build):
     )
 
 
-def _time_source(build):
+def _time_source(build: Callable[..., Ticking]) -> Finding:
     """That a clock reads the moment it was given rather than this machine's.
 
-    A model reading the host clock cannot be replayed, and a corpus recorded
+    A model reading the host clock cannot be replayed, and a recording taken
     against it stops agreeing the moment the day changes. The source is a
     constructor argument here, and this is where a machine says whether that is
     still true of the code it has.
@@ -135,7 +164,7 @@ def _time_source(build):
     )
 
 
-def _foreign(build):
+def _foreign(build: Callable[..., Addressed]) -> Finding:
     """That an address the clock does not own reads as an undriven bus.
 
     A part that answers everywhere is the failure that hides: the console reads
@@ -162,7 +191,7 @@ def _foreign(build):
     )
 
 
-def _reference(where):
+def _reference(where: Path | str) -> Finding:
     """Which implementation this is held to, and at which commit.
 
     Two people comparing against two commits of the same reference will disagree
@@ -202,7 +231,7 @@ def _reference(where):
     )
 
 
-def _driver(where):
+def _driver(where: Path | str) -> Finding:
     """Whether the reference is built, since its absence is silent otherwise.
 
     The differential check builds somebody else's implementation and asks it the
@@ -220,7 +249,9 @@ def _driver(where):
     )
 
 
-def examine(build=_default_build, pin=PIN, driver=DRIVER):
+def examine(
+    build: Builder = _default_build, pin: Path | str = PIN, driver: Path | str = DRIVER
+) -> list[Finding]:
     """Everything worth looking at on this machine, in the order a reader wants it."""
     found = [_python(), _package()]
     found.extend(_clock(name, build) for name in sorted(models.MODELS))
@@ -231,7 +262,7 @@ def examine(build=_default_build, pin=PIN, driver=DRIVER):
     return found
 
 
-def report(found):
+def report(found: Sequence[Finding]) -> list[str]:
     """The lines a person pastes into an issue."""
     unwell = [one for one in found if not one.ok]
     lines = [f"snesrtc {VERSION} on {platform.python_version()}, {platform.system()}", ""]
@@ -244,7 +275,11 @@ def report(found):
     return lines
 
 
-def main(argv=(), examine=examine, say=print):
+def main(
+    argv: Sequence[str] = (),
+    examine: Callable[[], list[Finding]] = examine,
+    say: Callable[[str], None] = print,
+) -> int:
     found = examine()
     for line in report(found):
         say(line)

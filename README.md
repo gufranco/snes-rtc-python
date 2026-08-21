@@ -2,14 +2,16 @@
 
 <h1>SNES Cartridge Clocks</h1>
 
-<strong>The two real-time clocks a Super Nintendo cartridge could carry, held to the chips' own reference implementations.</strong>
+<strong>The two real-time clocks a Super Nintendo cartridge could carry. One is held to its manufacturer's application manual. The other has no manual, and this says so on every page.</strong>
 
 <br>
 <br>
 
 [![CI](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml)
-[![Conformance](https://img.shields.io/badge/conformance-1%2C600%2C000%20operations-brightgreen)](#conformance)
+[![Manual](https://img.shields.io/badge/RTC--4513-Epson%20application%20manual-brightgreen)](#where-each-answer-comes-from)
+[![S-RTC](https://img.shields.io/badge/S--RTC-no%20manufacturer%20document-orange)](#the-sharp-part-has-no-datasheet)
 [![Coverage](https://img.shields.io/badge/coverage-100%25%20statement%20%2B%20branch-brightgreen)](#tests)
+[![Types](https://img.shields.io/badge/mypy-strict-blue)](pyproject.toml)
 [![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -17,19 +19,20 @@
 
 <p align="center">
   <a href="#quick-start">Quick start</a> &nbsp;|&nbsp;
-  <a href="#conformance">Conformance</a> &nbsp;|&nbsp;
+  <a href="#where-each-answer-comes-from">Where each answer comes from</a> &nbsp;|&nbsp;
+  <a href="#what-the-manual-caught">What the manual caught</a> &nbsp;|&nbsp;
   <a href="#the-two-chips">The two chips</a> &nbsp;|&nbsp;
-  <a href="#what-the-reference-caught">What the reference caught</a> &nbsp;|&nbsp;
+  <a href="#conformance">Conformance</a> &nbsp;|&nbsp;
   <a href="https://github.com/gufranco/snes-rtc-python/issues">Issues</a>
 </p>
 
-**2** chips · **1,600,000** operations against the reference, **0** disagreements · **158** tests · **100%** statement and branch coverage
+**2** chips · **1** with a manufacturer's manual, pinned fact by fact · **15** recorded divergences between that manual and the emulator everybody uses · **344** tests · **100%** statement and branch coverage
 
 ```python
 from snesrtc import describe
 
-clock = describe("s-rtc").build()
-clock.read(0x2800)
+clock = describe("rtc-4513").build()
+clock.read(0x4840)
 ```
 
 ## Quick start
@@ -39,7 +42,7 @@ clock.read(0x2800)
 | Tool | Version | Install |
 |:-----|:--------|:--------|
 | Python | 3.12 or newer | [python.org](https://www.python.org/downloads/) |
-| A C++ compiler | any recent | only for running the conformance comparison |
+| A C++ compiler | any recent | only for running the differential comparison |
 
 ### Install
 
@@ -75,6 +78,125 @@ for digit in (0, 0, 0, 3, 2, 1, 8, 1, 8, 6, 9, 9):
 Half past twelve on the eighteenth of August 1996. Twelve digits are written and
 the thirteenth, the weekday, is worked out by the chip.
 
+## Where each answer comes from
+
+The two clocks in this package are not backed by the same kind of evidence, and
+the difference is large enough that reporting one number for both would be
+misleading.
+
+| Rung | Source | Settles |
+|:-----|:-------|:--------|
+| 1 | [Seiko Epson, *Application Manual: Real Time Clock Module RTC-4513*](conformance/hardware.json) | Anything Epson printed about the RTC-4513: register widths, count ranges, what each control bit does, how a session is framed, what power-on leaves behind |
+| 2 | A recording from an independent implementation, pinned by commit | What the manual does not: how the SPC7110 turns a three-wire serial part into three cartridge addresses, what the counters do outside a documented range, and the whole of the Sharp part |
+| 3 | Nothing else | Nothing |
+
+Every figure on rung 1 lives in [`conformance/hardware.json`](conformance/hardware.json)
+with the sentence it was read from, the document's digest, and the date it was
+read. [`conformance/hardware.test.py`](conformance/hardware.test.py) checks the
+model's constants against it, so a constant edited without the document is a
+failing test rather than a quiet change of claim.
+
+Where the manual and the recording disagree, the manual wins and the
+disagreement is written down in
+[`conformance/divergences.json`](conformance/divergences.json) rather than
+settled quietly. There are fifteen entries. Each names what the document says,
+what the recording does, which one this package follows, and what evidence would
+close the question.
+
+### The Sharp part has no datasheet
+
+The marking `S-RTC` is a Nintendo part designation in the same style as `S-DSP`,
+`S-SMP` and `S-PPU`, not a Sharp catalogue number, and no manufacturer document
+for it is known to exist publicly. It was searched for; the date and the search
+are recorded in `hardware.json` under `"verified": false`, along with the three
+things that would settle it.
+
+So every claim this package makes about the Sharp clock rests on a recording, and
+a test asserts that the file still says so. Filling that block in from an
+emulator would make a guess indistinguishable from a fact, which is the failure
+the whole arrangement exists to prevent.
+
+## What the manual caught
+
+Every one of these was wrong in this package before Epson's own application
+manual was read end to end, and every one of them is still wrong in the
+implementation this package used to be calibrated against.
+
+**Six of the thirteen clock registers carry a digit narrower than the register.**
+The manual's own count range column proves it without reading a single bit name:
+a register whose count stops at 5 is not holding a four-bit digit, and the
+tens-of-months register, which stops at 1, is holding one bit. The spare bits are
+an oscillator flag, a read flag, an AM/PM flag, and free RAM the manual
+explicitly invites a program to use. A model that treats every register as a
+four-bit digit reads a program's stored flag back as part of the date.
+
+**HOLD does not stop the clock.** Its first documented sentence says the opposite:
+"The clock continues to run, and the first incrementation after HOLD was set to
+'1' is compensated for when the hold condition is released (+1 second)." The
+manual's own procedure for setting the clock uses HOLD for exactly that and warns
+the write must finish within one second or the seconds are lost. Treating it as a
+stop throws away every second a program spends holding.
+
+**There is no bit that adds a second.** Bit 1 of control register D is CAL/HW,
+which selects how much of the counter chain runs and turns six registers into
+RAM when it is clear. The only documented software adjustment is the 30-second
+adjust on bit 3, which this package already had right and the manual confirms
+word for word.
+
+**Twelve-hour notation exists and is the power-on state.** Control register F bit
+2 selects it, and the manual says every register is undefined at power-on, so a
+cartridge whose program never ran the power-on procedure is running in twelve-hour
+notation with its date counters switched off. A model that hardcodes twenty-four
+hours cannot reproduce that cartridge.
+
+**The interrupt flag cannot be written.** "A write instruction for the IRQ-F bit
+is not executed." It is set by the increment logic and cleared by reading the
+register it lives in.
+
+**The test bit clears when the chip is deselected**, and a reset forces it down.
+Two separate paragraphs say so, and the bit powers up undefined, so it is
+reachable without any program setting it.
+
+**A stop bit takes effect after the counters are brought current, not before.**
+This one was a defect introduced while implementing the others, and it is worth
+naming because it is the kind that hides: writing the stop bit first and then
+asking whether to catch up finds the clock already stopped and silently discards
+the elapsed time.
+
+Two of the findings this README used to list have been withdrawn. An
+"add a second" function on control register D bit 1 and a double catch-up from
+testing two stop flags separately were both behaviours of the emulator, not of
+the part, and both are recorded in `divergences.json` with the quote that
+displaced them. The claim that "none of these would have been found by reading a
+datasheet, because in each case the datasheet says nothing" was false; nobody had
+read the datasheet.
+
+## What the recording caught
+
+These remain. The manual is silent on all of them, which is what makes a
+recording the right authority rather than a convenience.
+
+**The month underflows rather than wrapping.** The chip subtracts one from the
+month before it starts counting, in unsigned arithmetic. A cartridge holding a
+month of zero does not roll back to December: it underflows to four billion, and
+the month length is read from that number's remainder, landing on a thirty day
+month. The manual says only "Do not set impossible values", so it does not
+contradict this and does not confirm it.
+
+**A field above its range is not reduced, it is cleared.** A minute of one hundred
+does not become forty on the next carry. It becomes zero, and the extra hour is
+lost.
+
+**The Epson clock catches up when it is switched off.** Not when it is switched
+on, which is what you would write. A session therefore reads the time as the
+previous session left it. This is an artefact of modelling a continuously running
+counter from a reading taken at intervals, and a real part has no such seam at
+all.
+
+**The mode code is compared as a whole byte.** On the part that distinction cannot
+arise, because the serial interface carries four bits and there is nothing above
+them. It is a property of the SPC7110 wrapper, which no document describes.
+
 ## The two chips
 
 They are not revisions of one another. They are parts from different makers, on
@@ -82,12 +204,14 @@ cartridges from different publishers, and almost nothing carries across.
 
 | | Sharp S-RTC | Epson RTC-4513 |
 |:--|:--|:--|
+| Manufacturer document | none known to exist | application manual, 1999 |
 | Reached at | `$2800` and `$2801` | `$4840` through `$4842`, via the SPC7110 |
-| Shape | a fixed sequence wrapped in a marker | an addressed register file |
-| Getting at one field | read the whole sequence and count | name its index |
-| Weekday | computed from the date when the date is written | written like any other field |
-| Year | three digits plus a thousand, so 1000 to 1999 | two digits read as 1990 to 2089 |
-| Registers that do work when written | none | two, which add a second, round the minute, or stop the counter |
+| Shape | a fixed sequence wrapped in a marker | an addressed register file of sixteen nibbles |
+| Getting at one field | read the whole sequence and count | name its address |
+| Weekday | computed from the date when the date is written | a counter of its own, 0 to 6, with no meaning attached |
+| Year | three digits plus a thousand, so 1000 to 1999 | two digits with no century printed anywhere |
+| Hours | twenty four | twelve or twenty four, chosen by a control bit |
+| Control registers | none | three, whose sixteen bits the manual names one by one |
 | Clock catches up | when the sequence is read | when the chip is switched **off** |
 
 ```python
@@ -101,31 +225,74 @@ Names are matched however they are written. Case, spaces and separators do not
 matter, and each part answers to what people call it: `srtc`, `sharp`,
 `rtc4513`, `epson`, `spc7110`.
 
+### A cleared register file is not a configured chip
+
+Epson: "At power-on, all registers and the STD.P output are undefined." Zeroing
+them leaves the notation bit low, which is twelve-hour notation, and the range
+bit low, which switches the date counters off. Both are faithful, and both are
+what the manual's power-on procedure exists to escape.
+
+```python
+from snesrtc import Store, epson
+
+held = Store(cleared=True)
+held.write(epson.CF, epson.HOURS_24)
+held.write(epson.CD, epson.CAL_HW)
+clock = epson.Clock(held)
+```
+
 ## Conformance
 
-Neither chip has a published per-instruction suite, so the oracle is the
-implementation every emulator already agrees with. A script of reads, writes and
-clock changes is generated from a seed, run through a driver compiled around
-those sources, and replayed through the model here. The two transcripts are
-compared line for line.
+The differential drives each part with scripts generated from a seed, runs them
+through a driver compiled around the pinned reference sources, and compares the
+two transcripts line for line.
 
-| Measure | Value |
-|:--------|:------|
-| Scripts | 400 |
-| Operations per script | 4,000 |
-| Operations compared | 1,600,000 |
-| Disagreements | 0 |
-| Reference | [snes9x](https://github.com/snes9xgit/snes9x), pinned by commit |
+It reports one line per part, and the two lines look very different on purpose:
+
+```
+epson: 200 scripts, 6130 operations compared, 9772 not compared, 0 disagreed
+  not compared past epson-digit-fields-narrower-than-registers, reached by 195 scripts
+  not compared past epson-read-and-write-flags-unmodelled, reached by 134 scripts
+  ...
+sharp: 200 scripts, 323500 operations compared, 155 not compared, 0 disagreed
+  not compared past stamp-width-platform-dependent, reached by 2 scripts
+```
+
+Each script is compared only up to the first operation that reaches a declared
+divergence. Past that point the recording is answering a question the manual has
+already answered differently, so counting those operations as agreements would be
+reporting the emulator's answer as though it were the part's, and dropping them
+silently would let the summary claim a comparison that never happened. They are
+counted apart and named instead.
+
+The Sharp part is compared very nearly end to end, because for it the recording
+is the only authority there is. The one thing excluded from it is not about the
+part at all: the recording tests its stamp for underflow against the maximum of
+the host's `time_t` rather than against the range the cartridge's four stored
+bytes can hold, so a 64-bit build and a 32-bit build of it disagree about any
+interval past two billion seconds. An answer that turns on the width of a type on
+the build machine is a property of the recorder, and it is excluded and named
+rather than allowed to decide.
+
+Epson scripts are capped at two hundred operations because a longer one buys
+nothing. Comparison stops at the first operation reaching a declared divergence,
+and measured over hundreds of scripts that happens after about thirty operations
+whether the script is two hundred long or four thousand. Coverage of that part
+scales with the number of scripts, not with their length.
+
+A divergence the runner can witness but nobody wrote down fails the run. The
+runner reads the list of ids out of `divergences.json` on every script rather
+than trusting a constant in the code.
+
+The two clocks are driven by separate scripts. They share one twenty-byte store
+here and in the recording, which is a convenience of the harness rather than
+anything a board did, since no cartridge carried both parts.
 
 Run it yourself:
 
 ```bash
 python conformance/build.py
 python conformance/reference.py
-```
-
-```
-400 scripts, 1600000 operations, 0 disagreed
 ```
 
 The script is generated rather than written by hand for the same reason a suite
@@ -137,44 +304,12 @@ the wall clock and a comparison against a moving target proves nothing.
 The reference sources are fetched at build time and never vendored here. Only the
 driver in [`conformance/ref/`](conformance/ref/) belongs to this repository.
 
-## What the reference caught
-
-Every one of these was a defect in this package. None would have been found by
-reading a datasheet, because in each case the datasheet says nothing.
-
-**The month underflows rather than wrapping.** The chip subtracts one from the
-month before it starts counting, in unsigned arithmetic. A cartridge holding a
-month of zero does not roll back to December: it underflows to four billion, and
-the month length is read from that number's remainder, landing on a thirty day
-month. Wrapping to December is the sensible reading and is wrong.
-
-**A field above its range is not reduced, it is cleared.** A minute of one
-hundred does not become forty on the next carry. It becomes zero, and the extra
-hour is lost. Corrupt state stays corrupt in a particular way.
-
-**The Epson clock catches up when it is switched off.** Not when it is switched
-on, which is what you would write. A session therefore reads the time as the
-previous session left it, and a game that opens the chip and reads immediately
-gets a stale second.
-
-**Asking for one more second does not add one.** It backdates the recorded moment
-by a second, so the clock gains that second on the next catch-up rather than
-immediately. Adding it directly lands two seconds away from what the chip does.
-
-**The two stop flags are tested separately, not as alternatives.** A write that
-sets both catches the clock up twice. The second catch-up finds nothing and
-changes nothing, which is why it stays invisible until a generated script sets
-both at once.
-
-The first two were found by a script that wrote a nonsense month. The rest were
-found by scripts that used the control registers in combinations no game would.
-
 ## Nothing starts cleared
 
 A battery-backed cartridge holds what it held, and one fresh from the factory
-holds whatever the silicon powered up with. The store reflects that: a byte that
-has never been written derives its value from its position, so it is arbitrary,
-never zero, and the same every time it is asked.
+holds whatever the silicon powered up with. This is the one place where the
+family convention and the manufacturer agree in as many words: Epson prints "At
+power-on, all registers and the STD.P output are undefined."
 
 ```python
 from snesrtc import Store
@@ -189,6 +324,28 @@ Store(held=saved)  # the bytes a saved cartridge had
 Two stores built with different seeds hold different rubbish, so a test can prove
 a program does not depend on what it never wrote.
 
+## What is deliberately not modelled
+
+Each is recorded in `divergences.json` with the reason and what would change it.
+
+**No interrupt.** Control register E selects one of four periods and drives the
+STD.P pin. No document says the SPC7110 routes that pin anywhere a Super Nintendo
+program can observe, so the register is stored and drives nothing. Modelling an
+interrupt that reaches nothing would be inventing a wire.
+
+**No crystal drift.** The manual gives the figures: 0 plus or minus 25 ppm at 25
+degrees C, a secondary temperature coefficient of -0.035 ppm per degree C
+squared, and "At 11.574 ppm, the daily clock error is about one second per day."
+They are recorded and not simulated, because a tolerance bounds a population of
+modules rather than describing the one in a cartridge, and it depends on a
+temperature the model cannot know. An earlier version of this README said no
+number existed. One does, and it is now written down.
+
+**No 125 microsecond lockout after a 30-second adjustment.** The bit clears
+itself, which is observable and modelled. The window during which the clock
+registers cannot be written needs a sub-second time base this package does not
+have, and adding one would change the public interface.
+
 ## Layout
 
 | File | Holds |
@@ -196,11 +353,16 @@ a program does not depend on what it never wrote.
 | [`snesrtc/calendar.py`](snesrtc/calendar.py) | Leap years, month lengths, the weekday counter, and rollover as the chips perform it |
 | [`snesrtc/store.py`](snesrtc/store.py) | The twenty bytes the cartridge keeps on a battery |
 | [`snesrtc/sharp.py`](snesrtc/sharp.py) | The Sharp protocol and its state machine |
-| [`snesrtc/epson.py`](snesrtc/epson.py) | The Epson protocol, its register file and its control registers |
+| [`snesrtc/epson.py`](snesrtc/epson.py) | The Epson register file, its named control bits, and its two notations |
 | [`snesrtc/models.py`](snesrtc/models.py) | Which chips this covers and how to build one |
-| [`conformance/reference.py`](conformance/reference.py) | The differential runner |
+| [`conformance/hardware.json`](conformance/hardware.json) | What Epson printed, fact by fact, with the sentence each came from |
+| [`conformance/divergences.json`](conformance/divergences.json) | Every place the manual and the recording disagree, and what would settle each |
+| [`conformance/hardware.test.py`](conformance/hardware.test.py) | The gate that holds the model's constants to that file |
+| [`conformance/reference.py`](conformance/reference.py) | The differential runner, and what it refuses to compare |
 | [`conformance/build.py`](conformance/build.py) | Fetches the pinned reference and builds the driver |
 | [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) | The driver that wraps the reference implementations |
+| [`specs/current/`](specs/current/) | What each clock does, as requirements somebody could test against |
+| [`AGENTS.md`](AGENTS.md) | The working instructions, including the things that will bite you |
 
 ## For contributors and reviewers
 
@@ -217,21 +379,33 @@ python -m coverage report
 ```
 
 Coverage is a gate, not a report: the build fails below 100% of statements and
-branches.
+branches. Types are a gate too, `mypy` in strict mode with every optional error
+class the checker offers.
 
 ### Reproducing a conformance failure
 
-Every script comes from a seed, and the runner prints the seed of a script that
-disagreed. That script can be regenerated exactly:
+Every script comes from a seed, and the runner prints the seed and the part of a
+script that disagreed. That script can be regenerated exactly:
+
+```bash
+python conformance/reference.py --seed 22 --length 4000
+```
+
+Or render it and feed it to the driver on standard input, to see the reference's
+side alone:
 
 ```python
 import reference
 
-script = reference.generate(seed=3, length=4000)
+script = reference.generate(seed=22, length=4000, part="sharp")
 print(reference.render(script))
 ```
 
-Feed that to the driver on standard input to see the reference's side alone.
+### Changing something the manual settles
+
+Do not resolve a divergence by changing the model to match the recording. If the
+manual is wrong, say why, with the page. If a new disagreement appears, it needs
+an entry in `divergences.json` naming what would settle it, or it fails the run.
 
 ### Project conventions
 
@@ -239,21 +413,25 @@ Feed that to the driver on standard input to see the reference's side alone.
 |:-----------|:-------|
 | Commit format | [Conventional Commits](https://www.conventionalcommits.org/) |
 | Format and lint | [ruff](https://docs.astral.sh/ruff/), configured in [pyproject.toml](pyproject.toml) |
+| Types | [mypy](https://mypy-lang.org/) strict, configured in [pyproject.toml](pyproject.toml) |
 | Releases | [semantic-release](https://semantic-release.gitbook.io/), from the commit history |
 | Test naming | A sentence stating the behaviour, not the function name |
+| Comments | None in source. Docstrings carry the reasoning |
 
 ### Non-obvious decisions
 
 - The calendar arithmetic is the reference's loop transcribed, including the
   unsigned underflow, rather than a conversion to a timestamp and back. The two
-  agree on every sane date and disagree on the ones a corrupt cartridge holds.
+  agree on every sane date and disagree on the ones a corrupt cartridge holds,
+  and the manual declines to say which is right.
 - There is a bulk path that divides out minutes and hours instead of counting
   them, used only once every counter is inside its range. It is a shortcut for
-  the loop beside it, and the oracle is what keeps the two honest.
+  the loop beside it, and the differential is what keeps the two honest.
 - The clock a chip reads is injected rather than taken from the machine, so a
   test can hold time still or move it a decade.
-- Neither chip's crystal drift is modelled. The reference does not model it
-  either, and a number invented here would be unverified.
+- The century a two-digit Epson year belongs to is a convention inherited from
+  the recording. The manual prints two BCD digits and names no century, and the
+  window decides only which years are leap years.
 
 ## When something is wrong
 
@@ -288,4 +466,6 @@ shipped.
 [MIT](LICENSE).
 
 The reference implementations are a separate work under their own licence,
-fetched at build time and never redistributed here.
+fetched at build time and never redistributed here. The Epson application manual
+is Seiko Epson's; this repository records what it says, with digests so a reader
+can confirm they are holding the same document, and does not carry it.

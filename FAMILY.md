@@ -1,7 +1,7 @@
 # The family standard
 
-These nine repositories are one family and are held to one standard. Where they
-differ, the difference must be something the hardware forces, not something
+These sixteen repositories are one family and are held to one standard. Where
+they differ, the difference must be something the hardware forces, not something
 nobody got round to.
 
 | Repository | What it models |
@@ -10,9 +10,16 @@ nobody got round to.
 | [nec-upd7725-python](https://github.com/gufranco/nec-upd7725-python) | The DSP the SNES coprocessors are built on |
 | [snes-driver-python](https://github.com/gufranco/snes-driver-python) | Reading a cartridge's own coprocessor protocol |
 | [snes-dsp-python](https://github.com/gufranco/snes-dsp-python) | The DSP-1 to DSP-4 family |
+| [snes-graphics-python](https://github.com/gufranco/snes-graphics-python) | The Super Nintendo graphics formats |
 | [snes-mapper-python](https://github.com/gufranco/snes-mapper-python) | Cartridge headers and address decoding |
+| [snes-obc1-python](https://github.com/gufranco/snes-obc1-python) | The OBC1 sprite remapper |
 | [snes-rom-image-python](https://github.com/gufranco/snes-rom-image-python) | A cartridge image as a file |
 | [snes-rtc-python](https://github.com/gufranco/snes-rtc-python) | The two cartridge real-time clocks |
+| [snes-sdd1-python](https://github.com/gufranco/snes-sdd1-python) | The S-DD1 decompressor |
+| [snes-spc7110-python](https://github.com/gufranco/snes-spc7110-python) | All three modes of the SPC7110 decompressor |
+| [snes-st010-python](https://github.com/gufranco/snes-st010-python) | The two Seta coprocessors |
+| [sony-s-dsp-python](https://github.com/gufranco/sony-s-dsp-python) | The Sony S-DSP, on the clock schedule the hardware runs on |
+| [sony-spc700-python](https://github.com/gufranco/sony-spc700-python) | The Sony SPC700, the audio unit's processor |
 | [star-ocean-nochip-fix](https://github.com/gufranco/star-ocean-nochip-fix) | One header correction, end to end |
 | [zilog-z80-python](https://github.com/gufranco/zilog-z80-python) | The Z80 |
 
@@ -34,6 +41,17 @@ lower rung never overrules a higher one.
 A document that contradicts itself is common. When it does, the cycle table and
 the pin descriptions have both times been right and the prose wrong.
 
+**Never calibrate against an emulator where a document exists.** A recording is
+evidence about behaviour nobody wrote down. It is not evidence about a register
+width, a bit name, or anything else a manufacturer printed, however many
+implementations agree with it. Where a recording contradicts a document, the
+document wins, the disagreement is written down, and the model follows the
+document.
+
+**A recording whose answer depends on the machine it was built on is not evidence
+at all.** It is a property of the recorder, and it is excluded and named rather
+than allowed to decide.
+
 ## What every repository carries
 
 | Gate | Standard |
@@ -45,8 +63,10 @@ the pin descriptions have both times been right and the prose wrong.
 | Coverage | 100% statement and branch, enforced, on a machine holding no artefacts |
 | JSON | `pnpm run format:check`, with every submodule tree exempted |
 | CI | lint, types, tests on 3.12/3.13/3.14, plus the project's own conformance job |
+| Schedule | a weekly run against unpinned tools and the newest runtime, starting on ground the pipeline never reaches |
+| Analysis | CodeQL and Scorecard |
 | Release | semantic-release from `main`, never tagged by hand |
-| Docs | README, AGENTS.md, CLAUDE.md, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT |
+| Docs | README, AGENTS.md plus the one-line pointer each tool reads, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT |
 | Specs | `specs/current/`, requirements with checkable scenarios |
 | Hardware facts | `conformance/hardware.json`, every fact with the sentence it came from |
 | Disagreements | `conformance/divergences.json`, both readings and what would settle it |
@@ -61,20 +81,43 @@ the pin descriptions have both times been right and the prose wrong.
 | Nothing starts clean | Memory and registers hold what they held, from a seed |
 | Artefacts | Never committed: no ROM, no firmware, no fragment of one |
 | Only retail dumps | A ROM hack is somebody's edit, not what hardware ran |
+| Package manager | pnpm, never npm |
 
-## What is not done yet
+## What a conformance runner must report
 
-**Type checking is not started.** `pyproject.toml` carries the strict mypy
-configuration the family uses, and `mypy` reports about 746 findings, nearly all
-of them missing annotations. The CI job that runs mypy is deliberately absent
-until the count reaches zero.
+A runner asked about ground it has never been held to has three options and two
+of them are lies. Reporting agreement lies about the part. Skipping in silence
+lies about the run, because the summary then counts a comparison that never
+happened. The third is to refuse: name what was compared, name what was not and
+why, and count the two apart.
 
-**No `specs/current/`.** Every sibling carries requirements with Given/When/Then
-scenarios. This one does not.
+Report per part, never one number over parts with different evidence. One part
+held to its manufacturer's manual and another held to nothing are not one figure.
 
-**No `conformance/hardware.json`.** Both clocks have manufacturer data sheets,
-the Sharp RTC-4513 and the Epson RTC-4553. Nothing here quotes either, so every
-register width and every carry rule rests on the reference implementation rather
-than on a document. That is the single largest fidelity gap in this repository.
+## The state of this repository
 
-**No `AGENTS.md`, no `CLAUDE.md`, no weekly or analysis workflow.**
+Everything in the table above is in place. Both clocks are modelled, the Epson
+part against Seiko Epson's own application manual pinned fact by fact, and the
+Sharp part against a recording because no manufacturer document for it is known
+to exist.
+
+**A correction to what an earlier version of this file said.** It claimed both
+clocks had manufacturer data sheets, naming a Sharp RTC-4513 and an Epson
+RTC-4553. Both names were wrong and the claim behind them was wrong. The parts
+are the Sharp S-RTC, which is a Nintendo designation with no public document at
+all, and the Epson RTC-4513, whose application manual has now been read end to
+end. The Epson RTC-4553 is a real and closely related Epson part, but it is not
+the one on the cartridge.
+
+**Fifteen divergences are open**, recorded in
+[`conformance/divergences.json`](conformance/divergences.json). Seven are places
+where the manual contradicts the implementation every emulator agrees with, and
+the model follows the manual. Closing any of them needs evidence from a rung the
+ladder recognises, which for most means a logic capture of real silicon.
+
+**Three behaviours are deliberately not modelled**, each recorded with what would
+change it: the interrupt output, because no document says the SPC7110 routes it
+anywhere a program can see; crystal drift, because the manufacturer gives a
+tolerance over a population rather than a value for one module; and the 125
+microsecond lockout after a 30-second adjustment, because the model has no
+sub-second time base.

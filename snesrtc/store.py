@@ -16,7 +16,11 @@ and a fresh one from the factory holds whatever the silicon powered up with. A
 caller who genuinely means a cleared cartridge says so.
 """
 
+from __future__ import annotations
+
 import random
+from collections.abc import Iterable
+from typing import override
 
 SIZE = 20
 
@@ -27,29 +31,34 @@ STAMP_BYTES = 4
 UNSET_SEED = 0x5A5A5A5A
 
 
-def _derive(seed, index):
+def _derive(seed: int, index: int) -> int:
     return random.Random((seed << 16) ^ index).randrange(0x100)
 
 
 class Store:
     """The cartridge's own bytes, holding what they held."""
 
-    def __init__(self, seed=UNSET_SEED, cleared=False, held=None):
+    def __init__(
+        self,
+        seed: int = UNSET_SEED,
+        cleared: bool = False,
+        held: Iterable[int] | None = None,
+    ) -> None:
         if cleared:
-            self.bytes = [0] * SIZE
+            self.bytes: list[int] = [0] * SIZE
         else:
             self.bytes = [_derive(seed, index) for index in range(SIZE)]
         for index, value in enumerate(held or ()):
             self.bytes[index % SIZE] = value & 0xFF
 
-    def read(self, index):
+    def read(self, index: int) -> int:
         return self.bytes[index % SIZE]
 
-    def write(self, index, value):
+    def write(self, index: int, value: int) -> None:
         self.bytes[index % SIZE] = value & 0xFF
 
     @property
-    def stamp(self):
+    def stamp(self) -> int:
         """When the clock was last read, as the four bytes hold it, low first."""
         value = 0
         for offset in range(STAMP_BYTES):
@@ -57,9 +66,10 @@ class Store:
         return value
 
     @stamp.setter
-    def stamp(self, value):
+    def stamp(self, value: int) -> None:
         for offset in range(STAMP_BYTES):
             self.write(STAMP_AT + offset, (value >> (offset * 8)) & 0xFF)
 
-    def __repr__(self):
+    @override
+    def __repr__(self) -> str:
         return "<Store " + " ".join(f"{value:02X}" for value in self.bytes) + ">"

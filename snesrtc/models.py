@@ -11,8 +11,17 @@ reference implementation. A model with no reference behind it does not belong in
 this table, because then its fidelity would be a claim rather than a measurement.
 """
 
+from __future__ import annotations
+
+from collections.abc import Iterable, Sequence
+from typing import Any, override
+
 from . import epson, sharp
 from .store import Store
+
+Protocol = type[epson.Clock] | type[sharp.Clock]
+
+Built = epson.Clock | sharp.Clock
 
 
 class UnknownModelError(Exception):
@@ -22,19 +31,27 @@ class UnknownModelError(Exception):
 class Model:
     """One clock: what it is, where it answers, and how to build one."""
 
-    def __init__(self, name, summary, addresses, protocol, aliases=()):
+    def __init__(
+        self,
+        name: str,
+        summary: str,
+        addresses: Iterable[int],
+        protocol: Protocol,
+        aliases: Sequence[str] = (),
+    ) -> None:
         self.name = name
         self.summary = summary
         self.addresses = tuple(addresses)
         self.protocol = protocol
         self.aliases = tuple(aliases)
 
-    def build(self, store=None, **options):
+    def build(self, store: Store | None = None, **options: Any) -> Built:
         built = self.protocol(store if store is not None else Store(), **options)
         built.model = self.name
         return built
 
-    def __repr__(self):
+    @override
+    def __repr__(self) -> str:
         return f"<Model {self.name}, answering at {self.addresses[0]:#06x}>"
 
 
@@ -68,18 +85,18 @@ _CATALOGUE = (
 
 MODELS = {model.name: model for model in _CATALOGUE}
 
-_BY_ALIAS = {}
+_BY_ALIAS: dict[str, Model] = {}
 for _model in _CATALOGUE:
     _BY_ALIAS[_model.name.replace("-", "")] = _model
     for _alias in _model.aliases:
         _BY_ALIAS[_alias] = _model
 
 
-def _normalise(name):
+def _normalise(name: str) -> str:
     return str(name).strip().lower().replace("-", "").replace("_", "").replace(" ", "")
 
 
-def describe(name):
+def describe(name: str) -> Model:
     """The model of that name, however it happens to be written."""
     found = _BY_ALIAS.get(_normalise(name))
     if found is None:
