@@ -361,8 +361,6 @@ have, and adding one would change the public interface.
 | [`conformance/reference.py`](conformance/reference.py) | The differential runner, and what it refuses to compare |
 | [`conformance/build.py`](conformance/build.py) | Fetches the pinned reference and builds the driver |
 | [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) | The driver that wraps the reference implementations |
-| [`specs/current/`](specs/current/) | What each clock does, as requirements somebody could test against |
-| [`AGENTS.md`](AGENTS.md) | The working instructions, including the things that will bite you |
 
 ## For contributors and reviewers
 
