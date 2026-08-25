@@ -82,11 +82,26 @@ class MainTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("below", output)
 
-    def test_the_floor_shipped_here_is_beaten_on_this_machine(self) -> None:
-        """The point of the number: it has to be reachable, and far below today."""
-        code, _ = self.run_main(repeats=1, calls=2000)
+    def test_a_run_at_exactly_the_shipped_floor_is_not_below_it(self) -> None:
+        """The shipped number, held to something that does not involve timing.
 
-        self.assertEqual(code, 0)
+        Whether the floor is beaten on a given machine is not asked in this file,
+        and deliberately. This file runs under the coverage tracer, which costs
+        about ten times what the measured call does, so a floor assertion taken
+        here measures the tracer: it passed on a fast desktop and failed on a
+        hosted runner, which is one reading arriving at two answers. That
+        question is settled by running the module uninstrumented, in its own job,
+        outside the coverage step.
+
+        What is left for the shipped number here is that it is usable: positive,
+        printable, and on the passing side of a comparison that is inclusive at
+        the boundary rather than one step off it.
+        """
+        exactly = speed.Timed("at the floor", speed.FLOOR, [1.0])
+
+        self.assertGreater(speed.FLOOR, 0)
+        self.assertTrue(exactly.beats(speed.FLOOR))
+        self.assertIn(f"{speed.FLOOR:,}", "\n".join(speed.lines_for(exactly, speed.FLOOR)))
 
 
 if __name__ == "__main__":
