@@ -26,13 +26,13 @@
   <a href="https://github.com/gufranco/snes-rtc-python/issues">Issues</a>
 </p>
 
-**2** clocks · **329,630** operations compared against the reference, **0** disagreements · **15** places the manual and that reference part, each one written down · **505** tests · **100%** statement and branch coverage · no dependencies
+**2** clocks · **329,630** operations compared against the reference, **0** disagreements · **15** places the manual and that reference part, each one written down · **526** tests · **100%** statement and branch coverage · no dependencies
 
 ```python
-from snesrtc import describe
+from snesrtc import Chip
 
-sharp = describe("s-rtc").build()
-epson = describe("rtc-4513").build()
+sharp = Chip("s-rtc")
+epson = Chip("rtc-4513")
 
 print(sharp.model, epson.model)
 ```
@@ -60,10 +60,10 @@ rather than revisions of one another.
 | Call | Does | Returns |
 |:--|:--|:--|
 | `describe(name)` | The clock behind a name or an alias | a `Model` |
-| `model.build(store=None, now=...)` | Builds one, over a store it is given or one of its own | a `Clock` |
+| `model.build(store=None, now=...)` | Builds one, over a store it is given or one of its own | a `Chip` |
 | `clock.read(address)` | Reads at one of the addresses that part answers | `int` |
 | `clock.write(address, value)` | Writes at one of them | nothing |
-| `clock.reset()` | What the part does when the console resets it | the `Clock` |
+| `clock.reset()` | What the part does when the console resets it | the `Chip` |
 | `Store(seed=..., cleared=..., held=...)` | The twenty bytes a cartridge keeps on a battery | a `Store` |
 
 | Attribute | Is |
@@ -78,7 +78,7 @@ matter, and each part answers to what people call it: `srtc`, `sharp`,
 `rtc4513`, `epson`, `spc7110`.
 
 ```python
-from snesrtc import describe
+from snesrtc import Chip, describe
 
 print(sorted(describe("s-rtc").aliases))
 print(sorted(describe("rtc-4513").aliases))
@@ -97,9 +97,9 @@ hold it still or move it a decade.
 ### Read the clock a cartridge would read
 
 ```python
-from snesrtc import describe
+from snesrtc import Chip
 
-clock = describe("s-rtc").build()
+clock = Chip("s-rtc")
 clock.write(0x2801, 0x0D)
 
 print(f"{clock.read(0x2800):02X}")
@@ -112,9 +112,9 @@ thirteen that follow are the time, one decimal digit per byte, seconds first.
 ### Set it
 
 ```python
-from snesrtc import describe
+from snesrtc import Chip
 
-clock = describe("s-rtc").build()
+clock = Chip("s-rtc")
 
 clock.write(0x2801, 0x0E)
 clock.write(0x2801, 0x00)
@@ -268,10 +268,10 @@ cartridges from different publishers, and almost nothing carries across.
 | Clock catches up | when the sequence is read | when the chip is switched **off** |
 
 ```python
-from snesrtc import describe
+from snesrtc import Chip
 
-sharp = describe("s-rtc").build()
-epson = describe("rtc-4513").build()
+sharp = Chip("s-rtc")
+epson = Chip("rtc-4513")
 ```
 
 Names are matched however they are written. Case, spaces and separators do not
@@ -291,7 +291,7 @@ from snesrtc import Store, epson
 held = Store(cleared=True)
 held.write(epson.CF, epson.HOURS_24)
 held.write(epson.CD, epson.CAL_HW)
-clock = epson.Clock(held)
+clock = epson.Chip(held)
 ```
 
 ## Nothing starts cleared
@@ -412,7 +412,7 @@ driver in [`conformance/ref/`](conformance/ref/) belongs to this repository.
 ### When something is wrong
 
 ```bash
-python3 -m snesrtc.doctor
+python3 snesrtc/doctor.py
 ```
 
 It looks at this machine and prints what is actually there, and every line is
@@ -424,6 +424,8 @@ issue.
 ## Working on it
 
 ### Running the tests
+
+`python3 snesrtc/doctor.py` says what is actually on this machine: both clocks, a write pushed through and read back, and whether the reference this repository cannot carry is built. It is run as a file rather than with `-m` so that it still runs when the package itself will not import, which is the case it exists for. Its report is what an issue asks for, because a report is only as good as what it says about the machine that produced it.
 
 Each module has its test file beside it, named after it.
 

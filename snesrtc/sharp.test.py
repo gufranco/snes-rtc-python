@@ -10,13 +10,13 @@ from snesrtc import calendar, sharp, store
 FROZEN = 1_000_000_000
 
 
-def clock(at: int = FROZEN, **options: Any) -> sharp.Clock:
+def clock(at: int = FROZEN, **options: Any) -> sharp.Chip:
     held = store.Store(cleared=True)
     held.stamp = at
-    return sharp.Clock(held, now=lambda: at, **options)
+    return sharp.Chip(held, now=lambda: at, **options)
 
 
-def set_time(chip: sharp.Clock, digits: tuple[int, ...]) -> None:
+def set_time(chip: sharp.Chip, digits: tuple[int, ...]) -> None:
     chip.write(sharp.CONTROL, 0x0E)
     chip.write(sharp.CONTROL, 0x00)
     for digit in digits:
@@ -169,7 +169,7 @@ class TimeTest(unittest.TestCase):
         held = store.Store(cleared=True)
         held.stamp = FROZEN
         moment = [FROZEN]
-        chip = sharp.Clock(held, now=lambda: moment[0])
+        chip = sharp.Chip(held, now=lambda: moment[0])
         set_time(chip, DATE)
         chip.write(sharp.CONTROL, 0x0D)
         chip.read(sharp.DATA)

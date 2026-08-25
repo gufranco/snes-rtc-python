@@ -147,7 +147,7 @@ def _now() -> int:
     return int(time.time())
 
 
-class Clock:
+class Chip:
     """One RTC-4513, answering at the three addresses the SPC7110 maps it to."""
 
     __slots__ = ("enable", "index", "mode", "model", "now", "state", "status", "store")
@@ -163,7 +163,7 @@ class Clock:
         self.enable = 0x00
         self.status = 0x00
 
-    def reset(self) -> Clock:
+    def reset(self) -> Chip:
         self.state = INACTIVE
         self.mode = WRITE_MODE
         self.index = 0

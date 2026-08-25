@@ -29,30 +29,30 @@ cleared store is a chip whose notation bit happens to be zero.
 DATED = epson.CAL_HW
 
 
-def clock(at: int = FROZEN, control_f: int = CONFIGURED, control_d: int = DATED) -> epson.Clock:
+def clock(at: int = FROZEN, control_f: int = CONFIGURED, control_d: int = DATED) -> epson.Chip:
     held = store.Store(cleared=True)
     held.stamp = at
     held.write(epson.CF, control_f)
     held.write(epson.CD, control_d)
-    return epson.Clock(held, now=lambda: at)
+    return epson.Chip(held, now=lambda: at)
 
 
-def moving(start: int = FROZEN) -> tuple[epson.Clock, list[int]]:
+def moving(start: int = FROZEN) -> tuple[epson.Chip, list[int]]:
     held = store.Store(cleared=True)
     held.stamp = start
     held.write(epson.CF, CONFIGURED)
     held.write(epson.CD, DATED)
     hand = [start]
-    return epson.Clock(held, now=lambda: hand[0]), hand
+    return epson.Chip(held, now=lambda: hand[0]), hand
 
 
-def open_session(chip: epson.Clock, mode: int = epson.WRITE_MODE, index: int = 0) -> None:
+def open_session(chip: epson.Chip, mode: int = epson.WRITE_MODE, index: int = 0) -> None:
     chip.write(epson.ENABLE, 0x01)
     chip.write(epson.DATA, mode)
     chip.write(epson.DATA, index)
 
 
-def set_time(chip: epson.Clock, digits: tuple[int, ...]) -> None:
+def set_time(chip: epson.Chip, digits: tuple[int, ...]) -> None:
     open_session(chip)
     for digit in digits:
         chip.write(epson.DATA, digit)

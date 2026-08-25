@@ -53,12 +53,12 @@ class BuildTest(unittest.TestCase):
     def test_the_sharp_model_builds_the_sharp_protocol(self) -> None:
         built = models.describe("s-rtc").build()
 
-        self.assertIsInstance(built, sharp.Clock)
+        self.assertIsInstance(built, sharp.Chip)
 
     def test_the_epson_model_builds_the_other_one(self) -> None:
         built = models.describe("rtc-4513").build()
 
-        self.assertIsInstance(built, epson.Clock)
+        self.assertIsInstance(built, epson.Chip)
 
     def test_a_built_clock_gets_a_store_of_its_own_when_none_is_given(self) -> None:
         built = models.describe("s-rtc").build()

@@ -18,10 +18,12 @@ clocked parts: they tick, and nothing a host does to them is measured in cycles.
 
 The model is chosen at construction, because the two parts are different parts.
 
+- `Chip(model, store=None, now=...)` builds one over a store it is given or one
+  of its own. That is the family's shape for a part, matching `Cpu(model, memory)`
+  on the members that run a program.
 - `describe(name)` finds a clock by any spelling: case, spaces and separators do
-  not matter, and each answers to what people call it.
-- `model.build(store=None, now=...)` builds one over a store it is given or one
-  of its own. The clock a part reads is injected rather than taken from the
+  not matter, and each answers to what people call it. `Chip` goes through it, so
+  the same spellings work there. The clock a part reads is injected rather than taken from the
   machine, which is what lets a test hold time still or move it a decade.
 - `clock.read(address)` and `clock.write(address, value)` at the addresses that
   part answers: `$2800` and `$2801` for the Sharp part, `$4840` through `$4842`

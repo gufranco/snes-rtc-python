@@ -58,7 +58,7 @@ def _now() -> int:
     return int(time.time())
 
 
-class Clock:
+class Chip:
     """One S-RTC, answering at its two addresses."""
 
     __slots__ = ("index", "mode", "model", "now", "open_bus", "store")
@@ -72,7 +72,7 @@ class Clock:
         self.mode = READING
         self.index = -1
 
-    def reset(self) -> Clock:
+    def reset(self) -> Chip:
         """What the reset line does, which is less than a power cycle would."""
         self.mode = READING
         self.index = -1

@@ -140,10 +140,10 @@ class Cartridge:
     def __init__(self) -> None:
         self.store = store.Store(cleared=True)
         self.at = START
-        self.sharp = sharp.Clock(self.store, now=lambda: self.at)
-        self.epson = epson.Clock(self.store, now=lambda: self.at)
+        self.sharp = sharp.Chip(self.store, now=lambda: self.at)
+        self.epson = epson.Chip(self.store, now=lambda: self.at)
 
-    def chip_for(self, address: int) -> sharp.Clock | epson.Clock:
+    def chip_for(self, address: int) -> sharp.Chip | epson.Chip:
         return self.epson if address in EPSON_ADDRESSES else self.sharp
 
     def read(self, address: int) -> int:

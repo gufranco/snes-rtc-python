@@ -20,9 +20,9 @@ from . import epson, sharp
 from .errors import UnknownModelError
 from .store import Store
 
-Protocol = type[epson.Clock] | type[sharp.Clock]
+Protocol = type[epson.Chip] | type[sharp.Chip]
 
-Built = epson.Clock | sharp.Clock
+Built = epson.Chip | sharp.Chip
 
 
 class Model:
@@ -65,7 +65,7 @@ _CATALOGUE = (
             "thousand added."
         ),
         addresses=(sharp.DATA, sharp.CONTROL),
-        protocol=sharp.Clock,
+        protocol=sharp.Chip,
         aliases=("srtc", "sharp", "sharprtc"),
     ),
     Model(
@@ -77,12 +77,19 @@ _CATALOGUE = (
             "The year is two digits read as 1990 through 2089."
         ),
         addresses=(epson.ENABLE, epson.DATA, epson.STATUS),
-        protocol=epson.Clock,
+        protocol=epson.Chip,
         aliases=("rtc4513", "epson", "epsonrtc", "spc7110", "spc7110rtc"),
     ),
 )
 
 MODELS = {model.name: model for model in _CATALOGUE}
+
+DEFAULT_MODEL = _CATALOGUE[0].name
+"""The Sharp part, because it is the one a cartridge carried on its own.
+
+The Epson clock reached the bus through the SPC7110 rather than by itself, so a
+caller who names no model almost always means the Sharp one.
+"""
 
 _BY_ALIAS: dict[str, Model] = {}
 for _model in _CATALOGUE:

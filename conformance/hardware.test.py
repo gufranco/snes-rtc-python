@@ -39,19 +39,31 @@ ROWS = FACTS["registerTable"]["rows"]
 
 
 class DocumentTest(unittest.TestCase):
+    def source(self, key: str) -> dict[str, object]:
+        held = EPSON["documents"][key]
+        assert isinstance(held, dict)
+        return held
+
     def test_the_epson_part_is_backed_by_a_named_document(self) -> None:
-        self.assertEqual(EPSON["document"]["publisher"], "Seiko Epson Corporation")
+        self.assertEqual(self.source("applicationManual")["publisher"], "Seiko Epson Corporation")
 
     def test_the_document_carries_a_digest_so_the_reading_can_be_repeated(self) -> None:
-        self.assertRegex(EPSON["document"]["sha256"], r"^[0-9a-f]{64}$")
+        self.assertRegex(str(self.source("applicationManual")["sha256"]), r"^[0-9a-f]{64}$")
 
     def test_and_a_second_document_that_corroborates_the_register_table(self) -> None:
-        self.assertRegex(EPSON["document"]["corroboration"]["sha256"], r"^[0-9a-f]{64}$")
+        self.assertRegex(str(self.source("catalogueExtract")["sha256"]), r"^[0-9a-f]{64}$")
+
+    def test_the_second_one_says_which_one_it_corroborates(self) -> None:
+        self.assertEqual(self.source("catalogueExtract")["corroborates"], "applicationManual")
 
     def test_the_two_documents_are_not_the_same_file(self) -> None:
         self.assertNotEqual(
-            EPSON["document"]["sha256"], EPSON["document"]["corroboration"]["sha256"]
+            self.source("applicationManual")["sha256"],
+            self.source("catalogueExtract")["sha256"],
         )
+
+    def test_the_sharp_part_declares_an_empty_block_rather_than_none(self) -> None:
+        self.assertEqual(SHARP["documents"], {})
 
     def test_every_fact_carries_the_sentence_it_came_from(self) -> None:
         unquoted = [
@@ -239,7 +251,7 @@ class ControlBitTest(unittest.TestCase):
         held = store.Store(cleared=True)
         held.write(epson.CD, epson.HOLD)
 
-        self.assertFalse(epson.Clock(held).stopped())
+        self.assertFalse(epson.Chip(held).stopped())
 
     def test_the_stopping_bits_are_named_in_control_register_f_and_not_in_d(self) -> None:
         stopping = {"reset", "stop"}
