@@ -437,13 +437,39 @@ class SharedFileTest(unittest.TestCase):
         self.assertGreater(len([row for row in rows if row.endswith(".md")]), 0)
 
 
-VARIANTS: dict[str, Any] = dict(getattr(PACKAGE, "MODELS", {}))
+def catalogue(package: Any = None) -> dict[str, Any]:
+    """The mapping of variants that package publishes, whatever it calls it.
+
+    Found by shape rather than by name. A member calls its catalogue whatever the
+    thing it models is called, `MODELS` for parts and `FORMATS` for layouts, and
+    a check keyed to one name does not fail on the other: it finds nothing, skips
+    itself, and reports a clean run over a catalogue it never looked at. That is
+    how seven graphics formats went unchecked.
+
+    The shape is a mapping from a name to something carrying that same name and a
+    tuple of aliases, which is what every catalogue in the family is and what the
+    checks below actually need.
+
+    It takes a package so it can be handed one that should fail it. Which of its
+    branches a member exercises depends on what that member happens to publish
+    and on where the catalogue's name sorts, so left driven only by the package
+    it lives in, two of them are never taken anywhere.
+    """
+    held = PACKAGE if package is None else package
+    for name in sorted(getattr(held, "__all__", ())):
+        found = getattr(held, name, None)
+        if not isinstance(found, dict) or not found:
+            continue
+        if all(hasattr(one, "name") and hasattr(one, "aliases") for one in found.values()):
+            return dict(found)
+    return {}
+
+
+VARIANTS: dict[str, Any] = catalogue()
 """Every variant this package accepts, read from the package rather than listed.
 
-A member that has a catalogue publishes it as `MODELS`, whatever the variants
-are: three parts of a processor family, four cartridge layouts, two clocks. A
-member that has none does not publish the name at all, and the checks below say
-they were skipped rather than passing in silence.
+A member that has none publishes no such mapping, and the checks below say they
+were skipped rather than passing in silence.
 
 Inferring the absence from an empty mapping is safe here, and it is not safe for
 the machine names further down, because this one is read out of the package at
@@ -496,6 +522,60 @@ class DocumentedModelTest(unittest.TestCase):
         self.assertTrue(built("a-part", "Cpu('a-part')"))
         self.assertFalse(built("a-part", "the a-part is covered here"))
         self.assertFalse(built("a-part", "`a-part`"))
+
+
+class CatalogueReaderTest(unittest.TestCase):
+    """That the reader finds a catalogue by shape and steps over what is not one.
+
+    Driven against packages built here rather than against this one. Which
+    branches a real package exercises depends on what it publishes and on where
+    its catalogue's name sorts, so a reader left to be driven by its own package
+    has branches nobody has ever taken.
+    """
+
+    def package(self, **published: Any) -> Any:
+        held: Any = types.ModuleType("published")
+        held.__all__ = sorted(published)
+        for name, one in published.items():
+            setattr(held, name, one)
+        return held
+
+    def variant(self, name: str) -> Any:
+        return type("Variant", (), {"name": name, "aliases": ()})()
+
+    def test_it_finds_a_catalogue_whatever_the_package_calls_it(self) -> None:
+        held = self.package(FORMATS={"4bpp": self.variant("4bpp")})
+
+        self.assertEqual(sorted(catalogue(held)), ["4bpp"])
+
+    def test_and_finds_it_under_any_other_name(self) -> None:
+        held = self.package(MODELS={"z80": self.variant("z80")})
+
+        self.assertEqual(sorted(catalogue(held)), ["z80"])
+
+    def test_it_steps_over_a_published_name_that_is_not_a_mapping(self) -> None:
+        held = self.package(DEFAULT_MODEL="z80", MODELS={"z80": self.variant("z80")})
+
+        self.assertEqual(sorted(catalogue(held)), ["z80"])
+
+    def test_and_over_a_mapping_with_nothing_in_it(self) -> None:
+        held = self.package(EMPTY={}, MODELS={"z80": self.variant("z80")})
+
+        self.assertEqual(sorted(catalogue(held)), ["z80"])
+
+    def test_and_over_a_mapping_whose_entries_are_not_variants(self) -> None:
+        """A package can publish a lookup table that is not a catalogue."""
+        held = self.package(SIZES={"small": 8, "large": 64})
+
+        self.assertEqual(catalogue(held), {})
+
+    def test_a_package_publishing_no_catalogue_answers_with_nothing(self) -> None:
+        held = self.package(decode=len)
+
+        self.assertEqual(catalogue(held), {})
+
+    def test_and_so_does_one_publishing_nothing_at_all(self) -> None:
+        self.assertEqual(catalogue(types.ModuleType("bare")), {})
 
 
 class ClaimedCountTest(unittest.TestCase):
