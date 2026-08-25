@@ -64,7 +64,7 @@ jobs:
         run: mypy
 
       - name: Build the driver the comparison tests need
-        run: python conformance/build.py
+        run: python -m conformance.build
 
       - name: Every test file, under coverage
         run: |
@@ -91,6 +91,6 @@ jobs:
       - name: Both clocks on ground the pipeline never reaches
         run: |
           week=$(date -u +%V)
-          python conformance/reference.py \
+          python -m conformance.reference \
             --from "$(( 10#${week} * 10000 ))" --runs 2000 --length 4000
         shell: bash

@@ -119,7 +119,7 @@ jobs:
       # gate needs, so the driver is built here as well as in the conformance
       # job. Skipping them would leave the gate measuring less than it claims.
       - name: Build the driver the comparison tests need
-        run: python conformance/build.py
+        run: python -m conformance.build
 
       - name: Run every test file, under coverage
         run: |
@@ -135,6 +135,19 @@ jobs:
 
       - name: Coverage must be total
         run: python -m coverage report
+
+  speed:
+    name: Throughput
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: The slower clock must still answer faster than the floor
+        run: python -m conformance.speed
 
   conformance:
     name: Conformance against the reference implementations
@@ -160,7 +173,7 @@ jobs:
           key: reference-${{ steps.pin.outputs.commit }}
 
       - name: Build the driver around them
-        run: python conformance/build.py
+        run: python -m conformance.build
 
       # A pull request runs a tenth of the scripts for a quick answer. A push to
       # main runs all four hundred, because that is the number the claim of
@@ -172,5 +185,5 @@ jobs:
           else
             runs=400
           fi
-          python conformance/reference.py --runs "${runs}" --length 4000
+          python -m conformance.reference --runs "${runs}" --length 4000
         shell: bash

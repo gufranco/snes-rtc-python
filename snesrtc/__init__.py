@@ -13,8 +13,14 @@ model that starts at zero hides the class of bug that only appears on a cartridg
 that has been in a drawer.
 """
 
-from . import calendar, epson, models, sharp, store
-from .models import MODELS, Model, UnknownModelError, describe
+from . import calendar as calendar
+from . import epson as epson
+from . import errors as errors
+from . import models as models
+from . import sharp as sharp
+from . import store as store
+from .errors import UnknownModelError
+from .models import MODELS, Model, describe
 from .store import Store
 from .version import VERSION
 
@@ -26,10 +32,5 @@ __all__ = [
     "Store",
     "UnknownModelError",
     "__version__",
-    "calendar",
     "describe",
-    "epson",
-    "models",
-    "sharp",
-    "store",
 ]

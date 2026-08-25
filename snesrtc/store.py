@@ -38,6 +38,8 @@ def _derive(seed: int, index: int) -> int:
 class Store:
     """The cartridge's own bytes, holding what they held."""
 
+    __slots__ = ("bytes",)
+
     def __init__(
         self,
         seed: int = UNSET_SEED,

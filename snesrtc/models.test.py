@@ -5,6 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from snesrtc import epson, models, sharp, store
+from snesrtc.errors import UnknownModelError
 
 
 class CatalogueTest(unittest.TestCase):
@@ -38,11 +39,11 @@ class NameTest(unittest.TestCase):
         self.assertEqual(models.describe("spc7110").name, "rtc-4513")
 
     def test_a_name_no_part_answers_to_is_refused(self) -> None:
-        with self.assertRaises(models.UnknownModelError):
+        with self.assertRaises(UnknownModelError):
             models.describe("ds1307")
 
     def test_and_the_refusal_lists_what_there_is(self) -> None:
-        with self.assertRaises(models.UnknownModelError) as caught:
+        with self.assertRaises(UnknownModelError) as caught:
             models.describe("nothing")
 
         self.assertIn("s-rtc", str(caught.exception))

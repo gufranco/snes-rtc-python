@@ -18,37 +18,81 @@
 </div>
 
 <p align="center">
-  <a href="#quick-start">Quick start</a> &nbsp;|&nbsp;
+  <a href="#install">Install</a> &nbsp;|&nbsp;
+  <a href="#the-interface">The interface</a> &nbsp;|&nbsp;
   <a href="#where-each-answer-comes-from">Where each answer comes from</a> &nbsp;|&nbsp;
   <a href="#what-the-manual-caught">What the manual caught</a> &nbsp;|&nbsp;
-  <a href="#the-two-chips">The two chips</a> &nbsp;|&nbsp;
-  <a href="#conformance">Conformance</a> &nbsp;|&nbsp;
+  <a href="#is-it-right">Is it right</a> &nbsp;|&nbsp;
   <a href="https://github.com/gufranco/snes-rtc-python/issues">Issues</a>
 </p>
 
-**2** chips · **1** with a manufacturer's manual, pinned fact by fact · **15** recorded divergences between that manual and the emulator everybody uses · **344** tests · **100%** statement and branch coverage
+**2** clocks · **329,630** operations compared against the reference, **0** disagreements · **15** places the manual and that reference part, each one written down · **495** tests · **100%** statement and branch coverage · no dependencies
 
 ```python
 from snesrtc import describe
 
-clock = describe("rtc-4513").build()
-clock.read(0x4840)
+sharp = describe("s-rtc").build()
+epson = describe("rtc-4513").build()
+
+print(sharp.model, epson.model)
 ```
 
-## Quick start
+```
+s-rtc rtc-4513
+```
 
-### Prerequisites
-
-| Tool | Version | Install |
-|:-----|:--------|:--------|
-| Python | 3.12 or newer | [python.org](https://www.python.org/downloads/) |
-| A C++ compiler | any recent | only for running the differential comparison |
-
-### Install
+## Install
 
 ```bash
 pip install git+https://github.com/gufranco/snes-rtc-python.git
 ```
+
+Python 3.12 or newer. Nothing else at runtime.
+
+A C++ compiler is needed only to build the reference the differential compares
+against, and only if you want to run that comparison yourself.
+
+## The interface
+
+The model is chosen at construction, because the two parts are different parts
+rather than revisions of one another.
+
+| Call | Does | Returns |
+|:--|:--|:--|
+| `describe(name)` | The clock behind a name or an alias | a `Model` |
+| `model.build(store=None, now=...)` | Builds one, over a store it is given or one of its own | a `Clock` |
+| `clock.read(address)` | Reads at one of the addresses that part answers | `int` |
+| `clock.write(address, value)` | Writes at one of them | nothing |
+| `clock.reset()` | What the part does when the console resets it | the `Clock` |
+| `Store(seed=..., cleared=..., held=...)` | The twenty bytes a cartridge keeps on a battery | a `Store` |
+
+| Attribute | Is |
+|:--|:--|
+| `clock.model` | Which part this is, by its canonical name |
+| `clock.store` | The twenty bytes it counts in |
+| `model.addresses` | Where that part answers |
+| `model.aliases` | Every other spelling that reaches it |
+
+Names are matched however they are written. Case, spaces and separators do not
+matter, and each part answers to what people call it: `srtc`, `sharp`,
+`rtc4513`, `epson`, `spc7110`.
+
+```python
+from snesrtc import describe
+
+print(sorted(describe("s-rtc").aliases))
+print(sorted(describe("rtc-4513").aliases))
+```
+
+```
+['sharp', 'sharprtc', 'srtc']
+['epson', 'epsonrtc', 'rtc4513', 'spc7110', 'spc7110rtc']
+```
+
+There is no clock in the family's sense. A real-time clock ticks and is still not
+driven by a budget of cycles, so nothing here has a `step` or a cycle count. Time
+arrives through the callable a clock is built with, which is what lets a test
+hold it still or move it a decade.
 
 ### Read the clock a cartridge would read
 
@@ -56,11 +100,10 @@ pip install git+https://github.com/gufranco/snes-rtc-python.git
 from snesrtc import describe
 
 clock = describe("s-rtc").build()
-
 clock.write(0x2801, 0x0D)
+
 print(f"{clock.read(0x2800):02X}")
-for _ in range(13):
-    print(f"{clock.read(0x2800):02X}", end=" ")
+print(" ".join(f"{clock.read(0x2800):02X}" for _ in range(13)))
 ```
 
 The first read answers `0F`, the marker that says the sequence is starting. The
@@ -69,10 +112,20 @@ thirteen that follow are the time, one decimal digit per byte, seconds first.
 ### Set it
 
 ```python
+from snesrtc import describe
+
+clock = describe("s-rtc").build()
+
 clock.write(0x2801, 0x0E)
 clock.write(0x2801, 0x00)
 for digit in (0, 0, 0, 3, 2, 1, 8, 1, 8, 6, 9, 9):
     clock.write(0x2801, digit)
+
+print(clock.model)
+```
+
+```
+s-rtc
 ```
 
 Half past twelve on the eighteenth of August 1996. Twelve digits are written and
@@ -241,7 +294,59 @@ held.write(epson.CD, epson.CAL_HW)
 clock = epson.Clock(held)
 ```
 
-## Conformance
+## Nothing starts cleared
+
+A battery-backed cartridge holds what it held, and one fresh from the factory
+holds whatever the silicon powered up with. This is the one place where the
+family convention and the manufacturer agree in as many words: Epson prints "At
+power-on, all registers and the STD.P output are undefined."
+
+```python
+from snesrtc import Store
+
+one = Store(seed=1)
+two = Store(seed=2)
+saved = bytes(Store(seed=7).bytes)
+
+print(one.read(0) == two.read(0))
+print(Store(cleared=True).read(0))
+print(len(Store(held=saved).bytes))
+```
+
+```
+False
+0
+20
+```
+
+A seeded store holds rubbish that is stable across reads and different for a
+different seed, so a test can prove a program does not depend on what it never
+wrote. A caller who genuinely means zeroes asks for them, and a caller restoring
+a cartridge hands over the bytes it had.
+
+## What is deliberately not modelled
+
+Each is recorded in `divergences.json` with the reason and what would change it.
+
+**No interrupt.** Control register E selects one of four periods and drives the
+STD.P pin. No document says the SPC7110 routes that pin anywhere a Super Nintendo
+program can observe, so the register is stored and drives nothing. Modelling an
+interrupt that reaches nothing would be inventing a wire.
+
+**No crystal drift.** The manual gives the figures: 0 plus or minus 25 ppm at 25
+degrees C, a secondary temperature coefficient of -0.035 ppm per degree C
+squared, and "At 11.574 ppm, the daily clock error is about one second per day."
+They are recorded and not simulated, because a tolerance bounds a population of
+modules rather than describing the one in a cartridge, and it depends on a
+temperature the model cannot know. An earlier version of this README said no
+number existed. One does, and it is now written down.
+
+**No 125 microsecond lockout after a 30-second adjustment.** The bit clears
+itself, which is observable and modelled. The window during which the clock
+registers cannot be written needs a sub-second time base this package does not
+have, and adding one would change the public interface.
+
+## Is it right
 
 The differential drives each part with scripts generated from a seed, runs them
 through a driver compiled around the pinned reference sources, and compares the
@@ -291,8 +396,8 @@ anything a board did, since no cartridge carried both parts.
 Run it yourself:
 
 ```bash
-python conformance/build.py
-python conformance/reference.py
+python3 -m conformance.build
+python3 -m conformance.reference
 ```
 
 The script is generated rather than written by hand for the same reason a suite
@@ -304,65 +409,19 @@ the wall clock and a comparison against a moving target proves nothing.
 The reference sources are fetched at build time and never vendored here. Only the
 driver in [`conformance/ref/`](conformance/ref/) belongs to this repository.
 
-## Nothing starts cleared
+### When something is wrong
 
-A battery-backed cartridge holds what it held, and one fresh from the factory
-holds whatever the silicon powered up with. This is the one place where the
-family convention and the manufacturer agree in as many words: Epson prints "At
-power-on, all registers and the STD.P output are undefined."
-
-```python
-from snesrtc import Store
-
-held = Store(seed=1)
-held.read(0)  # some byte, not zero, stable across reads
-
-Store(cleared=True)  # a caller who genuinely means zeroes says so
-Store(held=saved)  # the bytes a saved cartridge had
+```bash
+python3 -m snesrtc.doctor
 ```
 
-Two stores built with different seeds hold different rubbish, so a test can prove
-a program does not depend on what it never wrote.
+It looks at this machine and prints what is actually there, and every line is
+something it looked at just now rather than something that ought to be true. A
+check that fails says what it saw. A check that itself throws is reported as what
+it threw rather than taking the report down with it. Paste all of it into an
+issue.
 
-## What is deliberately not modelled
-
-Each is recorded in `divergences.json` with the reason and what would change it.
-
-**No interrupt.** Control register E selects one of four periods and drives the
-STD.P pin. No document says the SPC7110 routes that pin anywhere a Super Nintendo
-program can observe, so the register is stored and drives nothing. Modelling an
-interrupt that reaches nothing would be inventing a wire.
-
-**No crystal drift.** The manual gives the figures: 0 plus or minus 25 ppm at 25
-degrees C, a secondary temperature coefficient of -0.035 ppm per degree C
-squared, and "At 11.574 ppm, the daily clock error is about one second per day."
-They are recorded and not simulated, because a tolerance bounds a population of
-modules rather than describing the one in a cartridge, and it depends on a
-temperature the model cannot know. An earlier version of this README said no
-number existed. One does, and it is now written down.
-
-**No 125 microsecond lockout after a 30-second adjustment.** The bit clears
-itself, which is observable and modelled. The window during which the clock
-registers cannot be written needs a sub-second time base this package does not
-have, and adding one would change the public interface.
-
-## Layout
-
-| File | Holds |
-|:-----|:------|
-| [`snesrtc/calendar.py`](snesrtc/calendar.py) | Leap years, month lengths, the weekday counter, and rollover as the chips perform it |
-| [`snesrtc/store.py`](snesrtc/store.py) | The twenty bytes the cartridge keeps on a battery |
-| [`snesrtc/sharp.py`](snesrtc/sharp.py) | The Sharp protocol and its state machine |
-| [`snesrtc/epson.py`](snesrtc/epson.py) | The Epson register file, its named control bits, and its two notations |
-| [`snesrtc/models.py`](snesrtc/models.py) | Which chips this covers and how to build one |
-| [`conformance/hardware.json`](conformance/hardware.json) | What Epson printed, fact by fact, with the sentence each came from |
-| [`conformance/divergences.json`](conformance/divergences.json) | Every place the manual and the recording disagree, and what would settle each |
-| [`conformance/hardware.test.py`](conformance/hardware.test.py) | The gate that holds the model's constants to that file |
-| [`conformance/reference.py`](conformance/reference.py) | The differential runner, and what it refuses to compare |
-| [`conformance/build.py`](conformance/build.py) | Fetches the pinned reference and builds the driver |
-| [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) | The driver that wraps the reference implementations |
-
-## For contributors and reviewers
+## Working on it
 
 ### Running the tests
 
@@ -386,17 +445,21 @@ Every script comes from a seed, and the runner prints the seed and the part of a
 script that disagreed. That script can be regenerated exactly:
 
 ```bash
-python conformance/reference.py --seed 22 --length 4000
+python3 -m conformance.reference --seed 22 --length 4000
 ```
 
 Or render it and feed it to the driver on standard input, to see the reference's
 side alone:
 
 ```python
-import reference
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path.cwd()))
+from conformance import reference
 
 script = reference.generate(seed=22, length=4000, part="sharp")
-print(reference.render(script))
+print(reference.render(script)[:40])
 ```
 
 ### Changing something the manual settles
@@ -431,19 +494,23 @@ an entry in `divergences.json` naming what would settle it, or it fails the run.
   the recording. The manual prints two BCD digits and names no century, and the
   window decides only which years are leap years.
 
-## When something is wrong
+### Layout
 
-```bash
-python3 -m snesrtc.doctor
-```
+| File | Holds |
+|:-----|:------|
+| [`snesrtc/calendar.py`](snesrtc/calendar.py) | Leap years, month lengths, the weekday counter, and rollover as the chips perform it |
+| [`snesrtc/store.py`](snesrtc/store.py) | The twenty bytes the cartridge keeps on a battery |
+| [`snesrtc/sharp.py`](snesrtc/sharp.py) | The Sharp protocol and its state machine |
+| [`snesrtc/epson.py`](snesrtc/epson.py) | The Epson register file, its named control bits, and its two notations |
+| [`snesrtc/models.py`](snesrtc/models.py) | Which chips this covers and how to build one |
+| [`conformance/hardware.json`](conformance/hardware.json) | What Epson printed, fact by fact, with the sentence each came from |
+| [`conformance/divergences.json`](conformance/divergences.json) | Every place the manual and the recording disagree, and what would settle each |
+| [`conformance/hardware.test.py`](conformance/hardware.test.py) | The gate that holds the model's constants to that file |
+| [`conformance/reference.py`](conformance/reference.py) | The differential runner, and what it refuses to compare |
+| [`conformance/build.py`](conformance/build.py) | Fetches the pinned reference and builds the driver |
+| [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) | The driver that wraps the reference implementations |
 
-It looks at this machine and prints what is actually there, and every line is
-something it looked at just now rather than something that ought to be true. A
-check that fails says what it saw. A check that itself throws is reported as what
-it threw rather than taking the report down with it. Paste all of it into an
-issue.
-
-## Contributing
+### Contributing
 
 Measurements first. [CONTRIBUTING.md](CONTRIBUTING.md) has the gates a change is
 expected to pass, [SECURITY.md](SECURITY.md) says what belongs in a private
@@ -453,13 +520,33 @@ project is discussed.
 Never attach a copyrighted file, and never link to somewhere one can be
 downloaded. A digest identifies a file without carrying it.
 
+## References
+
+This repository carries no documents, no cartridges and no reference sources.
+
+| Document | Publisher | Pinned by | Redistributable |
+|:---------|:----------|:----------|:----------------|
+| *Application Manual: Real Time Clock Module RTC-4513* | Seiko Epson, 1999 | Digest and read-date in [`conformance/hardware.json`](conformance/hardware.json) | No |
+
+**No manufacturer document for the Sharp part is known to exist.** The marking
+`S-RTC` is a Nintendo part designation in the same style as `S-DSP`, `S-SMP` and
+`S-PPU`, not a Sharp catalogue number. It was searched for; the date and the
+search are recorded in `hardware.json` under `"verified": false`, along with the
+three things that would settle it. A test asserts the file still says so, because
+filling that block in from an emulator would make a guess indistinguishable from
+a fact.
+
+| Source | Used for |
+|:-------|:---------|
+| [snes9xgit/snes9x](https://github.com/snes9xgit/snes9x) | The reference both parts are compared against, pinned by commit in [`conformance/pinned.json`](conformance/pinned.json). Fetched at build time, never vendored, and a second implementation rather than a measurement |
+
 ## Citing this
 
 [CITATION.cff](CITATION.cff) is kept in step with the released version by the
 same script that stamps the package, so the version it names is the version that
 shipped.
 
-## Licence
+## License
 
 [MIT](LICENSE).
 

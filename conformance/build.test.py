@@ -8,9 +8,8 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import build
+from conformance import build
 
 HAS_COMPILER = shutil.which(build.COMPILER) is not None
 

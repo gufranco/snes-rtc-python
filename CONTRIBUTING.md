@@ -14,13 +14,13 @@ uvx ruff@0.16.3 format --check .
 uvx ruff@0.16.3 check .
 uvx mypy@1.14.1
 pnpm install --frozen-lockfile && pnpm run format:check
-python3 conformance/build.py
+python3 -m conformance.build
 python3 -m coverage erase
 for f in $(find snesrtc conformance -name '*.test.py' | sort); do
   python3 -m coverage run -a "$f" || echo "FAILED $f"
 done
 python3 -m coverage report
-python3 conformance/reference.py
+python3 -m conformance.reference
 ```
 
 Coverage is a hard gate at 100% statement and branch. A branch with no test

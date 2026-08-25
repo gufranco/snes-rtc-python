@@ -61,6 +61,8 @@ def _now() -> int:
 class Clock:
     """One S-RTC, answering at its two addresses."""
 
+    __slots__ = ("index", "mode", "model", "now", "open_bus", "store")
+
     model: str
 
     def __init__(self, store: Store, now: Callable[[], int] = _now, open_bus: int = 0x00) -> None:

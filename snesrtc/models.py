@@ -17,6 +17,7 @@ from collections.abc import Iterable, Sequence
 from typing import Any, override
 
 from . import epson, sharp
+from .errors import UnknownModelError
 from .store import Store
 
 Protocol = type[epson.Clock] | type[sharp.Clock]
@@ -24,12 +25,10 @@ Protocol = type[epson.Clock] | type[sharp.Clock]
 Built = epson.Clock | sharp.Clock
 
 
-class UnknownModelError(Exception):
-    pass
-
-
 class Model:
     """One clock: what it is, where it answers, and how to build one."""
+
+    __slots__ = ("addresses", "aliases", "name", "protocol", "summary")
 
     def __init__(
         self,
