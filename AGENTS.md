@@ -75,7 +75,7 @@ script is compared only up to the first operation that reaches a declared
 divergence, and the operations past that point are counted apart and named rather
 than counted as agreements or dropped in silence.
 
-**Not settled: 13 things**, each in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) with
+**Not settled: 14 things**, each in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) with
 what would close it. Eight are places the manual contradicts the recording, two
 are places nobody wrote it down, and three are modelling choices that turn on
 this package having no sub-second time base. Do not close one by argument.

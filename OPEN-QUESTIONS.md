@@ -247,6 +247,32 @@ the comparison and named rather than allowed to decide.
 **What would settle or reopen it.** Nothing available. There is no hardware
 answer, because there is no stamp on the hardware.
 
+## Where a citation is short of what the standard asks
+
+### Forty quotes name the sentence but not the page.
+
+**The standard says.** Every fact taken from a document is recorded with the
+sentence it came from and the page it was on.
+
+**What this record has.** The sentence and the document, forty times over, and
+no page on any of them. Every one cites the Epson application manual. They were
+read out of it correctly; the page simply was not written down at the time.
+
+**Why it matters.** A page is what turns a quote into something a second reader
+can go and check in one step. Without it they read the manual until they find
+the sentence, which they will, and that is the difference between a citation and
+a recollection.
+
+**What this project does.** Lists all forty by name in
+[`conformance/quotes.py`](conformance/quotes.py), so they stay visible and a
+forty-first arriving without a page fails the check rather than joining them
+quietly. Nothing guesses a page number.
+
+**What would settle it.** The manual, opened, and forty page numbers written
+into the record. The document is not redistributable and is not on this machine;
+the note beside it in the record says pages 1 through 16 were transmitted and
+read, so the pages exist to be filled in by anybody holding the fax.
+
 ## What is not in question
 
 So the boundary is visible rather than implied:
