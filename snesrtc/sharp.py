@@ -73,7 +73,17 @@ class Chip:
         self.index = -1
 
     def reset(self) -> Chip:
-        """What the reset line does, which is less than a power cycle would."""
+        """The console's reset line reaching the part, not a power cycle.
+
+        The sequence goes back to its start and the clock catches up. Nothing
+        stored is touched, because the part is battery-backed and a reset line
+        does not cut battery power.
+
+        No document for this part is known to exist, so this behaviour is
+        inherited from the reference implementation rather than read anywhere.
+        It is recorded under `notStated` in the record beside this file, with
+        the capture that would settle it.
+        """
         self.mode = READING
         self.index = -1
         self.update()

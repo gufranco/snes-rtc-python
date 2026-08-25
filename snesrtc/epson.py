@@ -164,6 +164,18 @@ class Chip:
         self.status = 0x00
 
     def reset(self) -> Chip:
+        """The console's reset line reaching the part, not the RESET bit.
+
+        Those are two different events and the manual describes only the second.
+        Writing the RESET bit in control register F zeroes the seconds and stops
+        the clock. This closes whatever session was open and clears the enable
+        and status latches, leaving every counter running, because a reset line
+        does not cut battery power.
+
+        The manual says nothing about the line, so this rests on the reference
+        implementation and is recorded under `notStated` in the record beside
+        this file, with the capture that would settle it.
+        """
         self.state = INACTIVE
         self.mode = WRITE_MODE
         self.index = 0

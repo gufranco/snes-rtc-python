@@ -485,7 +485,8 @@
         "centuryWindow": "The manual gives Y1 and Y10 as two BCD digits with no century attached, and states leap-year compensation for the Gregorian calendar and the Heisei era without naming a range of years. Nothing in it says a stored year of 90 means 1990 or that 00 means 2000. The 1990 to 2089 window this package uses is therefore a convention inherited from the reference implementation, not a manufacturer fact. See divergences.json entry epson-century-window.",
         "outOfRangeCounterBehaviour": "The manual says only to avoid setting impossible values. What the counters do with a register above its count range is not stated anywhere in it, so the underflow this package models rests on the recording and nothing more.",
         "spc7110Mapping": "The manual describes a three-wire serial interface on CE, CLK and DATA. How the SPC7110 turns that into the three cartridge addresses 0x4840, 0x4841 and 0x4842 is not an Epson matter and appears in no document Epson publishes. Every fact about that mapping is corpus evidence.",
-        "catchUpOnDisable": "Nothing in the manual describes a clock that recomputes elapsed time when CE falls, because a real part counts continuously and has nothing to catch up. The catch-up this package performs is an artefact of modelling a continuously running counter with a wall-clock reading taken at intervals, and its placement is corpus evidence."
+        "catchUpOnDisable": "Nothing in the manual describes a clock that recomputes elapsed time when CE falls, because a real part counts continuously and has nothing to catch up. The catch-up this package performs is an artefact of modelling a continuously running counter with a wall-clock reading taken at intervals, and its placement is corpus evidence.",
+        "resetLineVersusResetBit": "The manual documents a RESET bit in control register F, which zeroes the seconds and stops the clock, and that is not what this package's `reset()` models. `reset()` is the console's reset line reaching the part: it closes any session, clears the enable and status latches, and leaves every counter alone, because a reset line does not cut battery power. The manual describes the register bit and says nothing about the line, so the second behaviour rests on the reference implementation. Settled by a logic capture while the console is reset mid-session."
       },
       "documents": {
         "applicationManual": {
@@ -547,7 +548,10 @@
         }
       },
       "documents": {},
-      "documentsNote": "Empty on purpose. No manufacturer document for this part is known to exist; the search and its date are recorded under unverified below. An empty block says there is nothing to cite, where a missing one would be indistinguishable from nobody having filled it in."
+      "documentsNote": "Empty on purpose. No manufacturer document for this part is known to exist; the search and its date are recorded under unverified below. An empty block says there is nothing to cite, where a missing one would be indistinguishable from nobody having filled it in.",
+      "notStated": {
+        "whatTheResetLineDoes": "No document for this part is known to exist, so nothing states what its chip-enable or the console's reset line does to a conversation in progress. What this package models, putting the read sequence back to its start and catching the clock up, is inherited from the reference implementation. It is not the same event as a power cycle: the part is battery-backed, and the stored time is not touched. Settled by a logic capture while the console's reset line is pulsed mid-sequence."
+      }
     }
   ],
   "documents": {},
