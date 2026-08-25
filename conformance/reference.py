@@ -516,6 +516,14 @@ class Tally:
             yield f"  not compared past {name}, reached by {count} scripts"
 
 
+REPORTED_FAILURES = 10
+"""How many disagreements one part reports before it stops naming them.
+
+The eleventh adds nothing a reader can act on, and a wrong driver produces one
+per script. The run still fails; it just stops printing.
+"""
+
+
 def sweep(part: str, chosen: Options, known: set[str]) -> Tally:
     """One part driven on its own, because no cartridge ever carried both."""
     tally = Tally(part)
@@ -536,8 +544,8 @@ def sweep(part: str, chosen: Options, known: set[str]) -> Tally:
         tally.failed += 1
         index, expected, actual = found[0]
         print(f"FAIL {part} seed {seed} at line {index}: reference {expected}, model {actual}")
-        if tally.failed >= 10:
-            break
+        if tally.failed >= REPORTED_FAILURES:
+            return tally
     return tally
 
 
