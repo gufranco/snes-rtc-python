@@ -6,7 +6,11 @@
       "the recording, for behaviour the document does not specify: what the counters do when a cartridge holds a value outside a documented range, and how the SPC7110 wraps the Epson part",
       "neither overrides the other, because they answer different questions"
     ],
-    "why": "The recording this project compares against is taken from an emulator, named in pinned.json, and is produced live rather than stored, so there is no corpus file to drift. An emulator is a good source for behaviour nobody documented and a poor one for facts the manufacturer printed. Where the two disagree the document wins, and the disagreement is recorded in divergences.json rather than settled quietly."
+    "why": "The recording this project compares against is taken from an emulator, named in pinned.json, and is produced live rather than stored, so there is no corpus file to drift. An emulator is a good source for behaviour nobody documented and a poor one for facts the manufacturer printed. Where the two disagree the document wins, and the disagreement is recorded in divergences.json rather than settled quietly.",
+    "comparedAgainst": {
+      "runner": "conformance/reference.py",
+      "what": "An independent implementation, built from a pinned commit, driven through the same operations."
+    }
   },
   "parts": [
     {
