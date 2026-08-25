@@ -26,7 +26,7 @@
   <a href="https://github.com/gufranco/snes-rtc-python/issues">Issues</a>
 </p>
 
-**2** clocks · **329,630** operations compared against the reference, **0** disagreements · **15** places the manual and that reference part, each one written down · **549** tests · **100%** statement and branch coverage · no dependencies
+**2** clocks · **329,630** operations compared against the reference, **0** disagreements · **15** places the manual and that reference part, each one written down · **554** tests · **100%** statement and branch coverage · no dependencies
 
 ```python
 from snesrtc import Chip
