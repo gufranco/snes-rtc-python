@@ -348,7 +348,7 @@ class RegisterWitnessTest(unittest.TestCase):
     def test_the_adjustment_bit_is_named(self) -> None:
         found = reference._witness_register(self.held(), epson.CD, epson.ADJUST)
 
-        self.assertIn("epson-thirty-second-adjust-lockout-unmodelled", found)
+        self.assertIn("epson-thirty-second-adjust-lockout", found)
 
     def test_the_range_bit_is_named(self) -> None:
         found = reference._witness_register(self.held(), epson.CD, epson.CAL_HW)
@@ -384,7 +384,7 @@ class ReadWitnessTest(unittest.TestCase):
 
         found = reference.witness(cartridge, ("w", epson.DATA, reference.CONFIGURED_CF))
 
-        self.assertIn("epson-read-and-write-flags-unmodelled", found)
+        self.assertIn("epson-oscillation-flag-cannot-be-originated", found)
 
 
 class UndeclaredTest(unittest.TestCase):

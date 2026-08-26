@@ -295,7 +295,7 @@ class Chip:
         happens at once and the bit is stored clear, which is what a program
         polling for it to revert would eventually see. The lockout on writes to
         S1 through W during that window is not modelled, and divergences.json
-        records why under epson-thirty-second-adjust-lockout-unmodelled.
+        records why under epson-thirty-second-adjust-lockout.
         """
         held = self.store.read(CD) & NIBBLE
         settled = (value & ~IRQ_F & ~ADJUST & NIBBLE) | (held & IRQ_F)

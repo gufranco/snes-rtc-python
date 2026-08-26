@@ -1,7 +1,7 @@
 {
   "note": "Every place the manufacturer's documentation and the pinned reference implementation disagree, or where this package models something neither settles. Each entry names what the document says, what the reference does, which one this package follows, and what evidence would close the question. Nothing here is resolved by preference. An entry stays open until a rung the authority ladder recognises settles it.",
   "authority": "hardware.json holds the ladder. Rung 1 is the manufacturer, rung 2 is the part or its own program, rung 3 is a recording from an independent implementation, rung 4 is nothing. Where rung 1 speaks, it wins and the recording is retaken.",
-  "readOn": "2026-08-25",
+  "readOn": "2026-08-26",
   "divergences": [
     {
       "id": "epson-cd-bit1-add-second",
@@ -104,10 +104,10 @@
       "parts": ["Epson RTC-4513"]
     },
     {
-      "id": "epson-twelve-hour-mode-unmodelled",
-      "severity": "unmodelled",
-      "status": "open",
-      "topic": "Twelve-hour notation, selected by bit 2 of control register F.",
+      "id": "epson-twelve-hour-mode-transient",
+      "severity": "low",
+      "status": "narrowed",
+      "topic": "What the hour registers hold between changing CF bit 2 and the reset the manual demands.",
       "documentSays": {
         "rung": 1,
         "claim": "The part runs in twelve-hour notation whenever CF bit 2 is clear, with PM/AM in H10 bit 2, h20 held at zero and never incremented, and settings running 12 a.m. to 11 a.m. and 12 p.m. to 11 p.m.",
@@ -120,7 +120,7 @@
         "source": "pinned.json"
       },
       "packageFollows": "document",
-      "consequence": "Because the register file powers up undefined, a cartridge whose CF bit 2 happens to be clear runs in twelve-hour notation until a program sets it. That is the state the manual's own power-on procedure exists to escape, and a model that ignores the bit cannot reproduce a cartridge that never ran the procedure.",
+      "consequence": "Twelve-hour notation is modelled. The hour reads and writes through the PM/AM bit with h20 held at zero, every hour of the day round-trips, and tests pin midnight to twelve a.m. and noon to twelve p.m. What is left is narrower than the entry used to claim: the manual says data above H1 can become unstable when the bit is changed and must be reset, and unstable is not a value, so this package leaves the registers as they were.",
       "openQuestion": "The manual says data above H1 can become unstable when the bit is changed and must be reset. Unstable is not a value, so what a real part reads back between the change and the reset is not determined by any document. This package leaves the registers as they were and does not invent an instability.",
       "wouldSettleIt": [
         "A logic capture toggling CF bit 2 with a known time loaded, read back immediately."
@@ -129,10 +129,10 @@
       "parts": ["Epson RTC-4513"]
     },
     {
-      "id": "epson-read-and-write-flags-unmodelled",
-      "severity": "unmodelled",
-      "status": "open",
-      "topic": "The fr read flag and the fo oscillator flag.",
+      "id": "epson-oscillation-flag-cannot-be-originated",
+      "severity": "low",
+      "status": "notModelled",
+      "topic": "The fo oscillator flag, which only a power event can set.",
       "documentSays": {
         "rung": 1,
         "claim": "fr is cleared when CE falls and set when the 1-second digit increments while CE is high, so a program can tell whether the reading it just took straddled a tick. fo records an oscillation interruption and is used to detect a flat battery.",
@@ -145,7 +145,7 @@
         "source": "pinned.json"
       },
       "packageFollows": "document",
-      "consequence": "fr now clears when the enable register is written low and sets when a catch-up crosses a second boundary during an open session. fo is left as the store holds it, because an oscillation interruption is a battery event this package has no way to originate.",
+      "consequence": "The fr read flag is modelled: it clears when the enable register is written low and sets when a catch-up crosses a second boundary during an open session, which is what lets a program tell that its reading straddled a tick. fo is not, and cannot be: an oscillation interruption is a battery event, and a clock driven by an injected reading never has one. It stays readable and writable and is never set by the model.",
       "openQuestion": "fo can only be set by a real power event. A model driven by an injected clock never has one, so the flag is readable and writable here and never set by the model itself. That is a limit of the modelling, not a claim about the part.",
       "wouldSettleIt": [
         "A logic capture holding CE high across a second boundary and reading MI10 bit 3."
@@ -154,9 +154,9 @@
       "parts": ["Epson RTC-4513"]
     },
     {
-      "id": "epson-thirty-second-adjust-lockout-unmodelled",
-      "severity": "unmodelled",
-      "status": "open",
+      "id": "epson-thirty-second-adjust-lockout",
+      "severity": "low",
+      "status": "notModelled",
       "topic": "The 125 microsecond window after a 30-second adjust.",
       "documentSays": {
         "rung": 1,
@@ -170,7 +170,7 @@
         "source": "pinned.json"
       },
       "packageFollows": "document, partially",
-      "consequence": "The adjust bit now clears rather than latching, so the manual's polling loop terminates. The 125 microsecond lockout itself is not modelled.",
+      "consequence": "The adjustment itself is modelled and so is the bit: it clears rather than latching, so the manual's polling loop terminates, and the rounding either side of the half minute is tested. The 125 microsecond lockout is not modelled and cannot be here, because this clock is driven by a wall-clock reading in whole seconds and a microsecond window has no unit to be measured in.",
       "openQuestion": "Modelling the lockout needs a time base this package does not have. The clock is driven by an injected wall-clock reading in whole seconds, not by a cycle counter, so a 125 microsecond window has no unit to be measured in here. Closing this needs the caller to supply sub-second time, which would change the package's interface.",
       "wouldSettleIt": [
         "A decision to give the model a sub-second time base, at which point the window is directly implementable from the quoted figure.",

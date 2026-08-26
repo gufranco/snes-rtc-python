@@ -405,5 +405,70 @@ class DivergenceTest(unittest.TestCase):
         self.assertEqual(unknown, [])
 
 
+class RecordSaysWhatTheModelDoesTest(unittest.TestCase):
+    """That an entry claiming something is absent is checked against the model.
+
+    Three entries here once said twelve-hour notation, the read flag and the
+    adjust bit were unmodelled. All three were implemented and tested, and the
+    record went on saying otherwise for as long as nobody drove it. A claim about
+    the code that no test reads is a claim that rots, so each of these now drives
+    the behaviour first and holds the record to what it finds.
+    """
+
+    def divergences(self) -> list[dict[str, object]]:
+        where = Path(__file__).resolve().parent / "divergences.json"
+        held: list[dict[str, object]] = json.loads(where.read_text())["divergences"]
+        return held
+
+    def a_chip(self) -> epson.Chip:
+        return epson.Chip(store.Store())
+
+    def in_twelve_hour_notation(self, chip: epson.Chip) -> epson.Chip:
+        chip.store.write(epson.CF, chip.store.read(epson.CF) & ~epson.HOURS_24 & epson.NIBBLE)
+        return chip
+
+    def test_every_hour_of_the_day_survives_twelve_hour_notation(self) -> None:
+        chip = self.in_twelve_hour_notation(self.a_chip())
+
+        read_back = []
+        for hour in range(24):
+            chip.store_hour(hour)
+            read_back.append(chip.hour())
+
+        self.assertEqual(read_back, list(range(24)))
+
+    def test_and_the_tens_of_hours_bit_stays_down_throughout(self) -> None:
+        chip = self.in_twelve_hour_notation(self.a_chip())
+
+        tens = []
+        for hour in range(24):
+            chip.store_hour(hour)
+            tens.append(chip.digit(epson.H10) & 0x2)
+
+        self.assertEqual(tens, [0] * 24)
+
+    def test_so_no_entry_calls_that_notation_unmodelled(self) -> None:
+        named = [
+            one["id"]
+            for one in self.divergences()
+            if "twelve" in str(one["id"]) and "unmodelled" in str(one["id"])
+        ]
+
+        self.assertEqual(named, [])
+
+    def test_no_entry_at_all_calls_something_unmodelled_in_its_name(self) -> None:
+        """The word belongs in a status, where a reader can see what it scopes."""
+        named = [one["id"] for one in self.divergences() if "unmodelled" in str(one["id"])]
+
+        self.assertEqual(named, [])
+
+    def test_every_entry_carries_a_status_the_family_recognises(self) -> None:
+        allowed = {"open", "closed", "narrowed", "notModelled", "notADisagreement", "acknowledged"}
+
+        stray = [one["id"] for one in self.divergences() if one.get("status") not in allowed]
+
+        self.assertEqual(stray, [])
+
+
 if __name__ == "__main__":
     unittest.main()

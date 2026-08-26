@@ -4,7 +4,7 @@ The two real-time clocks a Super Nintendo cartridge could carry. One is held to 
 
 [![CI](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml)
 
-**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places the manual and that reference part, each one written down, **721** tests, **100%** statement and branch coverage, no dependencies
+**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places the manual and that reference part, each one written down, **726** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from snesrtc import Chip
@@ -335,7 +335,7 @@ It reports one line per part, and the two lines look very different on purpose:
 ```
 epson: 200 scripts, 6130 operations compared, 9772 not compared, 0 disagreed
   not compared past epson-digit-fields-narrower-than-registers, reached by 195 scripts
-  not compared past epson-read-and-write-flags-unmodelled, reached by 134 scripts
+  not compared past epson-oscillation-flag-cannot-be-originated, reached by 134 scripts
   ...
 sharp: 200 scripts, 323500 operations compared, 155 not compared, 0 disagreed
   not compared past stamp-width-platform-dependent, reached by 2 scripts

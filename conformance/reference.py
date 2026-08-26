@@ -194,7 +194,7 @@ def witness(cartridge: Cartridge, operation: Operation) -> set[str]:
         if held.read(epson.CF) & epson.TEST:
             found.add("epson-test-bit-not-cleared")
         if any(held.read(at) & epson.READ_FLAG for at in epson.READ_FLAG_AT):
-            found.add("epson-read-and-write-flags-unmodelled")
+            found.add("epson-oscillation-flag-cannot-be-originated")
 
     reading_control_d = (
         verb == "r"
@@ -209,7 +209,7 @@ def witness(cartridge: Cartridge, operation: Operation) -> set[str]:
         found |= _witness_state(held)
         closing = verb == "w" and first == epson.ENABLE
         if not closing and _would_advance(cartridge):
-            found.add("epson-read-and-write-flags-unmodelled")
+            found.add("epson-oscillation-flag-cannot-be-originated")
     return found
 
 
@@ -264,7 +264,7 @@ def _witness_register(held: store.Store, index: int, value: int) -> set[str]:
     if value & epson.IRQ_F:
         found.add("epson-irqf-not-writable")
     if value & epson.ADJUST:
-        found.add("epson-thirty-second-adjust-lockout-unmodelled")
+        found.add("epson-thirty-second-adjust-lockout")
     if value & epson.CAL_HW:
         found.add("epson-cd-bit1-add-second")
     if (value ^ held.read(epson.CD)) & epson.HOLD:
@@ -287,7 +287,7 @@ def _witness_state(held: store.Store) -> set[str]:
     if held.read(epson.CD) & epson.HOLD:
         found.add("epson-hold-discards-elapsed-time")
     if not held.read(epson.CF) & epson.HOURS_24:
-        found.add("epson-twelve-hour-mode-unmodelled")
+        found.add("epson-twelve-hour-mode-transient")
     return found
 
 
