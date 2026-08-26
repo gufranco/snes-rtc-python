@@ -56,10 +56,33 @@ catch-up.
 
 **What this project follows.** The document.
 
+**The cartridge writes it.** That half is settled, and it was the half that
+bounded how much the answer matters. Read out of the shipped program's own code
+on 2026-08-25, without running any of it, the routine that initialises the clock
+runs this sequence:
+
+| Write | Value | Bits |
+|:--|--:|:--|
+| CD | `0x01` | HOLD |
+| CE | `0x0f` | none named |
+| CF | `0x07` | RESET, STOP, HOURS_24 |
+| the thirteen clock registers, from a table | | |
+| CF | `0x04` | HOURS_24 |
+| CD | `0x06` | CAL_HW, IRQ_F |
+
+So the last thing the routine does is set CAL/HW. Under the recording's reading
+that gains a second every time a clock is initialised in the one title carrying
+this part; under the manual's it selects the counter chain. The two readings part
+company in a shipped game rather than only in principle.
+
+The reading is in [`conformance/cartridge.json`](conformance/cartridge.json) with
+the cartridge's four digests and none of its bytes, and
+[`conformance/cartridge.py`](conformance/cartridge.py) reproduces it from a copy
+you own.
+
 **What would settle or reopen it.** A logic capture while CAL/HW is toggled,
-showing whether the second counter moves. A read of the shipped cartridge program
-would bound how much the answer matters, by establishing whether it ever writes
-the bit at all.
+showing whether the second counter moves. What the cartridge could answer, it
+has: the bit is written. What the silicon does with it needs the capture.
 
 ### What HOLD does to the time that passes while it is set.
 
@@ -71,6 +94,18 @@ that was suppressed.
 second that passes while it is set.
 
 **What this project follows.** The document.
+
+**What the cartridge does with it.** Asserts it across a register load and
+releases it afterwards, which is the usage the manual describes. The clock
+initialisation opens with `CD = 0x01`, which is HOLD on its own, writes the
+thirteen clock registers, and closes with `CD = 0x06`, which drops HOLD in the
+same write that raises CAL/HW. That is a program using HOLD as a shutter over the
+visible digit, not as a way to stop the clock.
+
+It does not settle the question. A routine that is about to overwrite every clock
+register does not care whether the seconds behind the shutter kept running, so
+the sequence is consistent with either reading. What it does rule out is the idea
+that no shipped program uses the bit.
 
 **What would settle or reopen it.** A capture with HOLD asserted across a minute
 boundary and then released.

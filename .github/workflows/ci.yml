@@ -142,6 +142,25 @@ jobs:
       - name: Coverage must be total
         run: python -m coverage report
 
+      # The reading is checked into the tree, so this confirms it still says what
+      # the record cites it for rather than re-deriving it from a cartridge nobody
+      # can be assumed to hold. Re-deriving it needs conformance/cartridge.py.
+      - name: The cartridge still writes the bits the record cites
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          sys.path.insert(0, 'conformance')
+          from conformance import cartridge
+          found = cartridge.recorded()
+          assert found, 'the reading is missing from the tree'
+          bits = [bit for one in found['controls'] for bit in one['bits']]
+          for wanted in ('HOLD', 'CAL_HW'):
+              assert wanted in bits, wanted
+          print(f\"  {len(found['controls'])} control writes read from the cartridge: {' '.join(bits)}\")
+          "
+        shell: bash
+
       # No document is redistributable, so none is here and this checks nothing
       # on a runner. It says so rather than reporting a pass: the value is that
       # somebody running it with the manual on disk gets a real answer, and that

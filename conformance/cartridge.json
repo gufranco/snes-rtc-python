@@ -1,0 +1,73 @@
+{
+  "note": "What the shipped program does to the clock, read out of its own code without running any of it. No cartridge byte is recorded here.",
+  "readFrom": {
+    "name": "Tengai Makyou Zero (Japan).sfc",
+    "bytes": 5242880,
+    "crc32": "1e327bd9",
+    "md5": "29998124a67deda111d5aca8aaf5dca5",
+    "sha1": "91ff16da242d39736aead4d360bf6bf7c0afce82",
+    "sha256": "8620203da71d32d017bb21f542864c1d90705b87eb67815d06b43f09120318aa"
+  },
+  "routineAt": "0x002d62",
+  "ports": {
+    "0x4840 read": 2,
+    "0x4840 write": 18,
+    "0x4841 read": 7,
+    "0x4841 write": 17,
+    "0x4842 read": 33,
+    "0x4842 write": 1
+  },
+  "modes": {
+    "write": "0x03",
+    "read": "0x0c"
+  },
+  "writes": [
+    {
+      "index": "0x0d",
+      "value": "0x01"
+    },
+    {
+      "index": "0x0e",
+      "value": "0x0f"
+    },
+    {
+      "index": "0x0f",
+      "value": "0x07"
+    },
+    {
+      "index": "0x0f",
+      "value": "0x04"
+    },
+    {
+      "index": "0x0d",
+      "value": "0x06"
+    }
+  ],
+  "controls": [
+    {
+      "register": "CD",
+      "value": "0x01",
+      "bits": ["HOLD"]
+    },
+    {
+      "register": "CE",
+      "value": "0x0f",
+      "bits": []
+    },
+    {
+      "register": "CF",
+      "value": "0x07",
+      "bits": ["RESET", "STOP", "HOURS_24"]
+    },
+    {
+      "register": "CF",
+      "value": "0x04",
+      "bits": ["HOURS_24"]
+    },
+    {
+      "register": "CD",
+      "value": "0x06",
+      "bits": ["CAL_HW", "IRQ_F"]
+    }
+  ]
+}

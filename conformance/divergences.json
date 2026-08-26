@@ -1,7 +1,7 @@
 {
   "note": "Every place the manufacturer's documentation and the pinned reference implementation disagree, or where this package models something neither settles. Each entry names what the document says, what the reference does, which one this package follows, and what evidence would close the question. Nothing here is resolved by preference. An entry stays open until a rung the authority ladder recognises settles it.",
   "authority": "hardware.json holds the ladder. Rung 1 is the manufacturer, rung 2 is the part or its own program, rung 3 is a recording from an independent implementation, rung 4 is nothing. Where rung 1 speaks, it wins and the recording is retaken.",
-  "readOn": "2026-08-20",
+  "readOn": "2026-08-25",
   "divergences": [
     {
       "id": "epson-cd-bit1-add-second",
@@ -20,10 +20,10 @@
         "source": "pinned.json"
       },
       "packageFollows": "document",
-      "consequence": "A program that sets CAL/HW no longer gains a spurious second. The one shipped Epson cartridge is not known to write this bit, so no observable difference in a real title has been demonstrated either way.",
+      "consequence": "A program that sets CAL/HW no longer gains a spurious second. The shipped cartridge does set it: read out of its own code on 2026-08-25, the routine that initialises the clock ends by writing CD = 0x06, which is CAL_HW together with IRQ_F. So the two readings part company every time that title initialises its clock, and the reference gains a second there that this package does not.",
       "wouldSettleIt": [
         "A logic capture of the RTC-4513 on real hardware while CAL/HW is toggled, showing whether the second counter moves.",
-        "A read of the shipped cartridge program establishing whether it ever writes this bit at all, which would bound how much the answer matters."
+        "Settled as far as the cartridge can settle it. conformance/cartridge.py reads the program and it writes CD = 0x06. What is left is what the silicon does with the bit, which only a capture answers."
       ],
       "why": "Nothing in the manual attaches any time adjustment to CAL/HW, and the only documented software adjustment is the 30-second adjust on bit 3, which this package already models and the manual confirms. An add-a-second function on bit 1 appears in no Epson document.",
       "parts": ["Epson RTC-4513"]
@@ -46,10 +46,10 @@
         "source": "pinned.json"
       },
       "packageFollows": "document",
-      "consequence": "A clock held for an hour now returns an hour later when released, rather than an hour behind. This is the divergence most likely to be observable in a shipped title, because setting the clock is the one thing a game does with these bits.",
+      "consequence": "A clock held for an hour now returns an hour later when released, rather than an hour behind. The shipped cartridge uses HOLD deliberately: its clock initialisation opens with CD = 0x01, which is HOLD alone, loads the thirteen clock registers, and closes with CD = 0x06, which releases HOLD in the same write that sets CAL/HW. That is HOLD wrapped around a register load, which is what the manual describes it for.",
       "wouldSettleIt": [
         "A logic capture of the part with HOLD asserted across a minute boundary and then released.",
-        "A read of the shipped cartridge program's clock-setting routine, to see whether it follows the manual's HOLD procedure or the STOP and RESET procedure."
+        "The shipped program's clock routine has been read and it asserts HOLD across the load and releases it after, which is the manual's usage. What it cannot show is whether the counters behind the held digit kept running."
       ],
       "why": "STOP and RESET are the manual's stop conditions and both say so in those words. HOLD says the opposite in its own first sentence.",
       "parts": ["Epson RTC-4513"]
