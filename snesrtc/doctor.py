@@ -133,7 +133,7 @@ def _package() -> Finding:
 
 
 def _default_build(name: str, **options: Any) -> models.Built:
-    return models.describe(name).build(**options)
+    return models.lookup(name).build(**options)
 
 
 def _clock(name: str, build: Callable[..., object]) -> Finding:
@@ -148,7 +148,7 @@ def _clock(name: str, build: Callable[..., object]) -> Finding:
             "this is the clock failing to build rather than anything to do with a"
             " reference; the line above is what it said",
         )
-    described = models.describe(name)
+    described = models.lookup(name)
     where = ", ".join(f"{one:#06x}" for one in described.addresses)
     return Finding(
         name,
@@ -194,7 +194,7 @@ def _foreign(build: Callable[..., Addressed]) -> Finding:
     """
     try:
         built = build(WITNESS)
-        elsewhere = max(models.describe(WITNESS).addresses) + 1
+        elsewhere = max(models.lookup(WITNESS).addresses) + 1
         expected = getattr(built, "open_bus", 0x00)
         answered = built.read(elsewhere)
     except Exception as trouble:

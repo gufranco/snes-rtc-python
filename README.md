@@ -4,7 +4,7 @@ The two real-time clocks a Super Nintendo cartridge could carry. One is held to 
 
 [![CI](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml)
 
-**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places the manual and that reference part, each one written down, **726** tests, **100%** statement and branch coverage, no dependencies
+**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places the manual and that reference part, each one written down, **730** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from snesrtc import Chip
@@ -37,7 +37,7 @@ rather than revisions of one another.
 
 | Call | Does | Returns |
 |:--|:--|:--|
-| `describe(name)` | The clock behind a name or an alias | a `Model` |
+| `MODELS` | Every clock this package covers, by the name it goes by | a mapping |
 | `model.build(store=None, now=...)` | Builds one, over a store it is given or one of its own | a `Chip` |
 | `clock.read(address)` | Reads at one of the addresses that part answers | `int` |
 | `clock.write(address, value)` | Writes at one of them | nothing |
@@ -56,10 +56,10 @@ matter, and each part answers to what people call it: `srtc`, `sharp`,
 `rtc4513`, `epson`, `spc7110`.
 
 ```python
-from snesrtc import Chip, describe
+from snesrtc import MODELS
 
-print(sorted(describe("s-rtc").aliases))
-print(sorted(describe("rtc-4513").aliases))
+print(sorted(MODELS["s-rtc"].aliases))
+print(sorted(MODELS["rtc-4513"].aliases))
 ```
 
 ```

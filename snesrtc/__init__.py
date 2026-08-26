@@ -22,13 +22,13 @@ from . import models as models
 from . import sharp as sharp
 from . import store as store
 from .errors import UnknownModelError
-from .models import DEFAULT_MODEL, MODELS, Built, Model, describe
+from .models import MODELS, Built, Model
 from .store import Store
 from .version import VERSION
 
 
 def Chip(  # noqa: N802
-    model: str = DEFAULT_MODEL, store: Store | None = None, **options: Any
+    model: str | None = None, store: Store | None = None, **options: Any
 ) -> Built:
     """A clock of the named model, sharing one interface across the family.
 
@@ -42,18 +42,16 @@ def Chip(  # noqa: N802
     accesses; they do not execute anything, and calling the constructor `Cpu`
     would say they did.
     """
-    return describe(model).build(Store() if store is None else store, **options)
+    return models.lookup(model).build(Store() if store is None else store, **options)
 
 
 __version__ = VERSION
 
 __all__ = [
-    "DEFAULT_MODEL",
     "MODELS",
     "Chip",
     "Model",
     "Store",
     "UnknownModelError",
     "__version__",
-    "describe",
 ]

@@ -74,14 +74,14 @@ class OneHomeTest(unittest.TestCase):
         from snesrtc import models
 
         with self.assertRaises(errors.UnknownModelError):
-            models.describe("rtc-62421")
+            models.lookup("rtc-62421")
 
     def test_and_the_refusal_names_the_clocks_it_does_cover(self) -> None:
         """A refusal that does not say what would have worked costs a search."""
         from snesrtc import models
 
         with self.assertRaises(errors.UnknownModelError) as caught:
-            models.describe("rtc-62421")
+            models.lookup("rtc-62421")
 
         self.assertIn("s-rtc", str(caught.exception))
 
