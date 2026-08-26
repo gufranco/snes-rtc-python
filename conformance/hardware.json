@@ -1,5 +1,5 @@
 {
-  "note": "What the manufacturer's own documentation says these clocks are. Every figure here was read out of the document named beside it rather than taken from an implementation of it, and each one carries the sentence or table row it came from so a later reader can check the reading rather than trusting it. This file is the authority on what a part IS. The recording, produced live by running the implementation pinned in pinned.json through the driver in ref/, is the authority on what a part DOES where the document is silent. When an implementation disagrees with this file, the implementation is wrong, no matter how widely used it is; divergences.json records every place that has happened here.",
+  "note": "What the manufacturer's own documentation says these clocks ARE. The recording, produced live by running the implementation pinned in pinned.json through the driver in ref/, is the authority on what a part DOES where the document is silent. When an implementation disagrees with this file, the implementation is wrong, no matter how widely used it is; divergences.json records every place that has happened here.",
   "authority": {
     "order": [
       "hardware.json, for anything the manufacturer states: register widths, count ranges, control bit function, power-on state, protocol framing",
