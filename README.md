@@ -1,32 +1,10 @@
-<div align="center">
+# SNES Cartridge Clocks
 
-<h1>SNES Cartridge Clocks</h1>
-
-<strong>The two real-time clocks a Super Nintendo cartridge could carry. One is held to its manufacturer's application manual. The other has no manual, and this says so on every page.</strong>
-
-<br>
-<br>
+The two real-time clocks a Super Nintendo cartridge could carry. One is held to its manufacturer's application manual. The other has no manual, and this says so on every page.
 
 [![CI](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml)
-[![Manual](https://img.shields.io/badge/RTC--4513-Epson%20application%20manual-brightgreen)](#where-each-answer-comes-from)
-[![S-RTC](https://img.shields.io/badge/S--RTC-no%20manufacturer%20document-orange)](#the-sharp-part-has-no-datasheet)
-[![Coverage](https://img.shields.io/badge/coverage-100%25%20statement%20%2B%20branch-brightgreen)](#tests)
-[![Types](https://img.shields.io/badge/mypy-strict-blue)](pyproject.toml)
-[![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue)](pyproject.toml)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-</div>
-
-<p align="center">
-  <a href="#install">Install</a> &nbsp;|&nbsp;
-  <a href="#the-interface">The interface</a> &nbsp;|&nbsp;
-  <a href="#where-each-answer-comes-from">Where each answer comes from</a> &nbsp;|&nbsp;
-  <a href="#what-the-manual-caught">What the manual caught</a> &nbsp;|&nbsp;
-  <a href="#is-it-right">Is it right</a> &nbsp;|&nbsp;
-  <a href="https://github.com/gufranco/snes-rtc-python/issues">Issues</a>
-</p>
-
-**2** clocks · **329,630** operations compared against the reference, **0** disagreements · **15** places the manual and that reference part, each one written down · **721** tests · **100%** statement and branch coverage · no dependencies
+**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places the manual and that reference part, each one written down, **721** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from snesrtc import Chip
