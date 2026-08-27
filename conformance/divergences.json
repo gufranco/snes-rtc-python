@@ -169,7 +169,7 @@
         "claim": "Performs the adjustment immediately and stores the written bit, so it reads back as 1 forever rather than for 125 microseconds.",
         "source": "pinned.json"
       },
-      "packageFollows": "document, partially",
+      "packageFollows": "document",
       "consequence": "The adjustment itself is modelled and so is the bit: it clears rather than latching, so the manual's polling loop terminates, and the rounding either side of the half minute is tested. The 125 microsecond lockout is not modelled and cannot be here, because this clock is driven by a wall-clock reading in whole seconds and a microsecond window has no unit to be measured in.",
       "openQuestion": "Modelling the lockout needs a time base this package does not have. The clock is driven by an injected wall-clock reading in whole seconds, not by a cycle counter, so a 125 microsecond window has no unit to be measured in here. Closing this needs the caller to supply sub-second time, which would change the package's interface.",
       "wouldSettleIt": [
@@ -310,7 +310,7 @@
     },
     {
       "id": "sharp-part-undocumented",
-      "severity": "unverified",
+      "severity": "unchecked",
       "status": "open",
       "topic": "Every behaviour of the Sharp clock.",
       "documentSays": {
@@ -335,7 +335,7 @@
     {
       "id": "stamp-width-platform-dependent",
       "parts": ["Sharp S-RTC", "Epson RTC-4513"],
-      "severity": "recorderArtefact",
+      "severity": "low",
       "status": "open",
       "topic": "How an interval longer than half the stamp's range is read.",
       "documentSays": {
