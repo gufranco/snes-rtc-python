@@ -81,6 +81,12 @@ class Addressed(Protocol):
     def read(self, address: int) -> int: ...
 
 
+class Resettable(Protocol):
+    """A thing the console's reset line can reach."""
+
+    def reset(self) -> object: ...
+
+
 Builder = Callable[..., models.Built]
 """What examine is given: something that builds a real clock by name.
 
@@ -136,10 +142,17 @@ def _default_build(name: str, **options: Any) -> models.Built:
     return models.lookup(name).build(**options)
 
 
-def _clock(name: str, build: Callable[..., object]) -> Finding:
-    """Whether that clock builds, saying exactly what stopped it if not."""
+def _clock(name: str, build: Callable[..., Resettable]) -> Finding:
+    """Whether that clock builds and resets, saying what stopped it if not.
+
+    The reset is driven rather than described. It is the console's line reaching
+    a battery-backed part, so it puts the command sequence back to its start and
+    leaves everything stored alone, and a report that never pulled it has said
+    nothing about the one event a cartridge causes on every boot.
+    """
     try:
         built = build(name)
+        built.reset()
     except Exception as trouble:
         return Finding(
             name,
@@ -154,7 +167,7 @@ def _clock(name: str, build: Callable[..., object]) -> Finding:
         name,
         True,
         f"answers {where}, protocol {described.protocol.__module__.rsplit('.', 1)[-1]},"
-        f" model {getattr(built, 'model', name)}",
+        f" model {getattr(built, 'model', name)}, and resets",
     )
 
 

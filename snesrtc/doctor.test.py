@@ -6,10 +6,11 @@ import tempfile
 import unittest
 import unittest.mock
 from pathlib import Path
+from typing import NoReturn, override
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from snesrtc import doctor, models
+from snesrtc import doctor, models, sharp, store
 
 
 class Complaint(Exception):
@@ -99,6 +100,26 @@ class ExamineTest(unittest.TestCase):
         for one in doctor.examine():
             if one.name == "s-rtc":
                 self.assertIn("0x2800", one.detail)
+
+    def test_and_says_the_reset_line_was_pulled(self) -> None:
+        """Driven rather than described, so a reset that stopped working shows here."""
+        found = [one for one in doctor.examine() if one.name == "s-rtc"]
+
+        self.assertIn("and resets", found[0].detail)
+
+    def test_a_clock_that_builds_and_will_not_reset_is_reported_as_broken(self) -> None:
+        class WillNotReset(sharp.Chip):
+            @override
+            def reset(self) -> NoReturn:
+                raise Complaint("the line did nothing")
+
+        found = [
+            one
+            for one in doctor.examine(build=lambda name, **options: WillNotReset(store.Store()))
+            if one.name == "s-rtc"
+        ]
+
+        self.assertFalse(found[0].ok)
 
 
 class TimeSourceTest(unittest.TestCase):
