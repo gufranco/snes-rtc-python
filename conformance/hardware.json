@@ -293,7 +293,8 @@
               "remarks": "Control register F"
             }
           ],
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "assembled": true
         },
         "weekdayCountsZeroToSix": {
           "value": [0, 6],
@@ -454,7 +455,8 @@
           "quote": "Frequency tolerance, Ta=25 degrees C, VDD=3.0V, 0 plus or minus 25 ppm",
           "quoteIsParaphrasedLayout": "The manual prints this as a table row whose condition column is an empty rule. The figures, symbol and units are transcribed exactly; only the empty cell is dropped.",
           "why": "A property of the module, which carries its own crystal. This is the figure that bounds how far a real cartridge drifts, and it is recorded here rather than modelled: see divergences.json entry epson-drift-not-modelled.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "assembled": true
         },
         "temperatureCoefficientPpmPerCelsiusSquared": {
           "value": -0.035,
@@ -462,7 +464,8 @@
           "peakTemperatureCelsius": 25,
           "peakToleranceCelsius": 5,
           "quote": "Secondary temperature coefficient (-0.035 plus or minus 0.005 per degree C squared)",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "assembled": true
         },
         "dailyErrorSeconds": {
           "value": 1,
@@ -475,14 +478,16 @@
           "maximum": 5.5,
           "unit": "V",
           "quote": "Power supply voltage, VDD, 2.7 to 5.5 V",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "assembled": true
         },
         "dataRetentionVoltage": {
           "minimum": 2.0,
           "maximum": 5.5,
           "unit": "V",
           "quote": "Clock power supply voltage, VCLK, 2.0 to 5.5 V",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "assembled": true
         }
       },
       "notStated": {
@@ -504,7 +509,8 @@
           "bytes": 509740,
           "pages": 18,
           "note": "A fax of the manufacturer's application manual, transmitted by Epson Europe Electronics on 1999-12-01. Manual pages 1 through 16 were transmitted and read. The contents page lists a page 17 of handling and packaging notes that the transmission does not include; it covers static electricity, soldering and mounting, and carries no behavioural content.",
-          "file": "rtc4513.pdf"
+          "file": "rtc4513.pdf",
+          "itIsAPhotograph": "The transmission carries no text layer at all, so nothing can search it and a citation into it is followed by rendering the page and reading it. Two of the quotes taken from it place below the bar the checker sets, and both are on the page they name: the recogniser reads the interrupt cycle sentence as \"timing of the interrupt cycle made or fixed-period waveform mode\", one letter wrong, and it breaks the power-on sentence into fragments. Neither quote was edited to match what the recogniser produced, because that would record the recogniser's mistakes as the manufacturer's words."
         },
         "catalogueExtract": {
           "title": "RTC-4513 catalogue extract, Seiko Epson real time clock module databook pages 55 and 56",

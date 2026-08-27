@@ -430,12 +430,22 @@ def _files(node: Any) -> dict[str, str]:
 
 
 def _quoted_with_document(node: Any, trail: str = "") -> list[tuple[str, str, str]]:
-    """Every quote that names a document, skipping the ones nothing can search."""
+    """Every quote that names a document, skipping the ones nothing can search.
+
+    An assembled quote is skipped for the same reason the placement check skips
+    it: the words are the document's and the order is not, so finding the run in
+    some other document says nothing about where the fact came from. One of these
+    reported a register table as filed under the wrong source. Both documents
+    print that table; the one it cites is a fax, and its recogniser rendered the
+    header row as "name MSB (LSB tange" while the other document's text layer
+    carries it intact.
+    """
     found: list[tuple[str, str, str]] = []
     if isinstance(node, dict):
         document = node.get("document")
         quote = node.get("quote")
-        if isinstance(document, str) and isinstance(quote, str) and not node.get("saysNothing"):
+        skip = node.get("saysNothing") or node.get("assembled")
+        if isinstance(document, str) and isinstance(quote, str) and not skip:
             found.append((trail, document, quote))
         for key, value in node.items():
             found.extend(_quoted_with_document(value, f"{trail}.{key}" if trail else key))
