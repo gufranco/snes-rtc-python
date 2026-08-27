@@ -204,7 +204,9 @@
               "digitBits": 2,
               "digitMask": 3,
               "remarks": "10-hour digit register",
-              "countRangeQuote": "0~1,2"
+              "countRangeQuote": "0~1,2",
+              "filePage": 7,
+              "manualPage": 5
             },
             {
               "address": 6,
@@ -322,7 +324,9 @@
             }
           ],
           "document": "applicationManual",
-          "assembled": true
+          "assembled": true,
+          "filePage": 7,
+          "manualPage": 5
         },
         "weekdayCountsZeroToSix": {
           "value": [0, 6],
@@ -462,7 +466,9 @@
                 "period": "1 hour"
               }
             ],
-            "document": "applicationManual"
+            "document": "applicationManual",
+            "filePage": 10,
+            "manualPage": 8
           },
           "fixedPeriodLowMilliseconds": {
             "value": 7.8,
@@ -520,7 +526,9 @@
           "quoteIsParaphrasedLayout": "The manual prints this as a table row whose condition column is an empty rule. The figures, symbol and units are transcribed exactly; only the empty cell is dropped.",
           "why": "A property of the module, which carries its own crystal. This is the figure that bounds how far a real cartridge drifts, and it is recorded here rather than modelled: see divergences.json entry epson-drift-not-modelled.",
           "document": "applicationManual",
-          "assembled": true
+          "assembled": true,
+          "filePage": 18,
+          "manualPage": 16
         },
         "temperatureCoefficientPpmPerCelsiusSquared": {
           "value": -0.035,
@@ -529,7 +537,9 @@
           "peakToleranceCelsius": 5,
           "quote": "Secondary temperature coefficient (-0.035 plus or minus 0.005 per degree C squared)",
           "document": "applicationManual",
-          "assembled": true
+          "assembled": true,
+          "filePage": 18,
+          "manualPage": 16
         },
         "dailyErrorSeconds": {
           "value": 1,
@@ -545,7 +555,9 @@
           "unit": "V",
           "quote": "Power supply voltage, VDD, 2.7 to 5.5 V",
           "document": "applicationManual",
-          "assembled": true
+          "assembled": true,
+          "filePage": 4,
+          "manualPage": 2
         },
         "dataRetentionVoltage": {
           "minimum": 2.0,
@@ -553,7 +565,9 @@
           "unit": "V",
           "quote": "Clock power supply voltage, VCLK, 2.0 to 5.5 V",
           "document": "applicationManual",
-          "assembled": true
+          "assembled": true,
+          "filePage": 4,
+          "manualPage": 2
         }
       },
       "notStated": {

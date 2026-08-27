@@ -62,42 +62,20 @@ SINGLES = (0x2018, 0x2019, 0x2032)
 DOUBLES = (0x201C, 0x201D)
 
 
-PAGELESS = (
-    "hardware.json.parts[0].facts.controlRegisterE.periodTable.quote",
-    "hardware.json.parts[0].facts.dataRetentionVoltage.quote",
-    "hardware.json.parts[0].facts.frequencyTolerancePpm.quote",
-    "hardware.json.parts[0].facts.operatingVoltage.quote",
-    "hardware.json.parts[0].facts.registerTable.quote",
-    "hardware.json.parts[0].facts.registerTable.rows[5].countRangeQuote",
-    "hardware.json.parts[0].facts.temperatureCoefficientPpmPerCelsiusSquared.quote",
-)
-"""The seven quotes from the Epson manual that still name no page.
+PAGELESS: tuple[str, ...] = ()
+"""Quotes from the Epson manual that name no page. There are none left.
 
 There were forty. The manual is a fax with no text layer, so nothing could search
-it and no page could be found without reading all eighteen sheets by eye. With
-the pages rendered and recognised, thirty three of the forty score against one
-page and against no other, and those now carry it.
+it and no page could be found without reading eighteen sheets by eye. Thirty
+three were placed by scoring each quote against every rendered page by five-word
+windows. The last seven were placed by reading the pages: six belong to tables
+that no contiguous search can locate because the order is not the document's, and
+the seventh is a sentence the transmission garbles at the resolution the sidecar
+was recognised at and reads cleanly at a higher one.
 
-These seven do not, and each is left alone rather than filled in. Six belong to
-tables flattened into a sentence, four electrical characteristic rows, one table
-header and one count range inside that header's own table, and no contiguous
-search can place any of them because the order is not the document's. The seventh
-is the interrupt period sentence, which the transmission garbles badly enough
-that three of its eight windows survive.
-
-Listed rather than waived, and listed one by one rather than by document. Another
-quote arriving without a page fails this check, which is the whole point of
-writing them out: the ones already here stay visible and the next one does not
-slip in beside them.
-
-The listing is what the checker itself reported rather than a second walk over
-the record. A first attempt enumerated the record by hand, matched only keys
-called exactly `quote`, and missed a `countRangeQuote` that the checker does
-catch.
-
-Closing the rest needs a reader with the fax and the patience to find five tables
-on it. Nothing here may guess them: a page taken from a neighbouring quote reads
-exactly like a page that was found.
+The tuple stays rather than being deleted, because it is what the check reads. A
+quote arriving without a page now fails against an empty list, which is the
+strictest this can be and the state the standard asks for.
 """
 
 ELSEWHERE = ("referenceDoes",)
