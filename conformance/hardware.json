@@ -20,65 +20,89 @@
         "registerCount": {
           "value": 16,
           "quote": "The address incrementation is cyclic. After address F has been written, the selection returns to address 0.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 13,
+          "manualPage": 11
         },
         "registerWidthBits": {
           "value": 4,
           "quote": "Read and write operations are carried out in 4-bit units after setting the CE input to High.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 13,
+          "manualPage": 11
         },
         "bitOrder": {
           "value": "lsbFirst",
           "quote": "Both read and write operations are performed in LSB-FIRST order.",
           "note": "A property of the chip's three-wire serial interface. The SPC7110 presents whole nibbles to the cartridge bus, so bit order is not observable through the mapping this package models.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 13,
+          "manualPage": 11
         },
         "writeModeCode": {
           "value": 3,
           "quote": "After setting the CE input to High, make the first 4-bit block \"3\" to indicate write mode, and use the next 4-bit block to specify the address.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 13,
+          "manualPage": 11
         },
         "readModeCode": {
           "value": 12,
           "quote": "After setting the CE input to High, make the first 4-bit block \"C\" to indicate read mode, and use the next 4-bit block to specify the address.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 13,
+          "manualPage": 11
         },
         "otherModeCodesIgnored": {
           "value": true,
           "quote": "If the mode setting code is set to something other than \"C\" or \"3\", subsequent data are disregarded and the DATA port remains in the input mode.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 13,
+          "manualPage": 11
         },
         "addressAutoIncrements": {
           "value": true,
           "quote": "The following 4-bit block is written to the specified address. Then the address is automatically incremented, and subsequent 4-bit blocks are written to subsequent addresses.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 13,
+          "manualPage": 11
         },
         "incompleteNibbleDiscarded": {
           "value": true,
           "quote": "If the CE input is set to Low while a 4-bit input data block is incomplete, this input is disregarded. (Previous data remain valid.)",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 13,
+          "manualPage": 11
         },
         "powerOnStateUndefined": {
           "value": true,
           "quote": "At power-on, all registers and the STD.P output are undefined.",
           "why": "This is the manufacturer's own statement of the rule this family applies everywhere: a model that starts its registers at zero is modelling a state the part does not guarantee. snesrtc.store.Store derives every unwritten byte from a seed for exactly this reason.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 14,
+          "manualPage": 12
         },
         "encoding": {
           "value": "bcd",
           "quote": "The count is in BCD code. For example, if the 1-year digit register (Y1) is (y8, y4, y2, y1) = (0,0,1,0), the register indicates the \"2\" of \"1992\".",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 7,
+          "manualPage": 5
         },
         "positiveLogic": {
           "value": true,
           "quote": "The relation between register bit 0/1 and input/output is positive logic. 0 = Low; 1 = High.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 7,
+          "manualPage": 5
         },
         "outOfRangeValuesNotSpecified": {
           "value": true,
           "quote": "Do not set impossible values to prevent the possibility of clock malfunction.",
           "why": "The manufacturer declines to state what the counters do when a register holds a value outside its count range. Everything this package models about that case therefore rests on corpus.json rather than on this file, and is labelled as such.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 8,
+          "manualPage": 6
         },
         "impossibleDateCorrection": {
           "value": "advancesToTheFollowingMonth",
@@ -94,12 +118,16 @@
             }
           ],
           "note": "The correction happens on the next day-of-the-month increment, not at the moment of writing.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 8,
+          "manualPage": 6
         },
         "leapYearCompensation": {
           "value": true,
           "quote": "Automatic leap year compensation is provided for the Gregorian calender and for Japanese-era years of the current era (Heisei).",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 8,
+          "manualPage": 6
         },
         "registerTable": {
           "quote": "Address / Register name / D3 (MSB) / D2 / D1 / D0 (LSB) / Count range / Remarks",
@@ -310,32 +338,44 @@
             "6": "Sunday"
           },
           "why": "The manual introduces the named days as an example for bit weighting, not as a fixed assignment. The chip counts 0 to 6 and attaches no meaning to the number, so a model that counts modulo seven is faithful whichever day a program calls zero. This package's own numbering is a property of the Sharp part, which does derive the weekday, and is recorded under that part.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 8,
+          "manualPage": 6
         },
         "oscFlag": {
           "bit": "S10.D3",
           "name": "fo",
           "quote": "The fo (OSC FLAG) bit records any oscillation interruption. It is used to monitor for low battery voltage. The bit can be cleared by setting it to \"0\". (Setting the bit externally to \"1\" is also possible.)",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 7,
+          "manualPage": 5
         },
         "readFlag": {
           "bit": "MI10.D3, H10.D3, D10.D3, MO10.D3, W.D3",
           "name": "fr",
           "quote": "The fr (READ FLAG) bit is set to \"0\" when the CE input becomes Low. If the 1-second digit register has been incremented while CE is High, the bit becomes \"1\". This allows testing for a second-increment while the clock register is being used. If the bit is \"1\", the clock register must be read again.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 7,
+          "manualPage": 5
         },
         "pmAmBit": {
           "bit": "H10.D2",
           "quote": "The PM/AM bit is \"1\" for PM and \"0\" for AM.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 7,
+          "manualPage": 5
         },
         "twelveHourNotation": {
           "quote": "Possible time settings are 12 a.m. to 11 a.m., and 12 p.m. to 11 p.m. The h20 bit cannot be written and is fixed to \"0\". The clock does not increment the h20 bit.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 8,
+          "manualPage": 6
         },
         "twentyFourHourNotation": {
           "quote": "Possible time settings are 0 to 23. A write attempt to the PM/AM bit is disregarded, and the bit will always read \"0\".",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 8,
+          "manualPage": 6
         },
         "controlRegisterD": {
           "address": 13,
@@ -344,25 +384,33 @@
               "mask": 1,
               "quote": "This bit stops the 1-second digit incrementation. The clock continues to run, and the first incrementation after HOLD was set to \"1\" is compensated for when the hold condition is released (+1 second). The bit is cleared by writing \"0\".",
               "why": "HOLD is not a stop. The oscillator and the internal counters keep running behind it; only the visible 1-second digit is frozen. Time spent held is therefore not lost.",
-              "document": "applicationManual"
+              "document": "applicationManual",
+              "filePage": 9,
+              "manualPage": 7
             },
             "calHw": {
               "mask": 2,
               "quote": "When this bit is \"1\": clock range is seconds to 10 years, and weekdays. When this bit is \"0\": clock range is seconds to 10 hours, and weekdays. When the bit is \"0\", the six registers D1 to Y10 can be used as 4-bit RAM. The bits marked with * and the fr flag in the D10 and MO10 registers can also be used separately as RAM.",
-              "document": "applicationManual"
+              "document": "applicationManual",
+              "filePage": 9,
+              "manualPage": 7
             },
             "irqF": {
               "mask": 4,
               "readOnly": true,
               "quote": "A write instruction for the IRQ-F bit is not executed. This bit is set to \"1\" when the digit increment specified by t1,t0 is executed. The setting is maintained until the CD register has been read, and then returns to \"0\".",
-              "document": "applicationManual"
+              "document": "applicationManual",
+              "filePage": 7,
+              "manualPage": 5
             },
             "thirtySecondAdjust": {
               "mask": 8,
               "quote": "When this bit is written to, the seconds are reset to 00 of the current minute if currently less than 30, or to 00 of the next minute if currently 30 or more. For 125 microseconds after writing this bit, the bit is held at \"1\" and the internal registers S1 through W cannot be written to. After this interval, the bit is automatically reset to \"0\". Confirm that the bit has reverted to \"0\" before attempting to write to the internal registers S1 through W.",
               "interactionWithReset": "Note that if \"1\" is written to the RESET bit before the 30-second ADJ bit has reverted to \"0\", 30-second adjustment is not performed, and the 30-second ADJ bit is cleared to \"0\".",
               "lockoutMicroseconds": 125,
-              "document": "applicationManual"
+              "document": "applicationManual",
+              "filePage": 9,
+              "manualPage": 7
             }
           }
         },
@@ -372,12 +420,16 @@
             "mask": {
               "mask": 1,
               "quote": "When this bit is \"1\", IRQ-F cannot be \"1\" and the STD.P output is open.",
-              "document": "applicationManual"
+              "document": "applicationManual",
+              "filePage": 11,
+              "manualPage": 9
             },
             "intStnd": {
               "mask": 2,
               "quote": "INT/STND bit = \"1\": interrupt cycle mode. INT/STND bit = \"0\": fixed-period cycle mode",
-              "document": "applicationManual"
+              "document": "applicationManual",
+              "filePage": 10,
+              "manualPage": 8
             },
             "t0": {
               "mask": 4
@@ -415,7 +467,9 @@
           "fixedPeriodLowMilliseconds": {
             "value": 7.8,
             "quote": "The fixed-period Low level cycle is 7.8 ms.",
-            "document": "applicationManual"
+            "document": "applicationManual",
+            "filePage": 10,
+            "manualPage": 8
           },
           "notModelledHere": "Every bit of CE drives the STD.P output pin. No documentation says the SPC7110 routes STD.P anywhere a Super Nintendo program can observe it, so this package stores the register and models no interrupt. See divergences.json entry epson-std-p-unrouted."
         },
@@ -425,29 +479,39 @@
             "reset": {
               "mask": 1,
               "quote": "When this bit is set to \"1\", the seconds are reset to zero and the clock stops. The TEST bit is forced to \"0\". When the bit is set to \"0\", the clock resumes operation. When writing \"0\" to this bit, take care not to inadvertently set the TEST bit in the same register to \"1\".",
-              "document": "applicationManual"
+              "document": "applicationManual",
+              "filePage": 12,
+              "manualPage": 10
             },
             "stop": {
               "mask": 2,
               "quote": "When this bit is set to \"1\", the clock stops. When the bit is set to \"0\", the clock resumes operation.",
-              "document": "applicationManual"
+              "document": "applicationManual",
+              "filePage": 12,
+              "manualPage": 10
             },
             "twentyFourTwelve": {
               "mask": 4,
               "quote": "Selection bit for 12-hour or 24-hour notation. \"1\" means 24-hour and \"0\" means 12-hour notation. When this bit is changed, data above H1 can become unstable and must be reset.",
-              "document": "applicationManual"
+              "document": "applicationManual",
+              "filePage": 12,
+              "manualPage": 10
             },
             "test": {
               "mask": 8,
               "quote": "This test bit is used by Epson for internal purposes. It must be set to \"0\" by the user. The bit is cleared by setting CE to Low.",
-              "document": "applicationManual"
+              "document": "applicationManual",
+              "filePage": 12,
+              "manualPage": 10
             }
           }
         },
         "crystalHz": {
           "value": 32768,
           "quote": "Built-in frequency adjusted 32-kHz quartz crystal",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 3,
+          "manualPage": 1
         },
         "frequencyTolerancePpm": {
           "value": 25,
@@ -471,7 +535,9 @@
           "value": 1,
           "atPpm": 11.574,
           "quote": "At 11.574 ppm, the daily clock error is about one second per day.",
-          "document": "applicationManual"
+          "document": "applicationManual",
+          "filePage": 18,
+          "manualPage": 16
         },
         "operatingVoltage": {
           "minimum": 2.7,
@@ -510,7 +576,9 @@
           "pages": 18,
           "note": "A fax of the manufacturer's application manual, transmitted by Epson Europe Electronics on 1999-12-01. Manual pages 1 through 16 were transmitted and read. The contents page lists a page 17 of handling and packaging notes that the transmission does not include; it covers static electricity, soldering and mounting, and carries no behavioural content.",
           "file": "rtc4513.pdf",
-          "itIsAPhotograph": "The transmission carries no text layer at all, so nothing can search it and a citation into it is followed by rendering the page and reading it. Two of the quotes taken from it place below the bar the checker sets, and both are on the page they name: the recogniser reads the interrupt cycle sentence as \"timing of the interrupt cycle made or fixed-period waveform mode\", one letter wrong, and it breaks the power-on sentence into fragments. Neither quote was edited to match what the recogniser produced, because that would record the recogniser's mistakes as the manufacturer's words."
+          "itIsAPhotograph": "The transmission carries no text layer at all, so nothing can search it and a citation into it is followed by rendering the page and reading it. Two of the quotes taken from it place below the bar the checker sets, and both are on the page they name: the recogniser reads the interrupt cycle sentence as \"timing of the interrupt cycle made or fixed-period waveform mode\", one letter wrong, and it breaks the power-on sentence into fragments. Neither quote was edited to match what the recogniser produced, because that would record the recogniser's mistakes as the manufacturer's words.",
+          "howThePagesWereFound": "Every page was rendered and recognised, and each quote was scored against every page by five-word windows. Thirty three of the thirty nine that carried no page place on one page and nowhere else. Six do not and are left without one: four are electrical characteristic rows and one is a table header, all of them tables flattened into a sentence that no contiguous search can locate, and the sixth is the interrupt period sentence the fax garbles. A page guessed from a neighbouring quote would read exactly like a page that was found.",
+          "pageNumbering": "filePage is the page of the transmission, counting the cover. manualPage is the number Epson printed, which is two lower: the transmission's own counter reads 016 on the page whose printed number is 14, and 018 on the page printed 16, which is the last one sent."
         },
         "catalogueExtract": {
           "title": "RTC-4513 catalogue extract, Seiko Epson real time clock module databook pages 55 and 56",

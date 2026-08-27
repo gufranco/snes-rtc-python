@@ -63,51 +63,27 @@ DOUBLES = (0x201C, 0x201D)
 
 
 PAGELESS = (
-    "hardware.json.parts[0].facts.addressAutoIncrements.quote",
-    "hardware.json.parts[0].facts.bitOrder.quote",
-    "hardware.json.parts[0].facts.controlRegisterD.bits.calHw.quote",
-    "hardware.json.parts[0].facts.controlRegisterD.bits.hold.quote",
-    "hardware.json.parts[0].facts.controlRegisterD.bits.irqF.quote",
-    "hardware.json.parts[0].facts.controlRegisterD.bits.thirtySecondAdjust.quote",
-    "hardware.json.parts[0].facts.controlRegisterE.bits.intStnd.quote",
-    "hardware.json.parts[0].facts.controlRegisterE.bits.mask.quote",
-    "hardware.json.parts[0].facts.controlRegisterE.fixedPeriodLowMilliseconds.quote",
     "hardware.json.parts[0].facts.controlRegisterE.periodTable.quote",
-    "hardware.json.parts[0].facts.controlRegisterF.bits.reset.quote",
-    "hardware.json.parts[0].facts.controlRegisterF.bits.stop.quote",
-    "hardware.json.parts[0].facts.controlRegisterF.bits.test.quote",
-    "hardware.json.parts[0].facts.controlRegisterF.bits.twentyFourTwelve.quote",
-    "hardware.json.parts[0].facts.crystalHz.quote",
-    "hardware.json.parts[0].facts.dailyErrorSeconds.quote",
     "hardware.json.parts[0].facts.dataRetentionVoltage.quote",
-    "hardware.json.parts[0].facts.encoding.quote",
     "hardware.json.parts[0].facts.frequencyTolerancePpm.quote",
-    "hardware.json.parts[0].facts.impossibleDateCorrection.quote",
-    "hardware.json.parts[0].facts.incompleteNibbleDiscarded.quote",
-    "hardware.json.parts[0].facts.leapYearCompensation.quote",
     "hardware.json.parts[0].facts.operatingVoltage.quote",
-    "hardware.json.parts[0].facts.oscFlag.quote",
-    "hardware.json.parts[0].facts.otherModeCodesIgnored.quote",
-    "hardware.json.parts[0].facts.outOfRangeValuesNotSpecified.quote",
-    "hardware.json.parts[0].facts.pmAmBit.quote",
-    "hardware.json.parts[0].facts.positiveLogic.quote",
-    "hardware.json.parts[0].facts.powerOnStateUndefined.quote",
-    "hardware.json.parts[0].facts.readFlag.quote",
-    "hardware.json.parts[0].facts.readModeCode.quote",
-    "hardware.json.parts[0].facts.registerCount.quote",
     "hardware.json.parts[0].facts.registerTable.quote",
     "hardware.json.parts[0].facts.registerTable.rows[5].countRangeQuote",
-    "hardware.json.parts[0].facts.registerWidthBits.quote",
     "hardware.json.parts[0].facts.temperatureCoefficientPpmPerCelsiusSquared.quote",
-    "hardware.json.parts[0].facts.twelveHourNotation.quote",
-    "hardware.json.parts[0].facts.twentyFourHourNotation.quote",
-    "hardware.json.parts[0].facts.weekdayCountsZeroToSix.quote",
-    "hardware.json.parts[0].facts.writeModeCode.quote",
 )
-"""Quotes read out of the Epson manual before pages were being recorded per fact.
+"""The seven quotes from the Epson manual that still name no page.
 
-Every one of them cites `applicationManual`, and not one names the page it sits
-on. The standard asks for the sentence and the page; these have only the sentence.
+There were forty. The manual is a fax with no text layer, so nothing could search
+it and no page could be found without reading all eighteen sheets by eye. With
+the pages rendered and recognised, thirty three of the forty score against one
+page and against no other, and those now carry it.
+
+These seven do not, and each is left alone rather than filled in. Six belong to
+tables flattened into a sentence, four electrical characteristic rows, one table
+header and one count range inside that header's own table, and no contiguous
+search can place any of them because the order is not the document's. The seventh
+is the interrupt period sentence, which the transmission garbles badly enough
+that three of its eight windows survive.
 
 Listed rather than waived, and listed one by one rather than by document. Another
 quote arriving without a page fails this check, which is the whole point of
@@ -119,10 +95,9 @@ the record. A first attempt enumerated the record by hand, matched only keys
 called exactly `quote`, and missed a `countRangeQuote` that the checker does
 catch.
 
-Closing it needs the manual, which is not redistributable and is not on this
-machine. The note on `applicationManual` records that pages 1 through 16 were
-transmitted and read, so the pages exist to be filled in by somebody holding the
-fax. Nothing here may guess them.
+Closing the rest needs a reader with the fax and the patience to find five tables
+on it. Nothing here may guess them: a page taken from a neighbouring quote reads
+exactly like a page that was found.
 """
 
 ELSEWHERE = ("referenceDoes",)

@@ -284,29 +284,35 @@ answer, because there is no stamp on the hardware.
 
 ## Where a citation is short of what the standard asks
 
-### Forty quotes name the sentence but not the page.
+### Seven quotes name the sentence but not the page.
 
 **The standard says.** Every fact taken from a document is recorded with the
 sentence it came from and the page it was on.
 
-**What this record has.** The sentence and the document, forty times over, and
-no page on any of them. Every one cites the Epson application manual. They were
-read out of it correctly; the page simply was not written down at the time.
+**What this record had.** The sentence and the document, forty times over, and no
+page on any of them. Every one cites the Epson application manual, a fax with no
+text layer, so nothing could search it and no page could be found without reading
+all eighteen sheets by eye.
 
-**Why it matters.** A page is what turns a quote into something a second reader
-can go and check in one step. Without it they read the manual until they find
-the sentence, which they will, and that is the difference between a citation and
-a recollection.
+**What it has now.** Thirty three of the forty carry a page. With the sheets
+rendered and recognised, each quote was scored against every page by five-word
+windows, and those thirty three place on one page and on no other. The record
+carries both the page of the transmission and the number Epson printed, which is
+two lower.
 
-**What this project does.** Lists all forty by name in
-[`conformance/quotes.py`](conformance/quotes.py), so they stay visible and a
-forty-first arriving without a page fails the check rather than joining them
-quietly. Nothing guesses a page number.
+**What is left.** Seven. Six belong to tables flattened into a sentence, four
+electrical characteristic rows, one table header and one count range inside that
+header's own table, and no contiguous search can place any of them because the
+order is not the document's. The seventh is the interrupt period sentence, which
+the transmission garbles badly enough that three of its eight windows survive.
 
-**What would settle it.** The manual, opened, and forty page numbers written
-into the record. The document is not redistributable and is not on this machine;
-the note beside it in the record says pages 1 through 16 were transmitted and
-read, so the pages exist to be filled in by anybody holding the fax.
+**What this project does.** Lists all seven by name in
+[`conformance/quotes.py`](conformance/quotes.py), so they stay visible and an
+eighth arriving without a page fails the check rather than joining them quietly.
+Nothing guesses a page number, because one taken from a neighbouring quote reads
+exactly like one that was found.
+
+**What would settle it.** A reader with the fax, finding five tables on it by eye.
 
 ## What is not in question
 
