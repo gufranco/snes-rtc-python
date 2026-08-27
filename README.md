@@ -4,7 +4,7 @@ The two real-time clocks a Super Nintendo cartridge could carry. One is held to 
 
 [![CI](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml)
 
-**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places the manual and that reference part, each one written down, **733** tests, **100%** statement and branch coverage, no dependencies
+**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places the manual and that reference part, each one written down, **765** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from snesrtc import Chip
@@ -507,6 +507,16 @@ This repository carries no documents, no cartridges and no reference sources.
 | Document | Publisher | Pinned by | Redistributable |
 |:---------|:----------|:----------|:----------------|
 | *Application Manual: Real Time Clock Module RTC-4513* | Seiko Epson, 1999 | Digest and read-date in [`conformance/hardware.json`](conformance/hardware.json) | No |
+| *RTC-4513 catalogue extract* | Seiko Epson, undated | Digest and read-date in [`conformance/hardware.json`](conformance/hardware.json) | No |
+
+Fetching them is a command rather than an exercise. [`conformance/documents.json`](conformance/documents.json) carries the full digest, the byte count and a fetchable address for each, and [`conformance/documents.py`](conformance/documents.py) brings both down into `docs/`, which git ignores, and refuses anything whose digest does not match.
+
+```bash
+python3 -m conformance.documents          # fetch and verify every digest
+python3 -m conformance.documents --check  # verify what is already here
+```
+
+The application manual is a fax with no text layer at all, so a citation into it is followed by rendering the page and reading it.
 
 **No manufacturer document for the Sharp part is known to exist.** The marking
 `S-RTC` is a Nintendo part designation in the same style as `S-DSP`, `S-SMP` and

@@ -1,0 +1,42 @@
+{
+  "note": "Every document this package is held to, by identity rather than by name. conformance/documents.py brings each one down again and refuses anything whose digest does not match.",
+  "authority": {
+    "1": "A manufacturer document. What the maker of the part printed about it.",
+    "2": "A recording taken off a real part. Nothing here occupies that rung: neither clock has a pinned corpus.",
+    "3": "Independent research, for what no manufacturer printed."
+  },
+  "whyNotCarriedHere": "These are the publishers' documents, not this project's, and this repository is public. What is carried is the identity, which is what makes a copy checkable.",
+  "readOn": "2026-08-27",
+  "partsWithNoDocument": {
+    "s-rtc": "Sharp published nothing about it that has been found. What the part does is recorded from the cartridge that carries it and from the reference implementation, and conformance/hardware.json says which of the two each claim rests on rather than promoting either to a document."
+  },
+  "documents": [
+    {
+      "file": "manufacturer/rtc4513.pdf",
+      "rung": 1,
+      "publisher": "Seiko Epson Corporation",
+      "title": "Application Manual: Real Time Clock Module RTC-4513",
+      "date": "1999-12-01",
+      "retrievedFrom": "https://download.epson-europe.com/pub/electronics-de/quartz/manual/rtc4513.pdf",
+      "covers": ["rtc-4513"],
+      "settles": "The register map, the command protocol, the bit meanings and the electrical characteristics. Nearly every quote in the record comes from it.",
+      "sha256": "409b8a5a3030fe432dd7dafbf4719944abac890cc5cbebbf96fb8313f9caca33",
+      "bytes": 509740,
+      "pages": 18,
+      "noTextLayer": "A fax, transmitted by Epson Europe Electronics on 1999-12-01, with no text layer at all. Nothing can search it, so a citation into it is followed by rendering the page and reading it, and two quotes place below the checker's bar because the recogniser garbles them rather than because they are not on the page."
+    },
+    {
+      "file": "manufacturer/RTC-4513_en.pdf",
+      "rung": 1,
+      "publisher": "Seiko Epson Corporation",
+      "title": "RTC-4513 catalogue extract, real time clock module databook pages 55 and 56",
+      "date": "undated",
+      "retrievedFrom": "https://download.epsondevice.com/td/pdf/brief/RTC-4513_en.pdf",
+      "covers": ["rtc-4513"],
+      "settles": "A second Epson document printing the same sixteen-row register table with the same bit names and count ranges, which is what raises that table above a single reading of a fax. It also marks the part discontinued.",
+      "sha256": "6496eb35fddc181d4e80832b98b8a45163bf5370eadd1e58002aefc83f12edcf",
+      "bytes": 701040,
+      "pages": 2
+    }
+  ]
+}
