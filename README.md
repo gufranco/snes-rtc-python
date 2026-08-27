@@ -4,7 +4,7 @@ The two real-time clocks a Super Nintendo cartridge could carry. One is held to 
 
 [![CI](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml)
 
-**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places the manual and that reference part, each one written down, **732** tests, **100%** statement and branch coverage, no dependencies
+**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places the manual and that reference part, each one written down, **733** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from snesrtc import Chip
