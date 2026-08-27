@@ -82,7 +82,7 @@ class Timed:
 
 def measure(calls: int = CALLS, repeats: int = REPEATS) -> Timed:
     """Read the sequence out of the slower part, over and over, and time it."""
-    clock = snesrtc.models.lookup(MODEL).build()
+    clock = snesrtc.models.lookup(MODEL).build().reset()
     seconds = []
     for _ in range(repeats):
         started = time.perf_counter()
