@@ -6,7 +6,7 @@
     {
       "id": "epson-cd-bit1-add-second",
       "severity": "contradiction",
-      "status": "open",
+      "status": "narrowed",
       "topic": "What bit 1 of control register D does.",
       "documentSays": {
         "rung": 1,
@@ -22,8 +22,7 @@
       "packageFollows": "document",
       "consequence": "A program that sets CAL/HW no longer gains a spurious second. The shipped cartridge does set it: read out of its own code on 2026-08-25, the routine that initialises the clock ends by writing CD = 0x06, which is CAL_HW together with IRQ_F. So the two readings part company every time that title initialises its clock, and the reference gains a second there that this package does not.",
       "wouldSettleIt": [
-        "A logic capture of the RTC-4513 on real hardware while CAL/HW is toggled, showing whether the second counter moves.",
-        "Settled as far as the cartridge can settle it. conformance/cartridge.py reads the program and it writes CD = 0x06. What is left is what the silicon does with the bit, which only a capture answers."
+        "A logic capture of the RTC-4513 on real hardware while CAL/HW is toggled, showing whether the second counter moves. That is the whole of what is left: what the cartridge does was settled on 2026-08-25 by reading its own code, which conformance/cartridge.py does, and the routine that initialises the clock writes CD = 0x06. So the question is no longer what a program does with the bit, only what the silicon does with it."
       ],
       "why": "Nothing in the manual attaches any time adjustment to CAL/HW, and the only documented software adjustment is the 30-second adjust on bit 3, which this package already models and the manual confirms. An add-a-second function on bit 1 appears in no Epson document.",
       "parts": ["Epson RTC-4513"]
