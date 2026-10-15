@@ -1,16 +1,3 @@
-"""Hold the model's own constants to what the manufacturer printed.
-
-A datasheet figure quoted in a docstring rots and cannot fail. This file is what
-turns hardware.json from a record of a reading into a gate: every constant the
-Epson manual settles is checked against the entry that carries its quote, so a
-constant edited without the document is a failing test rather than a silent
-change of claim.
-
-The Sharp part has no manufacturer document. Its block is checked for saying so,
-and for still saying so, because the failure this guards against is somebody
-later filling it in from an emulator and leaving it looking documented.
-"""
-
 import json
 import sys
 import unittest
@@ -74,7 +61,6 @@ class DocumentTest(unittest.TestCase):
 
 
 def _quoted(fact: object) -> bool:
-    """Whether a fact, or anything nested inside it, carries a verbatim quote."""
     if isinstance(fact, dict):
         if "quote" in fact:
             return True
@@ -265,8 +251,6 @@ class ControlBitTest(unittest.TestCase):
 
 
 class ContradictionTest(unittest.TestCase):
-    """The half of the register table that is easy to get wrong and never fails loudly."""
-
     def test_six_registers_carry_a_digit_narrower_than_the_register(self) -> None:
         narrow = [row["name"] for row in ROWS[:13] if row["digitMask"] != epson.NIBBLE]
 
@@ -337,8 +321,6 @@ class NotStatedTest(unittest.TestCase):
 
 
 class DivergenceTest(unittest.TestCase):
-    """Every declared divergence has to be answerable, not merely written down."""
-
     @override
     def setUp(self) -> None:
         self.entries = json.loads(DIVERGENCES.read_text())["divergences"]
@@ -406,15 +388,6 @@ class DivergenceTest(unittest.TestCase):
 
 
 class RecordSaysWhatTheModelDoesTest(unittest.TestCase):
-    """That an entry claiming something is absent is checked against the model.
-
-    Three entries here once said twelve-hour notation, the read flag and the
-    adjust bit were unmodelled. All three were implemented and tested, and the
-    record went on saying otherwise for as long as nobody drove it. A claim about
-    the code that no test reads is a claim that rots, so each of these now drives
-    the behaviour first and holds the record to what it finds.
-    """
-
     def divergences(self) -> list[dict[str, object]]:
         where = Path(__file__).resolve().parent / "divergences.json"
         held: list[dict[str, object]] = json.loads(where.read_text())["divergences"]
@@ -457,7 +430,6 @@ class RecordSaysWhatTheModelDoesTest(unittest.TestCase):
         self.assertEqual(named, [])
 
     def test_no_entry_at_all_calls_something_unmodelled_in_its_name(self) -> None:
-        """The word belongs in a status, where a reader can see what it scopes."""
         named = [one["id"] for one in self.divergences() if "unmodelled" in str(one["id"])]
 
         self.assertEqual(named, [])

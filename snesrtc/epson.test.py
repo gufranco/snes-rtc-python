@@ -9,22 +9,8 @@ from snesrtc import epson, store
 FROZEN = 1_000_000_000
 
 DATE = (0, 0, 0, 3, 2, 1, 8, 1, 8, 0, 6, 2)
-"""Half past twelve on the eighteenth of August 2026, one digit per byte, low first.
-
-This chip keeps the year as two digits. The manual attaches no century to them,
-so the range this package reads them over is a convention recorded in
-divergences.json rather than a manufacturer fact.
-"""
 
 CONFIGURED = epson.HOURS_24
-"""Control register F as the manual's power-on procedure leaves it.
-
-The manual is explicit that at power-on every register is undefined, so a chip
-that has not been through the procedure is not in twenty four hour notation and
-its date counters are not necessarily running. Tests that mean to exercise a
-configured chip say so here rather than relying on a cleared store, because a
-cleared store is a chip whose notation bit happens to be zero.
-"""
 
 DATED = epson.CAL_HW
 
@@ -100,6 +86,18 @@ class SessionTest(unittest.TestCase):
         chip.write(epson.DATA, 0x07)
 
         self.assertEqual(chip.read(epson.DATA), 0x00)
+
+    def test_the_mode_code_is_matched_on_the_whole_byte_not_its_low_nibble(self) -> None:
+        # Arrange
+        chip = clock()
+        chip.write(epson.ENABLE, 0x01)
+        read_code_under_a_high_nibble = 0x50 | epson.READ_MODE
+
+        # Act
+        chip.write(epson.DATA, read_code_under_a_high_nibble)
+
+        # Assert
+        self.assertEqual(chip.state, epson.MODE_SELECT)
 
     def test_the_enable_register_reads_back_what_was_put_there(self) -> None:
         chip = clock()
@@ -199,13 +197,6 @@ class WriteTest(unittest.TestCase):
 
 
 class DigitFieldTest(unittest.TestCase):
-    """The manual gives six registers a digit narrower than the register.
-
-    The count range column settles it without reading the bit names at all: a
-    register that counts to 5 is not holding a four bit digit, and one that
-    counts to 1 is holding a single bit.
-    """
-
     def test_the_tens_of_seconds_digit_stops_at_three_bits(self) -> None:
         chip = clock()
         set_time(chip, DATE)
@@ -253,13 +244,6 @@ class DigitFieldTest(unittest.TestCase):
 
 
 class NotationTest(unittest.TestCase):
-    """Twelve hour notation, which control register F bit 2 selects.
-
-    The manual fixes h20 at zero in this notation and never increments it, so
-    the hour runs twelve then one to eleven, twice, with the PM flag saying
-    which half of the day it is.
-    """
-
     def test_a_configured_chip_reads_hours_on_a_twenty_four_hour_dial(self) -> None:
         chip = clock()
         set_time(chip, DATE)
@@ -331,8 +315,6 @@ class NotationTest(unittest.TestCase):
 
 
 class ClockRangeTest(unittest.TestCase):
-    """CAL/HW, which the manual says decides how much of the counter chain runs."""
-
     def test_a_dated_chip_carries_the_day_over_at_midnight(self) -> None:
         chip, hand = moving()
         set_time(chip, DATE)
@@ -431,8 +413,6 @@ class ControlRegisterDTest(unittest.TestCase):
 
 
 class HoldTest(unittest.TestCase):
-    """HOLD, which the manual says freezes the digit while the clock keeps running."""
-
     def test_a_held_clock_does_not_move_while_it_is_held(self) -> None:
         chip, hand = moving()
         set_time(chip, DATE)

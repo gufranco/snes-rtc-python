@@ -1,17 +1,3 @@
-"""Fetch the reference sources and build the driver that wraps them.
-
-The reference implementations are a separate work under their own licence, so
-they are fetched rather than carried here. Only the driver in `ref/` belongs to
-this repository, and it is the only file that is compiled from this side.
-
-The sources are pinned by commit. A build that resolves whatever upstream holds
-today is not reproducible, and a change made upstream would turn this repository
-red with no commit of its own to explain it.
-
-Usage:
-    python3 conformance/build.py [--sources DIR] [--output PATH]
-"""
-
 from __future__ import annotations
 
 import json
@@ -58,14 +44,12 @@ class Options:
 
 
 def reference(path: Path | str | None = None) -> dict[str, Any]:
-    """The reference this driver is built against, as written down."""
     with Path(path or DEFINITION).open() as handle:
         held: dict[str, Any] = json.load(handle)["reference"]
     return held
 
 
 def checkout_command(pinned: dict[str, Any], directory: Path | str) -> list[list[str]]:
-    """The git steps that bring the sources down, without history or blobs."""
     where = str(directory)
     return [
         ["git", "init", "-q", where],
@@ -90,7 +74,6 @@ def checkout_command(pinned: dict[str, Any], directory: Path | str) -> list[list
 def compile_command(
     sources: Path | str, output: Path | str, driver: Path | str | None = None
 ) -> list[str]:
-    """The one compile, of the one file this repository owns."""
     return [
         COMPILER,
         f"-std={STANDARD}",

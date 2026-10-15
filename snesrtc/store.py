@@ -1,21 +1,3 @@
-"""The twenty bytes the cartridge keeps alive on a battery.
-
-Thirteen hold the time, as one decimal digit per byte rather than as numbers. The
-next three are control registers that only one of the two chips uses. The last
-four hold the timestamp of the moment the clock was last read, which is how a
-cartridge that has been in a drawer for a year knows how far to advance when it
-is next powered up.
-
-Storing a digit per byte looks wasteful and is what the hardware does, so the
-model does it too. A model that stored the number would agree with the reference
-on every value a game writes and disagree the moment a game writes a digit above
-nine, which the chip accepts and stores.
-
-Nothing here starts cleared. A battery-backed cartridge holds whatever it held,
-and a fresh one from the factory holds whatever the silicon powered up with. A
-caller who genuinely means a cleared cartridge says so.
-"""
-
 from __future__ import annotations
 
 import random
@@ -36,8 +18,6 @@ def _derive(seed: int, index: int) -> int:
 
 
 class Store:
-    """The cartridge's own bytes, holding what they held."""
-
     __slots__ = ("bytes",)
 
     def __init__(
@@ -61,7 +41,6 @@ class Store:
 
     @property
     def stamp(self) -> int:
-        """When the clock was last read, as the four bytes hold it, low first."""
         value = 0
         for offset in range(STAMP_BYTES):
             value |= self.read(STAMP_AT + offset) << (offset * 8)

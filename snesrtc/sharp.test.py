@@ -24,11 +24,6 @@ def set_time(chip: sharp.Chip, digits: tuple[int, ...]) -> None:
 
 
 DATE = (0, 0, 0, 3, 2, 1, 8, 1, 8, 6, 9, 9)
-"""Half past twelve on the eighteenth of August 1996, one digit per byte, low first.
-
-The year is three digits with a thousand added, so the chip reaches 1000 to 1999
-and the games that carry it use the upper end of that.
-"""
 
 
 class ReadTest(unittest.TestCase):

@@ -1,23 +1,3 @@
-"""The Sharp S-RTC, as it answers at two addresses.
-
-One address reads and one address writes, and everything else is a state machine
-driven by four-bit values written to the second. The sequence is not addressed:
-the chip hands out its thirteen bytes in order, wrapped in a marker at each end,
-and a program that loses count reads the wrong field with nothing to tell it so.
-
-Two behaviours are worth naming because they are not obvious from the register
-map.
-
-The weekday is not written. A program writes twelve bytes and the chip computes
-the thirteenth from the date it was just given, so a cartridge whose date is
-right always reports the matching weekday. Once written it is a counter that
-advances with the day, never re-derived, so a date changed by a battery fault
-takes the weekday with it and the two stay out of step.
-
-The year is stored as three digits with a thousand added, so the range is 1000 to
-1999 by the arithmetic and the games use it to mean 1900 to 1999.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -35,7 +15,6 @@ READY, COMMAND, READING, WRITING = "ready", "command", "read", "write"
 MARKER = 0x0F
 
 LAST_INDEX = 12
-"""The weekday, which is the last byte in the sequence and the one nobody writes."""
 
 COMMAND_READ = 0x0D
 
@@ -59,8 +38,6 @@ def _now() -> int:
 
 
 class Chip:
-    """One S-RTC, answering at its two addresses."""
-
     __slots__ = ("index", "mode", "model", "now", "open_bus", "store")
 
     model: str
@@ -73,17 +50,6 @@ class Chip:
         self.index = -1
 
     def reset(self) -> Chip:
-        """The console's reset line reaching the part, not a power cycle.
-
-        The sequence goes back to its start and the clock catches up. Nothing
-        stored is touched, because the part is battery-backed and a reset line
-        does not cut battery power.
-
-        No document for this part is known to exist, so this behaviour is
-        inherited from the reference implementation rather than read anywhere.
-        It is recorded under `notStated` in the record beside this file, with
-        the capture that would settle it.
-        """
         self.mode = READING
         self.index = -1
         self.update()
@@ -124,7 +90,6 @@ class Chip:
             self.command(value)
 
     def accept(self, value: int) -> None:
-        """One digit of a time being written, and the weekday that follows the last."""
         if not 0 <= self.index < LAST_INDEX:
             return
         self.store.write(self.index, value)
@@ -151,21 +116,12 @@ class Chip:
         self.mode = READY
 
     def elapsed(self) -> int:
-        """How long since the clock was last read, measured the way the chip does.
-
-        The stamp is four bytes, so it runs out roughly every sixty eight years and
-        starts again. Subtracting across that point gives a negative answer, and
-        taking the long way round instead keeps a cartridge readable through the
-        wrap. A stamp ahead of the present cannot be a real interval, so it is
-        treated as no time at all rather than as sixty eight years.
-        """
         current = self.now() & 0xFFFFFFFF
         stamped = self.store.stamp
         gap = current - stamped if current >= stamped else STAMP_LIMIT - stamped + current
         return 0 if gap > STAMP_LIMIT // 2 else gap
 
     def update(self) -> None:
-        """Advance the stored time to now, then record when now was."""
         gap = self.elapsed()
         if gap > 0:
             self.store_moment(calendar.advance(self.read_moment(), gap))

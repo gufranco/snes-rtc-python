@@ -94,8 +94,6 @@ class OptionTest(unittest.TestCase):
 
 
 class LocalUpstream:
-    """A git repository on disk, so the fetch path can be exercised offline."""
-
     def __init__(self) -> None:
         self.where = Path(tempfile.mkdtemp()) / "upstream"
         self.where.mkdir(parents=True)

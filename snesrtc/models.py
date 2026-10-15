@@ -1,16 +1,3 @@
-"""The two clocks a Super Nintendo cartridge could carry.
-
-They are not revisions of one another. They are parts from different makers with
-different protocols, different register maps, and different ideas about what a
-year is, which sit on cartridges from different publishers. A package that
-modelled one and called it the SNES real time clock would be wrong for the other
-half of the cartridges that have one.
-
-Adding a model means adding an entry here and holding it to that chip's own
-reference implementation. A model with no reference behind it does not belong in
-this table, because then its fidelity would be a claim rather than a measurement.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
@@ -26,8 +13,6 @@ Built = epson.Chip | sharp.Chip
 
 
 class Model:
-    """One clock: what it is, where it answers, and how to build one."""
-
     __slots__ = ("addresses", "aliases", "name", "protocol", "summary")
 
     def __init__(
@@ -84,11 +69,6 @@ _CATALOGUE = (
 
 MODELS = {model.name: model for model in _CATALOGUE}
 
-"""The Sharp part, because it is the one a cartridge carried on its own.
-
-The Epson clock reached the bus through the SPC7110 rather than by itself, so a
-caller who names no model almost always means the Sharp one.
-"""
 
 _BY_ALIAS: dict[str, Model] = {}
 for _model in _CATALOGUE:
@@ -102,19 +82,6 @@ def _normalise(name: str) -> str:
 
 
 def lookup(name: str | None) -> Model:
-    """The model of that name, however it happens to be written.
-
-    Naming nothing is refused rather than filled in. A default would be the one
-    implicit thing in the call that builds a part, and it is worst where it looks
-    most harmless: a caller who learns to leave the model out against a member
-    covering one part writes the same call against a member covering sixteen.
-    The refusal names every model there is, so somebody who did not know what to
-    pass learns it here rather than from the source.
-
-    Not exported from the package. What a caller wants is the part, and the part
-    carries its own model; handing back a description of a part nobody built
-    reads like a test fixture rather than an interface.
-    """
     if name is None:
         raise UnknownModelError(
             "no model was named, and this package will not choose one for you."

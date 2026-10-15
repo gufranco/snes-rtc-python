@@ -1,5 +1,3 @@
-"""Reading the clock routine out of the one cartridge that carries this part."""
-
 import json
 import sys
 import tempfile
@@ -14,7 +12,6 @@ from snesrtc import epson
 
 
 def _writing(pairs: list[tuple[int, int]], where: int = 0x2D62) -> bytes:
-    """A caller that loads an index and a value and calls the write routine."""
     body = bytearray()
     for index, value in pairs:
         body += bytes((0xA2, index, 0x00))

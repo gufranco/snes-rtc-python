@@ -128,12 +128,6 @@ class ReplayTest(unittest.TestCase):
 
 
 class WitnessTest(unittest.TestCase):
-    """What the runner refuses to compare, and why it refuses each one.
-
-    Every id these produce has to appear in divergences.json, which the runner
-    checks on every script rather than trusting.
-    """
-
     def settled(self, script: list[reference.Operation]) -> reference.Replay:
         return reference.observe([("time", reference.START, 0), *reference.CONFIGURE, *script])
 
@@ -227,15 +221,6 @@ class WitnessTest(unittest.TestCase):
 
 
 class StampWidthTest(unittest.TestCase):
-    """The one exclusion that is about the recorder rather than about a part.
-
-    The recording builds its stamp from the four bytes the cartridge holds and
-    then tests for underflow against the maximum of the host's time_t, so a
-    64-bit build and a 32-bit build of it disagree about every interval past half
-    the stamp's range. An answer that turns on the width of a type is a property
-    of the build machine, and is excluded rather than allowed to decide.
-    """
-
     def test_a_moment_past_half_the_stamp_range_is_refused(self) -> None:
         cartridge = reference.Cartridge()
 
@@ -263,8 +248,6 @@ class StampWidthTest(unittest.TestCase):
 
 
 class CatchUpTest(unittest.TestCase):
-    """Which operations make the model write the time back, judged from outside it."""
-
     def opened(self, index: int, mode: int = epson.WRITE_MODE) -> reference.Cartridge:
         cartridge = reference.Cartridge()
         cartridge.store.write(epson.CF, reference.CONFIGURED_CF)

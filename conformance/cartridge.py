@@ -1,27 +1,3 @@
-"""Read the clock routine out of the one cartridge that carries this part.
-
-Every disagreement this package records against the reference is a place where
-the manufacturer's manual says one thing and an emulator does another, and the
-package follows the manual. Two of them named a way to settle the question that
-is not a logic analyser: read what the shipped program actually does.
-
-That is what this does. The cartridge is ordinary 65816 code and nothing here
-runs any of it. What it finds is the routine that moves one nibble to the part,
-every caller of that routine whose index and value are constants, and which
-control-register bits those values set.
-
-**Why the search is sound.** The part answers at three fixed addresses, and an
-absolute access to one of them is unambiguous whatever the data bank holds. The
-oracle was calibrated before it was used: the cartridge carrying the clock makes
-seventy eight such accesses, and two cartridges carrying the same decompressor
-without a clock make none at all.
-
-**What is recorded.** The sequence of index and value pairs, the control bits
-they set, and four digests of the cartridge. No cartridge byte is carried here.
-
-Usage: python3 conformance/cartridge.py <cartridge> <out.json>
-"""
-
 import collections
 import hashlib
 import json
@@ -47,13 +23,6 @@ STORE_ABSOLUTE = 0x8D
 LOAD_ABSOLUTE = 0xAD
 
 OPENING = bytes((0x78, 0xA8, 0xA9, 0x01, 0x8D, 0x40, 0x48))
-"""`sei` `tay` `lda #$01` `sta $4840`, which is how the write routine begins.
-
-Four instructions rather than one byte, because a single opcode occurs everywhere
-and this sequence occurs once. What it says is the routine's whole contract: it
-runs with interrupts off, takes the value in the accumulator and the index in X,
-and opens a session before doing anything else.
-"""
 
 CALL_LONG = 0x22
 
@@ -81,7 +50,6 @@ CONTROL_BITS: dict[str, tuple[tuple[int, str], ...]] = {
 
 
 def digests_of(image: bytes) -> dict[str, str]:
-    """The four a manifest publishes, so a reader can cross-check any of them."""
     return {
         "crc32": f"{zlib.crc32(image):08x}",
         "md5": hashlib.md5(image).hexdigest(),
@@ -91,7 +59,6 @@ def digests_of(image: bytes) -> dict[str, str]:
 
 
 def touching(image: bytes) -> dict[tuple[int, str], int]:
-    """Every absolute access to one of the three addresses the part answers at."""
     found: collections.Counter[tuple[int, str]] = collections.Counter()
     for at in range(len(image) - 2):
         if image[at] not in (STORE_ABSOLUTE, LOAD_ABSOLUTE):
@@ -103,24 +70,11 @@ def touching(image: bytes) -> dict[tuple[int, str], int]:
 
 
 def write_routine(image: bytes) -> int | None:
-    """Where the routine that moves one nibble to the part begins."""
     at = image.find(OPENING)
     return at if at >= 0 else None
 
 
 def written(image: bytes, where: int) -> list[tuple[int, int]]:
-    """Every call to that routine whose index and value are both constants.
-
-    A caller sets the index in X and the value in the accumulator, both with an
-    immediate load, and then calls. A caller that computes either is passed over
-    rather than guessed at: this reports what the program certainly writes, never
-    what it might.
-
-    The index load is two bytes or three depending on the width the index
-    register is carrying, which is not in the instruction, so both are tried. The
-    value load is always two, because the routine takes the value in the
-    accumulator one byte at a time.
-    """
     target = bytes((CALL_LONG, where & 0xFF, (where >> 8) & 0xFF, 0xC0))
     found = []
     for at in range(len(image) - len(target)):
@@ -136,7 +90,6 @@ def written(image: bytes, where: int) -> list[tuple[int, int]]:
 
 
 def controls(pairs: "Sequence[tuple[int, int]]") -> list[dict[str, Any]]:
-    """Which control registers those writes reach, and which bits they set."""
     said = []
     for index, value in pairs:
         name = CONTROL_NAMES.get(index)
@@ -153,7 +106,6 @@ def controls(pairs: "Sequence[tuple[int, int]]") -> list[dict[str, Any]]:
 
 
 def recorded(where: Path | str | None = None) -> dict[str, Any]:
-    """The reading this repository carries, or nothing if it is not there."""
     path = Path(where) if where is not None else ROOT / RECORDED
     if not path.is_file():
         return {}

@@ -102,7 +102,6 @@ class ExamineTest(unittest.TestCase):
                 self.assertIn("0x2800", one.detail)
 
     def test_and_says_the_reset_line_was_pulled(self) -> None:
-        """Driven rather than described, so a reset that stopped working shows here."""
         found = [one for one in doctor.examine() if one.name == "s-rtc"]
 
         self.assertIn("and resets", found[0].detail)
@@ -123,13 +122,6 @@ class ExamineTest(unittest.TestCase):
 
 
 class TimeSourceTest(unittest.TestCase):
-    """That the clock is driven by a source somebody chose, not by this machine.
-
-    A model that reads the host clock cannot be replayed, and every disagreement
-    about it becomes an argument about when it was run. The source is injectable
-    here, and the report says so along with what it currently reads.
-    """
-
     def test_the_report_names_the_time_source(self) -> None:
         self.assertIn("time source", [one.name for one in doctor.examine()])
 
@@ -296,13 +288,6 @@ class EntryTest(unittest.TestCase):
 
 
 class PathTest(unittest.TestCase):
-    """That the doctor puts the repository on the path when nothing else has.
-
-    Run as a file it has no package to be relative to, so it inserts the
-    repository itself. Under the test suite the path is already set, so the line
-    never runs and nothing would report it broken.
-    """
-
     def test_the_repository_is_put_on_the_path_when_it_is_not_already_there(self) -> None:
         held = [one for one in sys.path if one != str(doctor.ROOT)]
 

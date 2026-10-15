@@ -13,13 +13,6 @@ from conformance import speed  # noqa: E402
 
 
 class TimedTest(unittest.TestCase):
-    """That a run is reported by its median rather than its mean.
-
-    One scheduling hiccup on a shared runner moves a mean and moves a median
-    much less, and the difference between the two is larger than any change to
-    this code worth arguing about.
-    """
-
     def test_the_median_is_the_middle_reading(self) -> None:
         found = speed.Timed("read", 100, [0.4, 0.1, 0.2])
 
@@ -41,7 +34,6 @@ class TimedTest(unittest.TestCase):
         self.assertFalse(found.beats(1000))
 
     def test_a_run_that_took_no_time_is_not_read_as_infinitely_fast(self) -> None:
-        """A clock too coarse to see the work is a reading, not a result."""
         found = speed.Timed("read", 100, [0.0])
 
         self.assertEqual(found.rate(), 0.0)
@@ -83,20 +75,6 @@ class MainTest(unittest.TestCase):
         self.assertIn("below", output)
 
     def test_a_run_at_exactly_the_shipped_floor_is_not_below_it(self) -> None:
-        """The shipped number, held to something that does not involve timing.
-
-        Whether the floor is beaten on a given machine is not asked in this file,
-        and deliberately. This file runs under the coverage tracer, which costs
-        about ten times what the measured call does, so a floor assertion taken
-        here measures the tracer: it passed on a fast desktop and failed on a
-        hosted runner, which is one reading arriving at two answers. That
-        question is settled by running the module uninstrumented, in its own job,
-        outside the coverage step.
-
-        What is left for the shipped number here is that it is usable: positive,
-        printable, and on the passing side of a comparison that is inclusive at
-        the boundary rather than one step off it.
-        """
         exactly = speed.Timed("at the floor", speed.FLOOR, [1.0])
 
         self.assertGreater(speed.FLOOR, 0)
