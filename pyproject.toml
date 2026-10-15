@@ -35,9 +35,6 @@ packages = ["snesrtc"]
 [tool.setuptools.dynamic]
 version = { attr = "snesrtc.version.VERSION" }
 
-[tool.setuptools.exclude-package-data]
-snesrtc = ["*.test.py"]
-
 [tool.ruff]
 target-version = "py312"
 line-length = 100
