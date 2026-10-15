@@ -457,7 +457,7 @@ an entry in `divergences.json` naming what would settle it, or it fails the run.
 | Types | [mypy](https://mypy-lang.org/) strict, configured in [pyproject.toml](pyproject.toml) |
 | Releases | [semantic-release](https://semantic-release.gitbook.io/), from the commit history |
 | Test naming | A sentence stating the behaviour, not the function name |
-| Comments | None in source. Docstrings carry the reasoning |
+| Comments | None in source, and a docstring counts as one |
 
 ### Non-obvious decisions
 
