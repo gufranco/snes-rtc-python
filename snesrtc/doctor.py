@@ -20,15 +20,20 @@ def _version(where: Path | None = None) -> str:
 
 ROOT = Path(__file__).resolve().parent.parent
 
-from snesrtc import environment  # noqa: E402
+
+def _reachable(root: Path = ROOT, path: list[str] | None = None) -> bool:
+    where = sys.path if path is None else path
+    if str(root) in where:
+        return False
+    where.insert(0, str(root))
+    return True
+
+
+_reachable()
+
+from snesrtc import environment, models  # noqa: E402
 
 VERSION = _version()
-
-
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from snesrtc import models  # noqa: E402
 
 PIN = ROOT / "conformance" / "pinned.json"
 
