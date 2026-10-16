@@ -1,283 +1,425 @@
+English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁體中文（香港）](README.zh-HK.md)
+
 # SNES Cartridge Clocks
 
-The two real-time clocks a Super Nintendo cartridge could carry. One is held to its manufacturer's application manual. The other has no manual, and this says so on every page.
+The Sharp S-RTC and the Epson RTC-4513, the two real-time clocks a Super Nintendo cartridge could carry, in Python, the Epson part held to Seiko Epson's application manual and both held to a pinned build of snes9x.
 
 [![CI](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places the manual and that reference part, each one written down, **869** tests, **100%** statement and branch coverage, no dependencies
-
-```python
-from snesrtc import Chip
-
-sharp = Chip("s-rtc")
-epson = Chip("rtc-4513")
-
-print(sharp.model, epson.model)
-```
-
-```
-s-rtc rtc-4513
-```
-
-## Install
-
-```bash
-pip install git+https://github.com/gufranco/snes-rtc-python.git
-```
-
-Python 3.12 or newer. Nothing else at runtime.
-
-A C++ compiler is needed only to build the reference the differential compares
-against, and only if you want to run that comparison yourself.
-
-## The interface
-
-The model is chosen at construction, because the two parts are different parts
-rather than revisions of one another.
-
-| Call | Does | Returns |
-|:--|:--|:--|
-| `MODELS` | Every clock this package covers, by the name it goes by | a mapping |
-| `model.build(store=None, now=...)` | Builds one, over a store it is given or one of its own | a `Chip` |
-| `clock.read(address)` | Reads at one of the addresses that part answers | `int` |
-| `clock.write(address, value)` | Writes at one of them | nothing |
-| `clock.reset()` | What the part does when the console resets it | the `Chip` |
-| `Store(seed=..., cleared=..., held=...)` | The twenty bytes a cartridge keeps on a battery | a `Store` |
-
-| Attribute | Is |
-|:--|:--|
-| `clock.model` | Which part this is, by its canonical name |
-| `clock.store` | The twenty bytes it counts in |
-| `model.addresses` | Where that part answers |
-| `model.aliases` | Every other spelling that reaches it |
-
-Names are matched however they are written. Case, spaces and separators do not
-matter, and each part answers to what people call it: `srtc`, `sharp`,
-`rtc4513`, `epson`, `spc7110`.
+**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **879** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
-from snesrtc import MODELS
+from snesrtc import Chip, Store
 
-print(sorted(MODELS["s-rtc"].aliases))
-print(sorted(MODELS["rtc-4513"].aliases))
-```
-
-```
-['sharp', 'sharprtc', 'srtc']
-['epson', 'epsonrtc', 'rtc4513', 'spc7110', 'spc7110rtc']
-```
-
-There is no clock in the family's sense. A real-time clock ticks and is still not
-driven by a budget of cycles, so nothing here has a `step` or a cycle count. Time
-arrives through the callable a clock is built with, which is what lets a test
-hold it still or move it a decade.
-
-### Read the clock a cartridge would read
-
-```python
-from snesrtc import Chip
-
-clock = Chip("s-rtc")
-clock.write(0x2801, 0x0D)
-
-print(f"{clock.read(0x2800):02X}")
-print(" ".join(f"{clock.read(0x2800):02X}" for _ in range(13)))
-```
-
-The first read answers `0F`, the marker that says the sequence is starting. The
-thirteen that follow are the time, one decimal digit per byte, seconds first.
-
-### Set it
-
-```python
-from snesrtc import Chip
-
-clock = Chip("s-rtc")
+seconds = [1_000_000_000]
+clock = Chip("s-rtc", Store(cleared=True), now=lambda: seconds[0]).reset()
 
 clock.write(0x2801, 0x0E)
 clock.write(0x2801, 0x00)
 for digit in (0, 0, 0, 3, 2, 1, 8, 1, 8, 6, 9, 9):
     clock.write(0x2801, digit)
+clock.write(0x2801, 0x0D)
 
-print(clock.model)
+seconds[0] += 95
+print(" ".join(f"{clock.read(0x2800):X}" for _ in range(15)))
 ```
 
 ```
-s-rtc
+F 5 3 1 3 2 1 8 1 8 6 9 9 0 F
 ```
 
-Half past twelve on the eighteenth of August 1996. Twelve digits are written and
-the thirteenth, the weekday, is worked out by the chip.
+The example builds the Sharp clock over a zeroed store and hands it a time source it controls. Command `0E` followed by `00` opens a write, and twelve digits set 12:30:00 on 18 August 1996, seconds first. The chip works out the thirteenth digit, the weekday, which is 0 for that Sunday. Command `0D` starts a read. Moving the time source on by 95 seconds and reading fifteen times returns the `F` marker, 12:31:35 on the same date, the weekday, and the marker again.
 
-## Where each answer comes from
+## Install
 
-The two clocks in this package are not backed by the same kind of evidence, and
-the difference is large enough that reporting one number for both would be
-misleading.
+| Requirement | Version |
+|:--|:--|
+| Python | 3.12 or newer |
+| git | Any, to clone |
+| A C++17 compiler, `g++` | Only to build the reference the differential compares against |
 
-| Rung | Source | Settles |
-|:-----|:-------|:--------|
-| 1 | [Seiko Epson, *Application Manual: Real Time Clock Module RTC-4513*](conformance/hardware.json) | Anything Epson printed about the RTC-4513: register widths, count ranges, what each control bit does, how a session is framed, what power-on leaves behind |
-| 2 | A recording from an independent implementation, pinned by commit | What the manual does not: how the SPC7110 turns a three-wire serial part into three cartridge addresses, what the counters do outside a documented range, and the whole of the Sharp part |
-| 3 | Nothing else | Nothing |
+```bash
+git clone https://github.com/gufranco/snes-rtc-python.git
+cd snes-rtc-python
+python3 snesrtc/doctor.py
+```
 
-Every figure on rung 1 lives in [`conformance/hardware.json`](conformance/hardware.json)
-with the sentence it was read from, the document's digest, and the date it was
-read. [`conformance/hardware.test.py`](conformance/hardware.test.py) checks the
-model's constants against it, so a constant edited without the document is a
-failing test rather than a quiet change of claim.
+The package imports nothing outside the standard library. `pip install git+https://github.com/gufranco/snes-rtc-python.git` installs it without the conformance suite and adds a `snesrtc-doctor` command.
 
-Where the manual and the recording disagree, the manual wins and the
-disagreement is written down in
-[`conformance/divergences.json`](conformance/divergences.json) rather than
-settled quietly. There are fifteen entries. Each names what the document says,
-what the recording does, which one this package follows, and what evidence would
-close the question.
+The doctor checks the machine and the checkout, drives both clocks, and ends with one line. It exits 0 when every check of the package passes and 1 when one does not. Paste its whole output into any bug report.
 
-### The Sharp part has no datasheet
+```
+  8 checks, nothing to report
+```
 
-The marking `S-RTC` is a Nintendo part designation in the same style as `S-DSP`,
-`S-SMP` and `S-PPU`, not a Sharp catalogue number, and no manufacturer document
-for it is known to exist publicly. It was searched for; the date and the search
-are recorded in `hardware.json` under `"verified": false`, along with the three
-things that would settle it.
+Releases follow [Semantic Versioning](https://semver.org/) and are cut from the commit history by semantic-release. Every release is tagged and listed on the [releases page](https://github.com/gufranco/snes-rtc-python/releases).
 
-So every claim this package makes about the Sharp clock rests on a recording, and
-a test asserts that the file still says so. Filling that block in from an
-emulator would make a guess indistinguishable from a fact, which is the failure
-the whole arrangement exists to prevent.
+## The interface
 
-## What the manual caught
+`snesrtc.Chip(model, store=None, now=..., open_bus=0x00)` builds one clock. `model` is required. `store` is a `Store`, and the clock builds a seeded one when it is left out. `now` is a callable returning whole seconds, and the clock keeps its low 32 bits; the default reads `time.time()`. `open_bus` is accepted by the Sharp part only and is what it answers at an address it does not own. The Epson part answers `0x00` there.
 
-Every one of these was wrong in this package before Epson's own application
-manual was read end to end, and every one of them is still wrong in the
-implementation this package used to be calibrated against.
+| Model | Aliases | Addresses | Year | Hours |
+|:--|:--|:--|:--|:--|
+| `s-rtc` | `srtc`, `sharp`, `sharprtc` | `$2800` data, `$2801` control | Three digits plus 1000, so 1000 to 1999 | 24 |
+| `rtc-4513` | `rtc4513`, `epson`, `epsonrtc`, `spc7110`, `spc7110rtc` | `$4840` enable, `$4841` data, `$4842` status | Two digits, read as 1990 to 2089 | 12 or 24, chosen by a control bit |
 
-**Six of the thirteen clock registers carry a digit narrower than the register.**
-The manual's own count range column proves it without reading a single bit name:
-a register whose count stops at 5 is not holding a four-bit digit, and the
-tens-of-months register, which stops at 1, is holding one bit. The spare bits are
-an oscillator flag, a read flag, an AM/PM flag, and free RAM the manual
-explicitly invites a program to use. A model that treats every register as a
-four-bit digit reads a program's stored flag back as part of the date.
+A name matches whatever its case, and spaces, hyphens and underscores are ignored. A missing or unknown name raises `UnknownModelError`, whose message lists the names accepted.
 
-**HOLD does not stop the clock.** Its first documented sentence says the opposite:
-"The clock continues to run, and the first incrementation after HOLD was set to
-'1' is compensated for when the hold condition is released (+1 second)." The
-manual's own procedure for setting the clock uses HOLD for exactly that and warns
-the write must finish within one second or the seconds are lost. Treating it as a
-stop throws away every second a program spends holding.
+```python
+import snesrtc
+from snesrtc import MODELS
 
-**There is no bit that adds a second.** Bit 1 of control register D is CAL/HW,
-which selects how much of the counter chain runs and turns six registers into
-RAM when it is clear. The only documented software adjustment is the 30-second
-adjust on bit 3, which this package already had right and the manual confirms
-word for word.
+for name, model in MODELS.items():
+    print(name, model.aliases, [f"{at:#06x}" for at in model.addresses])
 
-**Twelve-hour notation exists and is the power-on state.** Control register F bit
-2 selects it, and the manual says every register is undefined at power-on, so a
-cartridge whose program never ran the power-on procedure is running in twelve-hour
-notation with its date counters switched off. A model that hardcodes twenty-four
-hours cannot reproduce that cartridge.
+print(snesrtc.Chip("Sharp RTC").model, snesrtc.Chip("SPC_7110").model)
 
-**The interrupt flag cannot be written.** "A write instruction for the IRQ-F bit
-is not executed." It is set by the increment logic and cleared by reading the
-register it lives in.
+for asked in (None, "s-dsp"):
+    try:
+        snesrtc.Chip(asked)
+    except snesrtc.UnknownModelError as error:
+        print(error)
+```
 
-**The test bit clears when the chip is deselected**, and a reset forces it down.
-Two separate paragraphs say so, and the bit powers up undefined, so it is
-reachable without any program setting it.
+```
+s-rtc ('srtc', 'sharp', 'sharprtc') ['0x2800', '0x2801']
+rtc-4513 ('rtc4513', 'epson', 'epsonrtc', 'spc7110', 'spc7110rtc') ['0x4840', '0x4841', '0x4842']
+s-rtc rtc-4513
+no model was named, and this package will not choose one for you. Name one of: rtc-4513, s-rtc
+s-dsp is not a clock this package covers; it has rtc-4513, s-rtc
+```
 
-**A stop bit takes effect after the counters are brought current, not before.**
-This one was a defect introduced while implementing the others, and it is worth
-naming because it is the kind that hides: writing the stop bit first and then
-asking whether to catch up finds the clock already stopped and silently discards
-the elapsed time.
+### Calls both clocks take
 
-Two of the findings this README used to list have been withdrawn. An
-"add a second" function on control register D bit 1 and a double catch-up from
-testing two stop flags separately were both behaviours of the emulator, not of
-the part, and both are recorded in `divergences.json` with the quote that
-displaced them. The claim that "none of these would have been found by reading a
-datasheet, because in each case the datasheet says nothing" was false; nobody had
-read the datasheet.
+| Call | Effect |
+|:--|:--|
+| `read(address)` | One byte from the cartridge bus |
+| `write(address, value)` | One byte to the cartridge bus. Returns nothing |
+| `reset()` | What the console's reset does. The Sharp part goes back to the start of a read and brings its time current. The Epson part is deselected, back in write mode at register 0, with enable and status cleared. The store is not touched. Returns the clock |
 
-## What the recording caught
+| Attribute | Meaning |
+|:--|:--|
+| `model` | The canonical model name |
+| `store` | The `Store` the clock counts in |
+| `now` | The time source |
 
-These remain. The manual is silent on all of them, which is what makes a
-recording the right authority rather than a convenience.
+### Module contents
 
-**The month underflows rather than wrapping.** The chip subtracts one from the
-month before it starts counting, in unsigned arithmetic. A cartridge holding a
-month of zero does not roll back to December: it underflows to four billion, and
-the month length is read from that number's remainder, landing on a thirty day
-month. The manual says only "Do not set impossible values", so it does not
-contradict this and does not confirm it.
+| Name | Content |
+|:--|:--|
+| `snesrtc.MODELS` | The two `Model` records, keyed by canonical name |
+| `snesrtc.Model` | A record with `name`, `summary`, `addresses`, `protocol` and `aliases`, and `build(store=None, **options)`, which `Chip` calls |
+| `snesrtc.models.lookup(name)` | The `Model` for any spelling. Raises `UnknownModelError` |
+| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | The 20 bytes the cartridge keeps on a battery. See [Nothing starts cleared](#nothing-starts-cleared) |
+| `snesrtc.Built` | The type `Chip` returns, `epson.Chip` or `sharp.Chip` |
+| `snesrtc.UnknownModelError` | The one error the package raises, for a missing or unknown model name. It lives in `snesrtc.errors` |
+| `snesrtc.__version__` | The installed version |
+| `snesrtc.sharp`, `snesrtc.epson` | Each part's `Chip` class, addresses, command codes and register constants |
+| `snesrtc.store` | `Store` and its constants `SIZE`, `STAMP_AT`, `STAMP_BYTES` and `UNSET_SEED` |
+| `snesrtc.calendar` | The calendar arithmetic both parts share |
 
-**A field above its range is not reduced, it is cleared.** A minute of one hundred
-does not become forty on the next carry. It becomes zero, and the extra hour is
-lost.
+### The Sharp S-RTC
 
-**The Epson clock catches up when it is switched off.** Not when it is switched
-on, which is what you would write. A session therefore reads the time as the
-previous session left it. This is an artefact of modelling a continuously running
-counter from a reading taken at intervals, and a real part has no such seam at
-all.
+A write to `$2801` drives a state machine. Only the low four bits of a value are read.
 
-**The mode code is compared as a whole byte.** On the part that distinction cannot
-arise, because the serial interface carries four bits and there is nothing above
-them. It is a property of the SPC7110 wrapper, which no document describes.
+| Write to `$2801` | Effect |
+|:--|:--|
+| `0D` | Start a read. The next read of `$2800` brings the time current and answers the `0F` marker |
+| `0E` | Wait for a command |
+| `0E`, then `00` | Start a write. The next twelve writes are the digits, and the chip computes the thirteenth, the weekday |
+| `0E`, then `04` | Clear all thirteen digits to 0 |
+| `0E`, then any other value | Stop. Writes are ignored until the next `0D` or `0E` |
+| `0F` | Ignored |
 
-## The two chips
+A read sequence is the `0F` marker, thirteen digits, then the marker again, after which it starts over. Outside a read, `$2800` answers `0x00`.
 
-They are not revisions of one another. They are parts from different makers, on
-cartridges from different publishers, and almost nothing carries across.
+| Store byte | Digit |
+|:--|:--|
+| 0, 1 | Seconds, ones then tens |
+| 2, 3 | Minutes |
+| 4, 5 | Hours |
+| 6, 7 | Day |
+| 8 | Month, one digit holding 1 to 12 |
+| 9, 10, 11 | Year minus 1000, ones then tens then hundreds |
+| 12 | Weekday, 0 for Sunday, counted from Monday 1 January 1900 |
+| 16 to 19 | The time the store was last brought current, low byte first |
 
-| | Sharp S-RTC | Epson RTC-4513 |
+| Attribute or call | Meaning |
+|:--|:--|
+| `mode` | `"read"`, `"command"`, `"write"` or `"ready"` |
+| `index` | The next digit in the sequence, -1 before the marker |
+| `open_bus` | What an address the part does not own reads as |
+| `read_moment()`, `store_moment(moment)` | The thirteen digits as a `calendar.Moment`, and back |
+| `elapsed()` | Seconds since the stamp in bytes 16 to 19. A gap over 2^31 reads as 0 |
+| `update()` | Advance the digits by `elapsed()` and restamp |
+| `command(value)`, `accept(value)` | The two halves of `write` after the command byte |
+
+`snesrtc.sharp` carries `DATA`, `CONTROL`, `MARKER`, `LAST_INDEX`, `COMMAND_READ`, `COMMAND_BEGIN`, `COMMAND_NOTHING`, `COMMAND_WRITE`, `COMMAND_CLEAR`, `YEAR_BASE` and `STAMP_LIMIT`, and the four `mode` values as `READING`, `COMMAND`, `WRITING` and `READY`.
+
+### The Epson RTC-4513
+
+The SPC7110 turns the part's three-wire serial interface into three cartridge addresses. A program talks to it in sessions.
+
+| Step | Bus access | Effect |
 |:--|:--|:--|
-| Manufacturer document | none known to exist | application manual, 1999 |
-| Reached at | `$2800` and `$2801` | `$4840` through `$4842`, via the SPC7110 |
-| Shape | a fixed sequence wrapped in a marker | an addressed register file of sixteen nibbles |
-| Getting at one field | read the whole sequence and count | name its address |
-| Weekday | computed from the date when the date is written | a counter of its own, 0 to 6, with no meaning attached |
-| Year | three digits plus a thousand, so 1000 to 1999 | two digits with no century printed anywhere |
-| Hours | twenty four | twelve or twenty four, chosen by a control bit |
-| Control registers | none | three, whose sixteen bits the manual names one by one |
-| Clock catches up | when the sequence is read | when the chip is switched **off** |
+| Select | Write `$4840` with bit 0 set | Status becomes `0x80`. The part waits for a mode |
+| Mode | Write `$4841` with `0x03` or `0x0C` | Write mode or read mode. Any other value is ignored |
+| Register | Write `$4841` with 0 to 15 | The register the next access starts at |
+| Data | Write or read `$4841` | One nibble. The register index then moves on by one and wraps after 15 |
+| Deselect | Write `$4840` with bit 0 clear | Brings the counters current, clears the read flags and clears TEST |
+| Status | Read `$4842` | `0x80` after any access, then `0x00` until the next one |
+
+Reading `$4840` returns the last value written there. Reading CD clears IRQ-F.
+
+| Register | Index | D3 | D2 | D1 | D0 | Count range |
+|:--|:--|:--|:--|:--|:--|:--|
+| `S1` | 0 | s8 | s4 | s2 | s1 | 0 to 9 |
+| `S10` | 1 | fo | s40 | s20 | s10 | 0 to 5 |
+| `MI1` | 2 | mi8 | mi4 | mi2 | mi1 | 0 to 9 |
+| `MI10` | 3 | fr | mi40 | mi20 | mi10 | 0 to 5 |
+| `H1` | 4 | h8 | h4 | h2 | h1 | 0 to 9 |
+| `H10` | 5 | fr | PM/AM | h20 | h10 | 0 to 2 |
+| `D1` | 6 | d8 | d4 | d2 | d1 | 0 to 9 |
+| `D10` | 7 | fr | free RAM | d20 | d10 | 0 to 3 |
+| `MO1` | 8 | mo8 | mo4 | mo2 | mo1 | 0 to 9 |
+| `MO10` | 9 | fr | free RAM | free RAM | mo10 | 0 to 1 |
+| `Y1` | 10 | y8 | y4 | y2 | y1 | 0 to 9 |
+| `Y10` | 11 | y80 | y40 | y20 | y10 | 0 to 9 |
+| `W` | 12 | fr | w4 | w2 | w1 | 0 to 6 |
+| `CD` | 13 | 30ADJ. | IRQ-F | CAL/HW | HOLD | |
+| `CE` | 14 | t1 | t0 | INT/STND | MASK | |
+| `CF` | 15 | TEST | 24/12 | STOP | RESET | |
+
+`snesrtc.epson` names each register by its index, `S1` through `CF`, and each control bit by its mask: `HOLD`, `CAL_HW`, `IRQ_F` and `ADJUST` in CD, `RESET`, `STOP`, `HOURS_24` and `TEST` in CF. It also carries `ENABLE`, `DATA`, `STATUS`, `WRITE_MODE`, `READ_MODE`, `READY`, `REGISTERS`, `DIGIT_MASK`, `OSC_FLAG`, `READ_FLAG`, `READ_FLAG_AT`, `PM`, `STOPPED`, `NIBBLE`, `HALF_MINUTE`, `MINUTE`, `NOON`, `YEAR_PIVOT` and `STAMP_LIMIT`, and the five `state` values as `INACTIVE`, `MODE_SELECT`, `INDEX_SELECT`, `READING` and `WRITING`.
 
 ```python
-from snesrtc import Chip
+from snesrtc import Chip, Store, epson
 
-sharp = Chip("s-rtc")
-epson = Chip("rtc-4513")
+seconds = [1_000_000_000]
+held = Store(cleared=True)
+held.write(epson.CF, epson.HOURS_24)
+held.write(epson.CD, epson.CAL_HW)
+held.stamp = seconds[0]
+clock = Chip("rtc-4513", held, now=lambda: seconds[0])
+
+
+def session(mode, values=()):
+    clock.write(epson.ENABLE, 0x01)
+    clock.write(epson.DATA, mode)
+    clock.write(epson.DATA, epson.S1)
+    for value in values:
+        clock.write(epson.DATA, value)
+    shown = [clock.read(epson.DATA) for _ in range(13)] if mode == epson.READ_MODE else []
+    clock.write(epson.ENABLE, 0x00)
+    return "".join(f"{nibble:X}" for nibble in reversed(shown))
+
+
+session(epson.WRITE_MODE, (0, 5, 9, 5, 3, 2, 1, 3, 2, 1, 9, 9, 5))
+print(session(epson.READ_MODE))
+seconds[0] += 15
+print(session(epson.READ_MODE))
+print(session(epson.READ_MODE))
 ```
 
-Names are matched however they are written. Case, spaces and separators do not
-matter, and each part answers to what people call it: `srtc`, `sharp`,
-`rtc4513`, `epson`, `spc7110`.
+```
+5991231235950
+5991231235950
+6000101000005
+```
 
-### A cleared register file is not a configured chip
+Each line is W, Y10 down to S1: weekday 5, 99-12-31, 23:59:50. Fifteen seconds later the first read still shows the old time, because the part catches up when it is deselected. The read after that shows weekday 6, 00-01-01, 00:00:05.
 
-Epson: "At power-on, all registers and the STD.P output are undefined." Zeroing
-them leaves the notation bit low, which is twelve-hour notation, and the range
-bit low, which switches the date counters off. Both are faithful, and both are
-what the manual's power-on procedure exists to escape.
+| Attribute or call | Meaning |
+|:--|:--|
+| `state` | `"inactive"`, `"mode"`, `"index"`, `"read"` or `"write"` |
+| `mode` | `0x03` or `0x0C`, the last mode chosen |
+| `index` | The register the next data access reaches |
+| `enable`, `status` | The last value written to `$4840`, and the status byte |
+| `moment()`, `store_moment(moment)` | Registers S1 through W as a `calendar.Moment`, and back. The date is stored only while CAL/HW is set |
+| `hour()`, `store_hour(hour)` | The hour from 0 to 23, read or written in the notation CF selects |
+| `digit(index)`, `put_digit(index, value)` | A register's digit bits alone, leaving its flag bits alone |
+| `twenty_four_hour()`, `dated()`, `stopped()` | Whether 24/12 is set, CAL/HW is set, and RESET or STOP is set |
+| `elapsed(current)` | Seconds from the stamp to `current`. A gap over 2^31 reads as 0 |
+| `update(offset=0)` | Advance the counters to `now() - offset`, unless HOLD is set, and set the read flags if any second passed |
+| `set_read_flag()`, `clear_read_flag()` | Set or clear fr in the five registers that carry it |
+| `read_data()`, `write_enable(value)`, `write_data(value)` | What a read of `$4841`, a write of `$4840` and a write of `$4841` do |
+| `write_register(value)`, `write_control_d(value)`, `write_control_f(value)` | A data write to the current register, and the two control registers that act when written |
+| `release_hold()`, `adjust_to_nearest_minute()` | What clearing HOLD and setting 30ADJ. do |
 
 ```python
-from snesrtc import Store, epson
+from snesrtc import Chip, Store, epson
 
 held = Store(cleared=True)
 held.write(epson.CF, epson.HOURS_24)
 held.write(epson.CD, epson.CAL_HW)
-clock = epson.Chip(held)
+held.write(epson.D1, 1)
+held.write(epson.MO1, 1)
+held.write(epson.S10, 4)
+held.stamp = 1_000_000_000
+clock = Chip("rtc-4513", held, now=lambda: 1_000_000_000)
+
+clock.write(epson.ENABLE, 0x01)
+print(f"{clock.read(epson.STATUS):#04x} {clock.read(epson.STATUS):#04x}")
+clock.write(epson.DATA, epson.WRITE_MODE)
+clock.write(epson.DATA, epson.CD)
+clock.write(epson.DATA, epson.CAL_HW | epson.IRQ_F | epson.ADJUST)
+clock.write(epson.DATA, 0x0F)
+clock.write(epson.DATA, epson.HOURS_24 | epson.TEST)
+print(f"CD={held.read(epson.CD):#x} CF={held.read(epson.CF):#x}")
+clock.write(epson.ENABLE, 0x00)
+print(f"CF={held.read(epson.CF):#x}", clock.moment())
 ```
+
+```
+0x80 0x00
+CD=0x2 CF=0xc
+CF=0x4 <2000-01-01 00:01:00 weekday=0>
+```
+
+Status reads `0x80` once after the select. The write to CD sets IRQ-F and 30ADJ. as well as CAL/HW. IRQ-F is not stored, and 30ADJ. rounds 40 seconds up to the next minute and clears itself. TEST is set by the write to CF and cleared by the deselect.
+
+### Calendar
+
+`snesrtc.calendar` holds the arithmetic both parts run when they catch up.
+
+| Name | Content |
+|:--|:--|
+| `Moment(year, month, day, hour, minute, second, weekday)` | One reading of a clock. Compares and hashes by value |
+| `advance(moment, seconds)` | The moment `seconds` later, counted the way the reference counts |
+| `is_leap(year)` | The Gregorian rule |
+| `days_in(year, month)` | 28 to 31. A month outside 1 to 12 is reduced modulo 12 |
+| `weekday(year, month, day)` | 0 for Sunday, counted from Monday 1 January 1900 |
+| `MONTHS`, `EPOCH_YEAR`, `EPOCH_WEEKDAY`, `WEEK`, `DAY`, `MASK` | The constants behind them |
+
+```python
+from snesrtc.calendar import Moment, advance, days_in, is_leap, weekday
+
+print(advance(Moment(1999, 12, 31, 23, 59, 59, 5), 1))
+print(is_leap(1900), is_leap(2000), days_in(1996, 2), weekday(1996, 8, 18))
+```
+
+```
+<2000-01-01 00:00:00 weekday=6>
+False True 29 0
+```
+
+### The doctor
+
+| Command | Exit code |
+|:--|:--|
+| `python3 snesrtc/doctor.py` from the repository root | 0 when every check of the package passes, 1 when one does not |
+| `snesrtc-doctor`, after a pip install | The same |
+
+It takes no arguments. It reports the machine first: interpreter, encodings, filesystem case, line endings, path length, free space and git. Those lines advise and never change the exit code. Then it checks the package: the Python version, both clocks built and reset, a clock given a fixed time reading it back, `$2802` reading as open bus, the pin in [`conformance/pinned.json`](conformance/pinned.json), and whether the reference driver is built. A check that raises is reported with the exception's type and message.
+
+## Where each answer comes from
+
+The two clocks rest on different evidence.
+
+| Rung | Source | Settles |
+|:--|:--|:--|
+| 1 | Seiko Epson, *Application Manual: Real Time Clock Module RTC-4513* | Anything Epson printed about the RTC-4513: register widths, count ranges, what each control bit does, how a session is framed, what power-on leaves behind |
+| 2 | A recording from snes9x, pinned by commit | What the manual does not: how the SPC7110 turns a three-wire serial part into three cartridge addresses, what the counters do outside a documented range, and the whole of the Sharp part |
+| 3 | Nothing else | Nothing |
+
+Every figure on rung 1 is in [`conformance/hardware.json`](conformance/hardware.json) with the sentence it was read from, the document's digest and the date it was read. [`conformance/hardware.test.py`](conformance/hardware.test.py) checks the package's constants against it.
+
+Where the manual and the recording disagree, the package follows the manual. Each of the 15 disagreements is an entry in [`conformance/divergences.json`](conformance/divergences.json) naming what the document says, what the recording does, which one the package follows, and what evidence would settle it.
+
+### The Sharp part has no datasheet
+
+`S-RTC` is a Nintendo part designation in the style of `S-DSP`, `S-SMP` and `S-PPU`, not a Sharp catalogue number. No manufacturer document for it is known. The search, dated 2026-08-20, is recorded in `hardware.json` under `"verified": false` with the three findings that would settle it: a Sharp data book entry, a die photograph naming a catalogue part, or a logic capture of the bus while Daikaijuu Monogatari II drives the clock. A test asserts that the block still says so.
+
+## What the manual settles
+
+**Six of the thirteen clock registers carry a digit narrower than the register.** The count range column shows it: S10 and MI10 stop at 5, H10 at 2, D10 at 3, MO10 at 1 and W at 6. The spare bits are the oscillation flag, the read flag, the PM/AM bit and free RAM a program may use. `epson.DIGIT_MASK` keeps them apart, so a flag a program stores is never read back as part of the date.
+
+**HOLD does not stop the clock.** The manual says "The clock continues to run", and that the first increment missed while HOLD is set "is compensated for when the hold condition is released (+1 second)." Releasing HOLD adds one second, and the manual's procedure for setting the clock warns that the write must finish within one second.
+
+**No control bit adds a second.** CD bit 1 is CAL/HW. Clear, it switches the date counters off and leaves those registers as RAM. The one documented software adjustment is 30ADJ. on CD bit 3.
+
+**Twelve-hour notation is the power-on state.** The manual: "At power-on, all registers and the STD.P output are undefined." A register file that powers up as zeroes has 24/12 clear, which is twelve-hour notation, and CAL/HW clear, which stops the date.
+
+```python
+from snesrtc import Chip, Store, epson
+
+seconds = [1_000_000_000]
+held = Store(cleared=True)
+held.stamp = seconds[0]
+written = {epson.S1: 9, epson.S10: 5, epson.MI1: 9, epson.MI10: 5, epson.H1: 1, epson.D1: 1}
+for index, digit in written.items():
+    held.write(index, digit)
+held.write(epson.H10, 1 | epson.PM)
+clock = Chip("rtc-4513", held, now=lambda: seconds[0])
+
+seconds[0] += 1
+clock.write(epson.ENABLE, 0x01)
+clock.write(epson.ENABLE, 0x00)
+
+print([held.read(index) for index in (epson.H10, epson.H1, epson.D10, epson.D1, epson.W)])
+print(clock.moment())
+```
+
+```
+[1, 2, 0, 1, 1]
+<2000-00-01 00:00:00 weekday=1>
+```
+
+At 11:59:59 PM one second passes. The hour becomes 12 with PM clear, which is midnight. The weekday counter moves from 0 to 1, and the day stays at 1 because CAL/HW is clear.
+
+**IRQ-F cannot be written.** The manual: "A write instruction for the IRQ-F bit is not executed." The part sets it, and reading CD clears it.
+
+**TEST clears when the chip is deselected**, and a write to CF with RESET set clears it too.
+
+**STOP takes effect after the counters are brought current.** A write to CF catches the clock up first and then stores the new bits, so time that passed before the stop is kept.
+
+## What the recording settles
+
+The manual says nothing on these. Its one sentence on the subject is "Do not set impossible values to prevent the possibility of clock malfunction."
+
+**A month of zero is a 30-day month.** The counters subtract one from the month before counting, in unsigned 32-bit arithmetic. Zero becomes 4,294,967,295, and the month length is read from that number modulo 12, which lands on a 30-day month that rolls into January of the same year.
+
+**A field above its range is cleared, not reduced.** A minute of 100 carries to 0 and adds one hour, so the 40 minutes above 60 are lost.
+
+```python
+from snesrtc.calendar import Moment, advance
+
+print(advance(Moment(1996, 0, 30, 23, 59, 59, 0), 1))
+print(advance(Moment(1996, 8, 18, 12, 100, 59, 0), 1))
+```
+
+```
+<1996-01-01 00:00:00 weekday=1>
+<1996-08-18 13:00:00 weekday=0>
+```
+
+**The Epson clock catches up when it is deselected**, not when it is selected. A session reads the time as the previous session left it, as the session example above shows. A real part counts continuously and has no such seam.
+
+**The mode code is compared as a whole byte.** The serial part only ever sees four bits, so this is a property of the SPC7110 wrapper, which no document describes.
+
+## The two chips
+
+They are parts from different makers, on cartridges from different publishers.
+
+| | Sharp S-RTC | Epson RTC-4513 |
+|:--|:--|:--|
+| Manufacturer document | None known | Application manual, 1999 |
+| Reached at | `$2800` and `$2801` | `$4840` through `$4842`, through the SPC7110 |
+| Shape | A fixed sequence wrapped in a marker | An addressed file of sixteen 4-bit registers |
+| Getting at one field | Read the whole sequence and count | Name its register |
+| Weekday | Computed from the date when the date is written | A counter of its own, 0 to 6, with no meaning attached |
+| Year | Three digits plus 1000 | Two digits, no century printed anywhere |
+| Hours | 24 | 12 or 24, chosen by a control bit |
+| Control registers | None | Three, with sixteen named bits |
+| Catches up | When a read starts | When the chip is deselected |
 
 ## Nothing starts cleared
 
-A battery-backed cartridge holds what it held, and one fresh from the factory
-holds whatever the silicon powered up with. This is the one place where the
-family convention and the manufacturer agree in as many words: Epson prints "At
-power-on, all registers and the STD.P output are undefined."
+A battery-backed cartridge holds what it held, and one fresh from the factory holds whatever the silicon powered up with. Epson prints "At power-on, all registers and the STD.P output are undefined."
+
+`Store(seed=UNSET_SEED, cleared=False, held=None)` fills its 20 bytes from `seed`. `cleared=True` fills them with zeroes, and `held` copies bytes over the top, wrapping at 20. `read(index)` and `write(index, value)` wrap the index at 20 and keep the low eight bits of a value. `bytes` is the list itself, and `stamp` reads or writes bytes 16 to 19 as one little-endian number. `snesrtc.store` carries `SIZE`, `STAMP_AT`, `STAMP_BYTES` and `UNSET_SEED`.
 
 ```python
 from snesrtc import Store
@@ -297,40 +439,26 @@ False
 20
 ```
 
-A seeded store holds rubbish that is stable across reads and different for a
-different seed, so a test can prove a program does not depend on what it never
-wrote. A caller who genuinely means zeroes asks for them, and a caller restoring
-a cartridge hands over the bytes it had.
+A seeded store holds the same bytes on every read and different bytes for a different seed, so a test can show a program does not depend on what it never wrote. A caller who means zeroes asks for them, and a caller restoring a cartridge passes the bytes it had.
 
 ## What is deliberately not modelled
 
-Each is recorded in `divergences.json` with the reason and what would change it.
+Each is an entry in [`conformance/divergences.json`](conformance/divergences.json) with the reason and what would change it.
 
-**No interrupt.** Control register E selects one of four periods and drives the
-STD.P pin. No document says the SPC7110 routes that pin anywhere a Super Nintendo
-program can observe, so the register is stored and drives nothing. Modelling an
-interrupt that reaches nothing would be inventing a wire.
+**No interrupt.** CE selects one of four periods, 1/64 second, 1 second, 1 minute or 1 hour, and drives the STD.P pin. No document says the SPC7110 routes that pin anywhere a Super Nintendo program can read, so CE is stored and drives nothing.
 
-**No crystal drift.** The manual gives the figures: 0 plus or minus 25 ppm at 25
-degrees C, a secondary temperature coefficient of -0.035 ppm per degree C
-squared, and "At 11.574 ppm, the daily clock error is about one second per day."
-They are recorded and not simulated, because a tolerance bounds a population of
-modules rather than describing the one in a cartridge, and it depends on a
-temperature the model cannot know. An earlier version of this README said no
-number existed. One does, and it is now written down.
+**No crystal drift.** The manual gives 0 plus or minus 25 ppm at 25 degrees C, a secondary temperature coefficient of -0.035 ppm per degree C squared, and "At 11.574 ppm, the daily clock error is about one second per day." The figures are in the record. They bound a population of modules at a temperature the model cannot know, so they are not simulated.
 
-**No 125 microsecond lockout after a 30-second adjustment.** The bit clears
-itself, which is observable and modelled. The window during which the clock
-registers cannot be written needs a sub-second time base this package does not
-have, and adding one would change the public interface.
+**No 125 microsecond lockout after 30ADJ.** The bit clears itself, which is modelled. The window in which S1 through W cannot be written needs a time base finer than one second, which the `now` interface does not carry.
 
 ## Is it right
 
-The differential drives each part with scripts generated from a seed, runs them
-through a driver compiled around the pinned reference sources, and compares the
-two transcripts line for line.
+The differential drives each part with scripts generated from a seed, runs the same scripts through a driver compiled around the pinned snes9x sources, and compares the two transcripts line by line.
 
-It reports one line per part, and the two lines look very different on purpose:
+```bash
+python3 -m conformance.build
+python3 -m conformance.reference
+```
 
 ```
 epson: 200 scripts, 6130 operations compared, 9772 not compared, 0 disagreed
@@ -341,206 +469,79 @@ sharp: 200 scripts, 323500 operations compared, 155 not compared, 0 disagreed
   not compared past stamp-width-platform-dependent, reached by 2 scripts
 ```
 
-Each script is compared only up to the first operation that reaches a declared
-divergence. Past that point the recording is answering a question the manual has
-already answered differently, so counting those operations as agreements would be
-reporting the emulator's answer as though it were the part's, and dropping them
-silently would let the summary claim a comparison that never happened. They are
-counted apart and named instead.
+Each script is compared up to the first operation that reaches a declared divergence. Past that point the recording answers a question the manual already answered differently, so those operations are counted apart and named. A divergence the runner can witness that is not in `divergences.json` fails the run, and the runner reads the list from that file on every script.
 
-The Sharp part is compared very nearly end to end, because for it the recording
-is the only authority there is. The one thing excluded from it is not about the
-part at all: the recording tests its stamp for underflow against the maximum of
-the host's `time_t` rather than against the range the cartridge's four stored
-bytes can hold, so a 64-bit build and a 32-bit build of it disagree about any
-interval past two billion seconds. An answer that turns on the width of a type on
-the build machine is a property of the recorder, and it is excluded and named
-rather than allowed to decide.
+The Sharp part is compared almost end to end, because the recording is its only authority. The one exclusion is about the recorder: it tests its stamp against the maximum of the host's `time_t`, so a 64-bit and a 32-bit build disagree on any gap past 2^31 seconds.
 
-Epson scripts are capped at two hundred operations because a longer one buys
-nothing. Comparison stops at the first operation reaching a declared divergence,
-and measured over hundreds of scripts that happens after about thirty operations
-whether the script is two hundred long or four thousand. Coverage of that part
-scales with the number of scripts, not with their length.
+Epson scripts are capped at 200 operations. Comparison stops after about 30 on average, 6130 over 200 scripts, so the part's coverage grows with the number of scripts and not their length.
 
-A divergence the runner can witness but nobody wrote down fails the run. The
-runner reads the list of ids out of `divergences.json` on every script rather
-than trusting a constant in the code.
+The two clocks are driven by separate scripts. In the harness and in the recording they share one 20-byte store, which no cartridge did, since none carried both parts. Time is scripted too, because the reference reads the wall clock. The reference sources are fetched at build time and never vendored. Only the driver in [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) belongs to this repository.
 
-The two clocks are driven by separate scripts. They share one twenty-byte store
-here and in the recording, which is a convenience of the harness rather than
-anything a board did, since no cartridge carried both parts.
+| Command | Arguments | Exit code |
+|:--|:--|:--|
+| `python3 -m conformance.build` | `--sources DIR`, `--output PATH`, `--pinned FILE`, `--driver-source FILE` | 0 built, 1 compile failed, 2 bad arguments or fetch failed |
+| `python3 -m conformance.reference` | `--runs N`, default 200, `--from N`, `--seed N`, `--length N`, default 4000, `--driver PATH` | 0 no disagreement, 1 a disagreement or an undeclared divergence, 2 no driver or bad arguments |
+| `python3 -m conformance.documents` | `--check` to verify without fetching, `--only SUBSTRING` | 0 every digest matched; 1 a document was refused, none matched, or the arguments were bad |
+| `python3 -m conformance.quotes` | None | 1 when a quote in the record is not found in its document or a citation does not check out, 0 otherwise, including when no document is on disk |
+| `python3 -m conformance.speed` | None | 0 when reads beat the floor of 500,000 per second, 1 when they do not |
+| `python3 -m conformance.cartridge CARTRIDGE OUT.json` | A cartridge image and an output path | 0 written, 1 no clock routine found, 2 bad arguments or no such file |
 
-Run it yourself:
-
-```bash
-python3 -m conformance.build
-python3 -m conformance.reference
-```
-
-The script is generated rather than written by hand for the same reason a suite
-beats a handful of examples: a hand-written script exercises the paths its author
-thought of. A generated one wanders into sequences nobody would write on purpose,
-which is where the corners are. Time is scripted too, because the reference reads
-the wall clock and a comparison against a moving target proves nothing.
-
-The reference sources are fetched at build time and never vendored here. Only the
-driver in [`conformance/ref/`](conformance/ref/) belongs to this repository.
-
-### When something is wrong
-
-```bash
-python3 snesrtc/doctor.py
-```
-
-It looks at this machine and prints what is actually there, and every line is
-something it looked at just now rather than something that ought to be true. A
-check that fails says what it saw. A check that itself throws is reported as what
-it threw rather than taking the report down with it. Paste all of it into an
-issue.
-
-## Working on it
-
-### Running the tests
-
-`python3 snesrtc/doctor.py` says what is actually on this machine: both clocks, a write pushed through and read back, and whether the reference this repository cannot carry is built. It is run as a file rather than with `-m` so that it still runs when the package itself will not import, which is the case it exists for. Its report is what an issue asks for, because a report is only as good as what it says about the machine that produced it.
-
-Each module has its test file beside it, named after it.
-
-```bash
-python -m coverage erase
-for file in $(find snesrtc conformance -name '*.test.py' | sort); do
-  python -m coverage run -a "$file"
-done
-python -m coverage report
-```
-
-Coverage is a gate, not a report: the build fails below 100% of statements and
-branches. Types are a gate too, `mypy` in strict mode with every optional error
-class the checker offers.
-
-### Reproducing a conformance failure
-
-Every script comes from a seed, and the runner prints the seed and the part of a
-script that disagreed. That script can be regenerated exactly:
-
-```bash
-python3 -m conformance.reference --seed 22 --length 4000
-```
-
-Or render it and feed it to the driver on standard input, to see the reference's
-side alone:
+A failing script is regenerated from its seed. `reference.generate(seed, length, part)` returns the operations and `reference.render(script)` the text the driver reads on standard input.
 
 ```python
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path.cwd()))
 from conformance import reference
 
 script = reference.generate(seed=22, length=4000, part="sharp")
-print(reference.render(script)[:40])
+print(len(script), reference.render(script).splitlines()[:4])
 ```
 
-### Changing something the manual settles
+```
+4000 ['time 1000000000', 'store 15 4', 'store 13 2', 'w 10241 12']
+```
 
-Do not resolve a divergence by changing the model to match the recording. If the
-manual is wrong, say why, with the page. If a new disagreement appears, it needs
-an entry in `divergences.json` naming what would settle it, or it fails the run.
+The script opens by setting the time and configuring the Epson control registers, then writes `0x0C` to `$2801`, which is 10241.
 
-### Project conventions
+[`conformance/cartridge.json`](conformance/cartridge.json) records what the clock routine of Tengai Makyou Zero writes to the part, read out of the program without running it: five constant writes to the control registers, among them CF set to `0x07` and then `0x04`, and CD set to `0x06`. The file holds digests of the image and no byte of it.
 
-| Convention | Source |
-|:-----------|:-------|
-| Commit format | [Conventional Commits](https://www.conventionalcommits.org/) |
-| Format and lint | [ruff](https://docs.astral.sh/ruff/), configured in [pyproject.toml](pyproject.toml) |
-| Types | [mypy](https://mypy-lang.org/) strict, configured in [pyproject.toml](pyproject.toml) |
-| Releases | [semantic-release](https://semantic-release.gitbook.io/), from the commit history |
-| Test naming | A sentence stating the behaviour, not the function name |
-| Comments | None in source, and a docstring counts as one |
+## Working on it
 
-### Non-obvious decisions
+| Need | Where |
+|:--|:--|
+| Every gate and the order to run them | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| The same material for a coding agent | [AGENTS.md](AGENTS.md) |
+| The standard this repository shares with the rest of the family | [FAMILY.md](FAMILY.md) |
+| What is not settled, and what would settle it | [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) |
+| Bug reports | [GitHub Issues](https://github.com/gufranco/snes-rtc-python/issues) |
+| Security reports | [SECURITY.md](SECURITY.md) |
+| Conduct | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
 
-- The calendar arithmetic is the reference's loop transcribed, including the
-  unsigned underflow, rather than a conversion to a timestamp and back. The two
-  agree on every sane date and disagree on the ones a corrupt cartridge holds,
-  and the manual declines to say which is right.
-- There is a bulk path that divides out minutes and hours instead of counting
-  them, used only once every counter is inside its range. It is a shortcut for
-  the loop beside it, and the differential is what keeps the two honest.
-- The clock a chip reads is injected rather than taken from the machine, so a
-  test can hold time still or move it a decade.
-- The century a two-digit Epson year belongs to is a convention inherited from
-  the recording. The manual prints two BCD digits and names no century, and the
-  window decides only which years are leap years.
+```bash
+uvx ruff@0.16.3 format --check .
+uvx ruff@0.16.3 check .
+uvx --python 3.12 mypy==1.14.1
+python3 -m coverage erase
+for file in $(find snesrtc conformance -name '*.test.py' | sort); do
+  python3 -m coverage run -a "$file"
+done
+python3 -m coverage report
+```
 
-### Layout
+Each module has a test file beside it, named after it, and each runs on its own. Coverage is a hard gate at 100% statement and branch, and mypy runs strict.
 
-| File | Holds |
-|:-----|:------|
-| [`snesrtc/calendar.py`](snesrtc/calendar.py) | Leap years, month lengths, the weekday counter, and rollover as the chips perform it |
-| [`snesrtc/store.py`](snesrtc/store.py) | The twenty bytes the cartridge keeps on a battery |
-| [`snesrtc/sharp.py`](snesrtc/sharp.py) | The Sharp protocol and its state machine |
-| [`snesrtc/epson.py`](snesrtc/epson.py) | The Epson register file, its named control bits, and its two notations |
-| [`snesrtc/models.py`](snesrtc/models.py) | Which chips this covers and how to build one |
-| [`conformance/hardware.json`](conformance/hardware.json) | What Epson printed, fact by fact, with the sentence each came from |
-| [`conformance/divergences.json`](conformance/divergences.json) | Every place the manual and the recording disagree, and what would settle each |
-| [`conformance/hardware.test.py`](conformance/hardware.test.py) | The gate that holds the model's constants to that file |
-| [`conformance/reference.py`](conformance/reference.py) | The differential runner, and what it refuses to compare |
-| [`conformance/build.py`](conformance/build.py) | Fetches the pinned reference and builds the driver |
-| [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) | The driver that wraps the reference implementations |
-
-### Contributing
-
-Measurements first. [CONTRIBUTING.md](CONTRIBUTING.md) has the gates a change is
-expected to pass, [SECURITY.md](SECURITY.md) says what belongs in a private
-report, and the [Code of Conduct](CODE_OF_CONDUCT.md) applies wherever this
-project is discussed.
-
-Never attach a copyrighted file, and never link to somewhere one can be
-downloaded. A digest identifies a file without carrying it.
+Do not resolve a divergence by changing the model to match the recording. If the manual is wrong, say why, with the page. A new disagreement needs an entry in `divergences.json` naming what would settle it, or the differential fails.
 
 ## References
 
-This repository carries no documents, no cartridges and no reference sources.
+- *Application Manual: Real Time Clock Module RTC-4513*, Seiko Epson, 1 December 1999. 18 pages, 509,740 bytes, SHA-256 `409b8a5a3030fe432dd7dafbf4719944abac890cc5cbebbf96fb8313f9caca33`. A fax with no text layer, so a citation into it is checked by rendering the page.
+- *RTC-4513 catalogue extract*, Seiko Epson, undated. 2 pages, 701,040 bytes, SHA-256 `6496eb35fddc181d4e80832b98b8a45163bf5370eadd1e58002aefc83f12edcf`. It prints the same sixteen-row register table.
+- snes9x, `srtcemu.cpp` and `spc7110emu.cpp` with their headers, at commit `2971061cf07fdc6fc7d18883edf4e648eb16a6d2`, https://github.com/snes9xgit/snes9x, pinned in [`conformance/pinned.json`](conformance/pinned.json). The reference both parts are compared against. Fetched at build time and never vendored.
 
-| Document | Publisher | Pinned by | Redistributable |
-|:---------|:----------|:----------|:----------------|
-| *Application Manual: Real Time Clock Module RTC-4513* | Seiko Epson, 1999 | Digest and read-date in [`conformance/hardware.json`](conformance/hardware.json) | No |
-| *RTC-4513 catalogue extract* | Seiko Epson, undated | Digest and read-date in [`conformance/hardware.json`](conformance/hardware.json) | No |
-
-Fetching them is a command rather than an exercise. [`conformance/documents.json`](conformance/documents.json) carries the full digest, the byte count and a fetchable address for each, and [`conformance/documents.py`](conformance/documents.py) brings both down into `docs/`, which git ignores, and refuses anything whose digest does not match.
-
-```bash
-python3 -m conformance.documents          # fetch and verify every digest
-python3 -m conformance.documents --check  # verify what is already here
-```
-
-The application manual is a fax with no text layer at all, so a citation into it is followed by rendering the page and reading it.
-
-**No manufacturer document for the Sharp part is known to exist.** The marking
-`S-RTC` is a Nintendo part designation in the same style as `S-DSP`, `S-SMP` and
-`S-PPU`, not a Sharp catalogue number. It was searched for; the date and the
-search are recorded in `hardware.json` under `"verified": false`, along with the
-three things that would settle it. A test asserts the file still says so, because
-filling that block in from an emulator would make a guess indistinguishable from
-a fact.
-
-| Source | Used for |
-|:-------|:---------|
-| [snes9xgit/snes9x](https://github.com/snes9xgit/snes9x) | The reference both parts are compared against, pinned by commit in [`conformance/pinned.json`](conformance/pinned.json). Fetched at build time, never vendored, and a second implementation rather than a measurement |
+Neither Epson document is redistributable or in this repository. [`conformance/documents.json`](conformance/documents.json) carries the digest, size and address of each, and `python3 -m conformance.documents` fetches them into `docs/`, which git ignores, and refuses any file whose digest does not match.
 
 ## Citing this
 
-[CITATION.cff](CITATION.cff) is kept in step with the released version by the
-same script that stamps the package, so the version it names is the version that
-shipped.
+[CITATION.cff](CITATION.cff) is updated with each release by the script that stamps the package version.
 
 ## License
 
-[MIT](LICENSE).
-
-The reference implementations are a separate work under their own licence,
-fetched at build time and never redistributed here. The Epson application manual
-is Seiko Epson's; this repository records what it says, with digests so a reader
-can confirm they are holding the same document, and does not carry it.
+MIT. See [LICENSE](LICENSE). The snes9x sources are a separate work under their own licence, fetched at build time and never redistributed here.
