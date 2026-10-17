@@ -24,6 +24,175 @@ FACTS = EPSON["facts"]
 
 ROWS = FACTS["registerTable"]["rows"]
 
+FROZEN = 1_000_000_000
+
+DAY = 86_400
+
+HOUR = 3_600
+
+DIGITS = (0, 0, 0, 3, 2, 1, 8, 1, 8, 0, 6, 2)
+
+EXAMPLE_YEAR = 1993
+
+MONTH_NAMES = (
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+)
+
+
+def a_clock(
+    hand: list[int], control_f: int = epson.HOURS_24, control_d: int = epson.CAL_HW
+) -> epson.Chip:
+    held = store.Store(cleared=True)
+    held.stamp = hand[0]
+    held.write(epson.CF, control_f)
+    held.write(epson.CD, control_d)
+    return epson.Chip(held, now=lambda: hand[0])
+
+
+def opened(chip: epson.Chip, mode: int, index: int) -> None:
+    chip.write(epson.ENABLE, 0x01)
+    chip.write(epson.DATA, mode)
+    chip.write(epson.DATA, index)
+
+
+def written(chip: epson.Chip, index: int, *nibbles: int) -> None:
+    opened(chip, epson.WRITE_MODE, index)
+    for one in nibbles:
+        chip.write(epson.DATA, one)
+
+
+def read_back(chip: epson.Chip, index: int) -> int:
+    opened(chip, epson.READ_MODE, index)
+    return chip.read(epson.DATA)
+
+
+def stepped(chip: epson.Chip) -> int:
+    at = chip.index
+    chip.read(epson.DATA)
+    return at
+
+
+def located(spelled: str) -> tuple[int, int]:
+    name, _, bit = spelled.strip().partition(".")
+    address = next(row["address"] for row in ROWS if row["name"] == name)
+    return address, 1 << int(bit.removeprefix("D"))
+
+
+def a_day(text: str) -> tuple[int, int, int]:
+    if "-" in text:
+        year, month, day = (int(part) for part in text.split("-"))
+        return year, month, day
+    month_name, day_text = text.split()
+    return EXAMPLE_YEAR, MONTH_NAMES.index(month_name) + 1, int(day_text)
+
+
+def a_second_before_midnight(year: int, month: int, day: int) -> tuple[int, ...]:
+    short = year % 100
+    return (9, 5, 9, 5, 3, 2, day % 10, day // 10, month % 10, month // 10, short % 10, short // 10)
+
+
+def a_second_after(date: tuple[int, int, int]) -> tuple[int, int, int]:
+    hand = [FROZEN]
+    chip = a_clock(hand)
+    written(chip, epson.S1, *a_second_before_midnight(*date))
+    hand[0] += 1
+    chip.write(epson.ENABLE, 0x00)
+    moment = chip.moment()
+    return moment.year, moment.month, moment.day
+
+
+def disregarded(code: int) -> bool:
+    chip = a_clock([FROZEN])
+    chip.store.write(0x05, 0x0A)
+    before = list(chip.store.bytes)
+    chip.write(epson.ENABLE, 0x01)
+    chip.write(epson.DATA, code)
+    chip.write(epson.DATA, 0x05)
+    chip.write(epson.DATA, 0x09)
+    return chip.store.bytes == before and chip.read(epson.DATA) == 0x00
+
+
+def registers_at_power_on(seed: int) -> list[int]:
+    chip = epson.Chip(store.Store(seed=seed), now=lambda: FROZEN)
+    opened(chip, epson.READ_MODE, epson.S1)
+    return [chip.read(epson.DATA) for _ in range(epson.REGISTERS)]
+
+
+def the_top_held(row: dict[str, object]) -> int:
+    chip = a_clock([FROZEN])
+    address = int(str(row["address"]))
+    top = row["countRange"]
+    assert isinstance(top, list)
+    written(chip, address, top[1])
+    return chip.digit(address)
+
+
+def tens_of_hours(control_f: int) -> set[int]:
+    chip = a_clock([FROZEN], control_f=control_f)
+    seen = set()
+    for hour in range(24):
+        chip.store_hour(hour)
+        seen.add(chip.digit(epson.H10))
+    return seen
+
+
+def weekdays_counted(days: int) -> list[int]:
+    hand = [FROZEN]
+    chip = a_clock(hand)
+    written(chip, epson.S1, *DIGITS[:12], 0)
+    counted = []
+    for _ in range(days):
+        hand[0] += DAY
+        chip.write(epson.ENABLE, 0x00)
+        counted.append(chip.digit(epson.W))
+    return counted
+
+
+def flag_written(address: int, values: tuple[int, ...]) -> list[int]:
+    chip = a_clock([FROZEN])
+    kept = []
+    for value in values:
+        written(chip, address, value)
+        kept.append(read_back(chip, address))
+    return kept
+
+
+def hour_read(control_f: int, tens: int) -> int:
+    chip = a_clock([FROZEN], control_f=control_f)
+    written(chip, epson.H1, 3, tens)
+    return chip.hour()
+
+
+def hours_moved(*control_f: int) -> int:
+    hand = [FROZEN]
+    chip = a_clock(hand)
+    written(chip, epson.S1, *DIGITS)
+    for value in control_f:
+        written(chip, epson.CF, value)
+    hand[0] += HOUR
+    chip.write(epson.ENABLE, 0x00)
+    return chip.digit(epson.H1) - DIGITS[epson.H1]
+
+
+def adjusted(seconds: int, mask: int) -> tuple[int, int, int]:
+    chip = a_clock([FROZEN])
+    written(chip, epson.S1, seconds % 10, seconds // 10, *DIGITS[2:])
+    written(chip, epson.CD, epson.CAL_HW | mask)
+    chip.write(epson.ENABLE, 0x00)
+    second = chip.digit(epson.S1) + chip.digit(epson.S10) * 10
+    return second, chip.digit(epson.MI1), chip.store.read(epson.CD) & mask
+
 
 class DocumentTest(unittest.TestCase):
     def source(self, key: str) -> dict[str, object]:
@@ -440,6 +609,319 @@ class RecordSaysWhatTheModelDoesTest(unittest.TestCase):
         stray = [one["id"] for one in self.divergences() if one.get("status") not in allowed]
 
         self.assertEqual(stray, [])
+
+
+class PrintedBehaviourTest(unittest.TestCase):
+    def test_the_address_returns_to_zero_after_the_last_register(self) -> None:
+        # Arrange
+        printed = FACTS["registerCount"]["value"]
+        chip = a_clock([FROZEN])
+        opened(chip, epson.READ_MODE, epson.S1)
+
+        # Act
+        visited = [stepped(chip) for _ in range(printed + 1)]
+
+        # Assert
+        self.assertEqual(visited, [*range(printed), 0])
+
+    def test_a_register_holds_the_printed_number_of_bits(self) -> None:
+        # Arrange
+        printed = FACTS["registerWidthBits"]["value"]
+        chip = a_clock([FROZEN])
+        written(chip, epson.MI1, 0xFF)
+
+        # Act
+        answered = read_back(chip, epson.MI1)
+
+        # Assert
+        self.assertEqual(answered, 2**printed - 1)
+
+    def test_the_printed_write_code_opens_a_session_that_writes(self) -> None:
+        # Arrange
+        chip = a_clock([FROZEN])
+        chip.write(epson.ENABLE, 0x01)
+        chip.write(epson.DATA, FACTS["writeModeCode"]["value"])
+        chip.write(epson.DATA, epson.MI1)
+
+        # Act
+        chip.write(epson.DATA, 0x05)
+
+        # Assert
+        self.assertEqual(chip.store.read(epson.MI1), 0x05)
+
+    def test_the_printed_read_code_opens_a_session_that_reads(self) -> None:
+        # Arrange
+        chip = a_clock([FROZEN])
+        written(chip, epson.MI1, 0x07)
+        chip.write(epson.ENABLE, 0x01)
+        chip.write(epson.DATA, FACTS["readModeCode"]["value"])
+        chip.write(epson.DATA, epson.MI1)
+
+        # Act
+        answered = chip.read(epson.DATA)
+
+        # Assert
+        self.assertEqual(answered, 0x07)
+
+    def test_every_other_mode_code_leaves_the_data_that_follows_disregarded(self) -> None:
+        # Arrange
+        named = {FACTS["writeModeCode"]["value"], FACTS["readModeCode"]["value"]}
+        others = [code for code in range(epson.NIBBLE + 1) if code not in named]
+
+        # Act
+        ignored = all(disregarded(code) for code in others)
+
+        # Assert
+        self.assertEqual(ignored, FACTS["otherModeCodesIgnored"]["value"])
+
+    def test_nibbles_after_the_first_land_at_the_following_addresses(self) -> None:
+        # Arrange
+        chip = a_clock([FROZEN])
+
+        # Act
+        written(chip, epson.MI1, 1, 2, 3)
+
+        # Assert
+        landed = [chip.store.read(at) for at in (epson.MI1, epson.MI10, epson.H1)]
+        self.assertEqual(landed == [1, 2, 3], FACTS["addressAutoIncrements"]["value"])
+
+    def test_the_registers_come_up_holding_whatever_the_seed_left(self) -> None:
+        # Arrange
+        seeds = (1, 2)
+
+        # Act
+        seen = [registers_at_power_on(seed) for seed in seeds]
+
+        # Assert
+        self.assertEqual(seen[0] != seen[1], FACTS["powerOnStateUndefined"]["value"])
+
+    def test_a_digit_carries_into_the_next_one_at_ten(self) -> None:
+        # Arrange
+        hand = [FROZEN]
+        chip = a_clock(hand)
+        written(chip, epson.S1, 9, 0, *DIGITS[2:])
+        hand[0] += 1
+
+        # Act
+        chip.write(epson.ENABLE, 0x00)
+
+        # Assert
+        carried = (chip.digit(epson.S1), chip.digit(epson.S10))
+        self.assertEqual("bcd" if carried == (0, 1) else "binary", FACTS["encoding"]["value"])
+
+    def test_an_impossible_value_the_manual_warns_against_can_still_be_set(self) -> None:
+        # Arrange
+        chip = a_clock([FROZEN])
+        written(chip, epson.S1, 0x0C)
+
+        # Act
+        answered = read_back(chip, epson.S1)
+
+        # Assert
+        self.assertEqual(answered == 0x0C, FACTS["outOfRangeValuesNotSpecified"]["value"])
+
+    def test_each_printed_impossible_date_corrects_to_the_printed_one(self) -> None:
+        # Arrange
+        examples = FACTS["impossibleDateCorrection"]["examples"]
+
+        # Act
+        corrected = [a_second_after(a_day(example["set"])) for example in examples]
+
+        # Assert
+        self.assertEqual(corrected, [a_day(example["corrects"]) for example in examples])
+
+    def test_february_gains_a_day_in_a_leap_year_and_only_then(self) -> None:
+        # Arrange
+        eves = ((2024, 2, 28), (2023, 2, 28))
+
+        # Act
+        found = [a_second_after(eve) for eve in eves]
+
+        # Assert
+        self.assertEqual(
+            found == [(2024, 2, 29), (2023, 3, 1)], FACTS["leapYearCompensation"]["value"]
+        )
+
+    def test_every_counted_register_holds_the_top_of_its_printed_range(self) -> None:
+        # Arrange
+        counted = [row for row in FACTS["registerTable"]["rows"] if row["countRange"]]
+
+        # Act
+        held = [the_top_held(row) for row in counted]
+
+        # Assert
+        self.assertEqual(held, [row["countRange"][1] for row in counted])
+
+    def test_the_tens_of_hours_counts_to_one_or_to_two_by_notation(self) -> None:
+        # Arrange
+        row = next(one for one in FACTS["registerTable"]["rows"] if "countRangeQuote" in one)
+        low, _, tops = row["countRangeQuote"].partition("~")
+        twelve, twenty_four = (int(top) for top in tops.split(","))
+
+        # Act
+        seen = (tens_of_hours(0), tens_of_hours(epson.HOURS_24))
+
+        # Assert
+        self.assertEqual(
+            seen,
+            (set(range(int(low), twelve + 1)), set(range(row["countRange"][0], twenty_four + 1))),
+        )
+
+    def test_the_weekday_counts_up_to_six_and_back_to_zero(self) -> None:
+        # Arrange
+        low, high = FACTS["weekdayCountsZeroToSix"]["value"]
+
+        # Act
+        counted = weekdays_counted(high - low + 1)
+
+        # Assert
+        self.assertEqual(counted, [*range(low + 1, high + 1), low])
+
+    def test_the_oscillator_flag_can_be_set_and_cleared_by_writing_it(self) -> None:
+        # Arrange
+        address, mask = located(FACTS["oscFlag"]["bit"])
+
+        # Act
+        kept = flag_written(address, (mask | 0x1, 0x1))
+
+        # Assert
+        self.assertEqual(kept, [mask | 0x1, 0x1])
+
+    def test_a_second_ticking_while_ce_is_high_raises_every_read_flag(self) -> None:
+        # Arrange
+        flags = [located(one) for one in FACTS["readFlag"]["bit"].split(",")]
+        hand = [FROZEN]
+        chip = a_clock(hand)
+        written(chip, epson.S1, *DIGITS)
+        chip.write(epson.ENABLE, 0x00)
+        hand[0] += 5
+        opened(chip, epson.WRITE_MODE, epson.CF)
+
+        # Act
+        chip.write(epson.DATA, epson.HOURS_24)
+
+        # Assert
+        self.assertEqual(
+            [chip.store.read(address) & mask for address, mask in flags],
+            [mask for _, mask in flags],
+        )
+
+    def test_ce_falling_clears_every_read_flag(self) -> None:
+        # Arrange
+        flags = [located(one) for one in FACTS["readFlag"]["bit"].split(",")]
+        chip = a_clock([FROZEN])
+        for address, mask in flags:
+            chip.store.write(address, chip.store.read(address) | mask)
+
+        # Act
+        chip.write(epson.ENABLE, 0x00)
+
+        # Assert
+        self.assertEqual(
+            [chip.store.read(address) & mask for address, mask in flags], [0] * len(flags)
+        )
+
+    def test_the_afternoon_bit_is_one_for_pm_and_zero_for_am(self) -> None:
+        # Arrange
+        _, afternoon = located(FACTS["pmAmBit"]["bit"])
+
+        # Act
+        read = (hour_read(0, afternoon), hour_read(0, 0))
+
+        # Assert
+        self.assertEqual(read, (15, 3))
+
+    def test_releasing_hold_hands_back_one_second_however_long_it_lasted(self) -> None:
+        # Arrange
+        hold = FACTS["controlRegisterD"]["bits"]["hold"]["mask"]
+        hand = [FROZEN]
+        chip = a_clock(hand)
+        written(chip, epson.S1, *DIGITS)
+        written(chip, epson.CD, epson.CAL_HW | hold)
+        hand[0] += 300
+
+        # Act
+        written(chip, epson.CD, epson.CAL_HW)
+
+        # Assert
+        self.assertEqual(
+            (chip.digit(epson.S1), chip.digit(epson.MI1)),
+            (DIGITS[epson.S1] + 1, DIGITS[epson.MI1]),
+        )
+
+    def test_the_thirty_second_adjust_rounds_to_the_nearer_minute_and_clears(self) -> None:
+        # Arrange
+        mask = FACTS["controlRegisterD"]["bits"]["thirtySecondAdjust"]["mask"]
+
+        # Act
+        rounded = (adjusted(29, mask), adjusted(30, mask))
+
+        # Assert
+        self.assertEqual(rounded, ((0, DIGITS[epson.MI1], 0), (0, DIGITS[epson.MI1] + 1, 0)))
+
+    def test_reset_zeroes_the_seconds_and_forces_the_test_bit_down(self) -> None:
+        # Arrange
+        reset = FACTS["controlRegisterF"]["bits"]["reset"]["mask"]
+        chip = a_clock([FROZEN], control_f=epson.HOURS_24 | epson.TEST)
+        written(chip, epson.S1, 5, 2, *DIGITS[2:])
+        opened(chip, epson.WRITE_MODE, epson.CF)
+
+        # Act
+        chip.write(epson.DATA, epson.HOURS_24 | epson.TEST | reset)
+
+        # Assert
+        self.assertEqual(
+            (chip.digit(epson.S1), chip.digit(epson.S10), chip.store.read(epson.CF) & epson.TEST),
+            (0, 0, 0),
+        )
+
+    def test_reset_stops_the_clock_until_it_is_cleared(self) -> None:
+        # Arrange
+        reset = FACTS["controlRegisterF"]["bits"]["reset"]["mask"]
+
+        # Act
+        moved = (
+            hours_moved(epson.HOURS_24 | reset),
+            hours_moved(epson.HOURS_24 | reset, epson.HOURS_24),
+        )
+
+        # Assert
+        self.assertEqual(moved, (0, 1))
+
+    def test_stop_stops_the_clock_until_it_is_cleared(self) -> None:
+        # Arrange
+        stop = FACTS["controlRegisterF"]["bits"]["stop"]["mask"]
+
+        # Act
+        moved = (
+            hours_moved(epson.HOURS_24 | stop),
+            hours_moved(epson.HOURS_24 | stop, epson.HOURS_24),
+        )
+
+        # Assert
+        self.assertEqual(moved, (0, 1))
+
+    def test_the_notation_bit_chooses_twenty_four_hours_when_set(self) -> None:
+        # Arrange
+        notation = FACTS["controlRegisterF"]["bits"]["twentyFourTwelve"]["mask"]
+
+        # Act
+        read = (hour_read(notation, epson.PM), hour_read(0, epson.PM))
+
+        # Assert
+        self.assertEqual(read, (3, 15))
+
+    def test_the_test_bit_is_cleared_when_ce_falls(self) -> None:
+        # Arrange
+        test = FACTS["controlRegisterF"]["bits"]["test"]["mask"]
+        chip = a_clock([FROZEN])
+        written(chip, epson.CF, epson.HOURS_24 | test)
+
+        # Act
+        chip.write(epson.ENABLE, 0x00)
+
+        # Assert
+        self.assertEqual(chip.store.read(epson.CF) & test, 0)
 
 
 if __name__ == "__main__":

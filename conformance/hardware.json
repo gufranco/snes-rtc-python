@@ -22,14 +22,22 @@
           "quote": "The address incrementation is cyclic. After address F has been written, the selection returns to address 0.",
           "document": "applicationManual",
           "filePage": 13,
-          "manualPage": 11
+          "manualPage": 11,
+          "heldBy": [
+            "conformance/hardware.test.py::RegisterTableTest.test_the_model_holds_as_many_registers_as_the_manual_gives",
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_the_address_returns_to_zero_after_the_last_register"
+          ]
         },
         "registerWidthBits": {
           "value": 4,
           "quote": "Read and write operations are carried out in 4-bit units after setting the CE input to High.",
           "document": "applicationManual",
           "filePage": 13,
-          "manualPage": 11
+          "manualPage": 11,
+          "heldBy": [
+            "conformance/hardware.test.py::ProtocolTest.test_a_register_is_as_wide_as_the_manual_says",
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_a_register_holds_the_printed_number_of_bits"
+          ]
         },
         "bitOrder": {
           "value": "lsbFirst",
@@ -37,42 +45,58 @@
           "note": "A property of the chip's three-wire serial interface. The SPC7110 presents whole nibbles to the cartridge bus, so bit order is not observable through the mapping this package models.",
           "document": "applicationManual",
           "filePage": 13,
-          "manualPage": 11
+          "manualPage": 11,
+          "unreachable": "The SPC7110 hands the part whole nibbles, so the model has no serial line on which an order of bits could be observed."
         },
         "writeModeCode": {
           "value": 3,
           "quote": "After setting the CE input to High, make the first 4-bit block \"3\" to indicate write mode, and use the next 4-bit block to specify the address.",
           "document": "applicationManual",
           "filePage": 13,
-          "manualPage": 11
+          "manualPage": 11,
+          "heldBy": [
+            "conformance/hardware.test.py::ProtocolTest.test_the_write_mode_code_is_the_one_the_manual_names",
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_the_printed_write_code_opens_a_session_that_writes"
+          ]
         },
         "readModeCode": {
           "value": 12,
           "quote": "After setting the CE input to High, make the first 4-bit block \"C\" to indicate read mode, and use the next 4-bit block to specify the address.",
           "document": "applicationManual",
           "filePage": 13,
-          "manualPage": 11
+          "manualPage": 11,
+          "heldBy": [
+            "conformance/hardware.test.py::ProtocolTest.test_and_the_read_mode_code",
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_the_printed_read_code_opens_a_session_that_reads"
+          ]
         },
         "otherModeCodesIgnored": {
           "value": true,
           "quote": "If the mode setting code is set to something other than \"C\" or \"3\", subsequent data are disregarded and the DATA port remains in the input mode.",
           "document": "applicationManual",
           "filePage": 13,
-          "manualPage": 11
+          "manualPage": 11,
+          "heldBy": [
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_every_other_mode_code_leaves_the_data_that_follows_disregarded"
+          ]
         },
         "addressAutoIncrements": {
           "value": true,
           "quote": "The following 4-bit block is written to the specified address. Then the address is automatically incremented, and subsequent 4-bit blocks are written to subsequent addresses.",
           "document": "applicationManual",
           "filePage": 13,
-          "manualPage": 11
+          "manualPage": 11,
+          "heldBy": [
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_nibbles_after_the_first_land_at_the_following_addresses"
+          ]
         },
         "incompleteNibbleDiscarded": {
           "value": true,
           "quote": "If the CE input is set to Low while a 4-bit input data block is incomplete, this input is disregarded. (Previous data remain valid.)",
           "document": "applicationManual",
           "filePage": 13,
-          "manualPage": 11
+          "manualPage": 11,
+          "unreachable": "The SPC7110 hands the part a whole nibble with every write, so the model has no half-sent block for CE to fall in the middle of."
         },
         "powerOnStateUndefined": {
           "value": true,
@@ -80,21 +104,28 @@
           "why": "This is the manufacturer's own statement of the rule this family applies everywhere: a model that starts its registers at zero is modelling a state the part does not guarantee. snesrtc.store.Store derives every unwritten byte from a seed for exactly this reason.",
           "document": "applicationManual",
           "filePage": 14,
-          "manualPage": 12
+          "manualPage": 12,
+          "heldBy": [
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_the_registers_come_up_holding_whatever_the_seed_left"
+          ]
         },
         "encoding": {
           "value": "bcd",
           "quote": "The count is in BCD code. For example, if the 1-year digit register (Y1) is (y8, y4, y2, y1) = (0,0,1,0), the register indicates the \"2\" of \"1992\".",
           "document": "applicationManual",
           "filePage": 7,
-          "manualPage": 5
+          "manualPage": 5,
+          "heldBy": [
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_a_digit_carries_into_the_next_one_at_ten"
+          ]
         },
         "positiveLogic": {
           "value": true,
           "quote": "The relation between register bit 0/1 and input/output is positive logic. 0 = Low; 1 = High.",
           "document": "applicationManual",
           "filePage": 7,
-          "manualPage": 5
+          "manualPage": 5,
+          "unreachable": "The sentence relates a register bit to a voltage on a pin, and the model has registers but no pins."
         },
         "outOfRangeValuesNotSpecified": {
           "value": true,
@@ -102,7 +133,10 @@
           "why": "The manufacturer declines to state what the counters do when a register holds a value outside its count range. Everything this package models about that case therefore rests on corpus.json rather than on this file, and is labelled as such.",
           "document": "applicationManual",
           "filePage": 8,
-          "manualPage": 6
+          "manualPage": 6,
+          "heldBy": [
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_an_impossible_value_the_manual_warns_against_can_still_be_set"
+          ]
         },
         "impossibleDateCorrection": {
           "value": "advancesToTheFollowingMonth",
@@ -120,14 +154,20 @@
           "note": "The correction happens on the next day-of-the-month increment, not at the moment of writing.",
           "document": "applicationManual",
           "filePage": 8,
-          "manualPage": 6
+          "manualPage": 6,
+          "heldBy": [
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_each_printed_impossible_date_corrects_to_the_printed_one"
+          ]
         },
         "leapYearCompensation": {
           "value": true,
           "quote": "Automatic leap year compensation is provided for the Gregorian calender and for Japanese-era years of the current era (Heisei).",
           "document": "applicationManual",
           "filePage": 8,
-          "manualPage": 6
+          "manualPage": 6,
+          "heldBy": [
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_february_gains_a_day_in_a_leap_year_and_only_then"
+          ]
         },
         "registerTable": {
           "quote": "Address / Register name / D3 (MSB) / D2 / D1 / D0 (LSB) / Count range / Remarks",
@@ -206,7 +246,10 @@
               "remarks": "10-hour digit register",
               "countRangeQuote": "0~1,2",
               "filePage": 7,
-              "manualPage": 5
+              "manualPage": 5,
+              "heldBy": [
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_the_tens_of_hours_counts_to_one_or_to_two_by_notation"
+              ]
             },
             {
               "address": 6,
@@ -326,7 +369,10 @@
           "document": "applicationManual",
           "assembled": true,
           "filePage": 7,
-          "manualPage": 5
+          "manualPage": 5,
+          "heldBy": [
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_every_counted_register_holds_the_top_of_its_printed_range"
+          ]
         },
         "weekdayCountsZeroToSix": {
           "value": [0, 6],
@@ -344,7 +390,11 @@
           "why": "The manual introduces the named days as an example for bit weighting, not as a fixed assignment. The chip counts 0 to 6 and attaches no meaning to the number, so a model that counts modulo seven is faithful whichever day a program calls zero. This package's own numbering is a property of the Sharp part, which does derive the weekday, and is recorded under that part.",
           "document": "applicationManual",
           "filePage": 8,
-          "manualPage": 6
+          "manualPage": 6,
+          "heldBy": [
+            "conformance/hardware.test.py::ProtocolTest.test_the_weekday_counts_over_the_range_the_manual_gives",
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_the_weekday_counts_up_to_six_and_back_to_zero"
+          ]
         },
         "oscFlag": {
           "bit": "S10.D3",
@@ -352,7 +402,10 @@
           "quote": "The fo (OSC FLAG) bit records any oscillation interruption. It is used to monitor for low battery voltage. The bit can be cleared by setting it to \"0\". (Setting the bit externally to \"1\" is also possible.)",
           "document": "applicationManual",
           "filePage": 7,
-          "manualPage": 5
+          "manualPage": 5,
+          "heldBy": [
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_the_oscillator_flag_can_be_set_and_cleared_by_writing_it"
+          ]
         },
         "readFlag": {
           "bit": "MI10.D3, H10.D3, D10.D3, MO10.D3, W.D3",
@@ -360,14 +413,21 @@
           "quote": "The fr (READ FLAG) bit is set to \"0\" when the CE input becomes Low. If the 1-second digit register has been incremented while CE is High, the bit becomes \"1\". This allows testing for a second-increment while the clock register is being used. If the bit is \"1\", the clock register must be read again.",
           "document": "applicationManual",
           "filePage": 7,
-          "manualPage": 5
+          "manualPage": 5,
+          "heldBy": [
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_a_second_ticking_while_ce_is_high_raises_every_read_flag",
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_ce_falling_clears_every_read_flag"
+          ]
         },
         "pmAmBit": {
           "bit": "H10.D2",
           "quote": "The PM/AM bit is \"1\" for PM and \"0\" for AM.",
           "document": "applicationManual",
           "filePage": 7,
-          "manualPage": 5
+          "manualPage": 5,
+          "heldBy": [
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_the_afternoon_bit_is_one_for_pm_and_zero_for_am"
+          ]
         },
         "twelveHourNotation": {
           "quote": "Possible time settings are 12 a.m. to 11 a.m., and 12 p.m. to 11 p.m. The h20 bit cannot be written and is fixed to \"0\". The clock does not increment the h20 bit.",
@@ -390,7 +450,11 @@
               "why": "HOLD is not a stop. The oscillator and the internal counters keep running behind it; only the visible 1-second digit is frozen. Time spent held is therefore not lost.",
               "document": "applicationManual",
               "filePage": 9,
-              "manualPage": 7
+              "manualPage": 7,
+              "heldBy": [
+                "conformance/hardware.test.py::ControlBitTest.test_control_register_d_bits_carry_the_manual_masks",
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_releasing_hold_hands_back_one_second_however_long_it_lasted"
+              ]
             },
             "calHw": {
               "mask": 2,
@@ -414,7 +478,11 @@
               "lockoutMicroseconds": 125,
               "document": "applicationManual",
               "filePage": 9,
-              "manualPage": 7
+              "manualPage": 7,
+              "heldBy": [
+                "conformance/hardware.test.py::ControlBitTest.test_control_register_d_bits_carry_the_manual_masks",
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_the_thirty_second_adjust_rounds_to_the_nearer_minute_and_clears"
+              ]
             }
           }
         },
@@ -433,7 +501,8 @@
               "quote": "INT/STND bit = \"1\": interrupt cycle mode. INT/STND bit = \"0\": fixed-period cycle mode",
               "document": "applicationManual",
               "filePage": 10,
-              "manualPage": 8
+              "manualPage": 8,
+              "unreachable": "The bit chooses the waveform on the STD.P pin, which the model has no pin for and no document shows the SPC7110 routing anywhere a program can see."
             },
             "t0": {
               "mask": 4
@@ -475,7 +544,8 @@
             "quote": "The fixed-period Low level cycle is 7.8 ms.",
             "document": "applicationManual",
             "filePage": 10,
-            "manualPage": 8
+            "manualPage": 8,
+            "unreachable": "The figure is the width of a low pulse on the STD.P pin, which the model has no pin for and no sub-second time to measure it in."
           },
           "notModelledHere": "Every bit of CE drives the STD.P output pin. No documentation says the SPC7110 routes STD.P anywhere a Super Nintendo program can observe it, so this package stores the register and models no interrupt. See divergences.json entry epson-std-p-unrouted."
         },
@@ -487,28 +557,45 @@
               "quote": "When this bit is set to \"1\", the seconds are reset to zero and the clock stops. The TEST bit is forced to \"0\". When the bit is set to \"0\", the clock resumes operation. When writing \"0\" to this bit, take care not to inadvertently set the TEST bit in the same register to \"1\".",
               "document": "applicationManual",
               "filePage": 12,
-              "manualPage": 10
+              "manualPage": 10,
+              "heldBy": [
+                "conformance/hardware.test.py::ControlBitTest.test_control_register_f_bits_carry_the_manual_masks",
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_reset_zeroes_the_seconds_and_forces_the_test_bit_down",
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_reset_stops_the_clock_until_it_is_cleared"
+              ]
             },
             "stop": {
               "mask": 2,
               "quote": "When this bit is set to \"1\", the clock stops. When the bit is set to \"0\", the clock resumes operation.",
               "document": "applicationManual",
               "filePage": 12,
-              "manualPage": 10
+              "manualPage": 10,
+              "heldBy": [
+                "conformance/hardware.test.py::ControlBitTest.test_control_register_f_bits_carry_the_manual_masks",
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_stop_stops_the_clock_until_it_is_cleared"
+              ]
             },
             "twentyFourTwelve": {
               "mask": 4,
               "quote": "Selection bit for 12-hour or 24-hour notation. \"1\" means 24-hour and \"0\" means 12-hour notation. When this bit is changed, data above H1 can become unstable and must be reset.",
               "document": "applicationManual",
               "filePage": 12,
-              "manualPage": 10
+              "manualPage": 10,
+              "heldBy": [
+                "conformance/hardware.test.py::ControlBitTest.test_control_register_f_bits_carry_the_manual_masks",
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_the_notation_bit_chooses_twenty_four_hours_when_set"
+              ]
             },
             "test": {
               "mask": 8,
               "quote": "This test bit is used by Epson for internal purposes. It must be set to \"0\" by the user. The bit is cleared by setting CE to Low.",
               "document": "applicationManual",
               "filePage": 12,
-              "manualPage": 10
+              "manualPage": 10,
+              "heldBy": [
+                "conformance/hardware.test.py::ControlBitTest.test_control_register_f_bits_carry_the_manual_masks",
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_the_test_bit_is_cleared_when_ce_falls"
+              ]
             }
           }
         },
@@ -517,7 +604,8 @@
           "quote": "Built-in frequency adjusted 32-kHz quartz crystal",
           "document": "applicationManual",
           "filePage": 3,
-          "manualPage": 1
+          "manualPage": 1,
+          "unreachable": "The model takes whole seconds from an injected clock and has no oscillator whose frequency a test could observe."
         },
         "frequencyTolerancePpm": {
           "value": 25,
@@ -528,7 +616,8 @@
           "document": "applicationManual",
           "assembled": true,
           "filePage": 18,
-          "manualPage": 16
+          "manualPage": 16,
+          "unreachable": "A tolerance bounds a population of modules at a temperature and voltage the model does not have, and the model keeps perfect time."
         },
         "temperatureCoefficientPpmPerCelsiusSquared": {
           "value": -0.035,
@@ -539,7 +628,8 @@
           "document": "applicationManual",
           "assembled": true,
           "filePage": 18,
-          "manualPage": 16
+          "manualPage": 16,
+          "unreachable": "The model has no temperature, so a coefficient per degree squared has nothing to act on."
         },
         "dailyErrorSeconds": {
           "value": 1,
@@ -547,7 +637,8 @@
           "quote": "At 11.574 ppm, the daily clock error is about one second per day.",
           "document": "applicationManual",
           "filePage": 18,
-          "manualPage": 16
+          "manualPage": 16,
+          "unreachable": "The model keeps perfect time from an injected clock, so it has no error in parts per million for a daily error to follow from."
         },
         "operatingVoltage": {
           "minimum": 2.7,
@@ -557,7 +648,8 @@
           "document": "applicationManual",
           "assembled": true,
           "filePage": 4,
-          "manualPage": 2
+          "manualPage": 2,
+          "unreachable": "A supply voltage is an electrical level on a pin the model does not have."
         },
         "dataRetentionVoltage": {
           "minimum": 2.0,
@@ -567,7 +659,8 @@
           "document": "applicationManual",
           "assembled": true,
           "filePage": 4,
-          "manualPage": 2
+          "manualPage": 2,
+          "unreachable": "A clock supply voltage is an electrical level on a pin the model does not have."
         }
       },
       "notStated": {
