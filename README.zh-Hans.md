@@ -2,7 +2,7 @@
 
 用 Python 实现超级任天堂卡带可能搭载的两种实时时钟：Sharp S-RTC 与 Epson RTC-4513。Epson 部件以 Seiko Epson 的应用手册为准，两者都以一个固定版本的 snes9x 构建为参照。
 
-[English](README.md) &nbsp;|&nbsp; [日本語](README.ja.md) &nbsp;|&nbsp; 简体中文 &nbsp;|&nbsp; [繁體中文（香港）](README.zh-HK.md)
+[English](README.md) | [日本語](README.ja.md) | 简体中文 | [繁體中文（香港）](README.zh-HK.md)
 
 [![CI](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/snes-rtc-python/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
