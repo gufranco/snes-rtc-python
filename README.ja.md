@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-時計**2**種、リファレンスと比較した操作**329,586**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**951**件、命令と分岐のカバレッジ**100%**、依存関係なし
+時計**2**種、リファレンスと比較した操作**329,630**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**974**件、命令と分岐のカバレッジ**100%**、依存関係なし
 
 ```python
 from snesrtc import Chip, Store
@@ -465,19 +465,20 @@ python3 -m conformance.reference
 ```
 
 ```
-epson: 200 scripts, 6086 operations compared, 9816 not compared, 0 disagreed
+epson: 200 scripts, 6129 operations compared whole, 1 compared except excused fields, 9772 not compared, 0 disagreed
+  fields excused under epson-irqf-not-writable on 1 operations
   not compared past epson-digit-fields-narrower-than-registers, reached by 195 scripts
   not compared past epson-oscillation-flag-cannot-be-originated, reached by 134 scripts
   ...
-sharp: 200 scripts, 323500 operations compared, 155 not compared, 0 disagreed
+sharp: 200 scripts, 323500 operations compared whole, 0 compared except excused fields, 155 not compared, 0 disagreed
   not compared past stamp-width-platform-dependent, reached by 2 scripts
 ```
 
-各スクリプトは、宣言済みの食い違いに達する最初の操作まで比較されます。その先では、マニュアルがすでに別の答えを出している問いに記録が答えることになるので、それらの操作は別に数えて名前を付けます。ランナーが観測できる食い違いで`divergences.json`にないものは実行を失敗させます。ランナーはスクリプトごとにそのファイルから一覧を読みます。
+モデルがマニュアルに従い、記録が単なる記憶として扱う1つのフィールド、つまりCDのIRQ-Fや表記ごとに0に固定されるH10のビットでは、ランナーは比較を続け、そのフィールドだけを免除します。行のほかのビットはすべて一致しなければならず、それらの操作は別に数えます。それ以外の宣言済みの食い違いでは、スクリプトの比較はそれに達する最初の操作で止まります。その先では、マニュアルがすでに別の答えを出している問いに記録が答え、その状態は後の計算が読むフィールドで異なるので、それらの操作は別に数えて名前を付けます。ランナーが観測できる食い違いで`divergences.json`にないものは実行を失敗させます。ランナーはスクリプトごとにそのファイルから一覧を読みます。
 
 シャープのチップはほぼ最初から最後まで比較されます。記録がその唯一の根拠だからです。唯一の除外は記録器に関するものです。記録器はスタンプをホストの`time_t`の最大値と比べるので、64ビットと32ビットのビルドは2^31秒を超える差で食い違います。
 
-エプソンのスクリプトは200操作が上限です。比較は平均で約30操作、200スクリプトで6086操作の後に止まるので、このチップのカバレッジはスクリプトの長さではなく数に応じて増えます。
+エプソンのスクリプトは200操作が上限です。比較は平均で約30操作、200スクリプトで6130操作の後に止まるので、このチップのカバレッジはスクリプトの長さではなく数に応じて増えます。
 
 2つの時計は別々のスクリプトで動かします。テストハーネスでも記録でも両者は1つの20バイトのストアを共有しますが、両方のチップを載せたカートリッジはなかったので、実際のカートリッジでそうなったことはありません。リファレンスが壁時計を読むため、時刻もスクリプトで与えます。リファレンスのソースはビルド時に取得し、リポジトリには取り込みません。このリポジトリに属するのは[`conformance/ref/driver.cpp`](conformance/ref/driver.cpp)のドライバだけです。
 

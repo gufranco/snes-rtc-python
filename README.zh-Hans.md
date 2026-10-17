@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** 个时钟，**329,586** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**951** 个测试，**100%** 语句与分支覆盖率，无依赖
+**2** 个时钟，**329,630** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**974** 个测试，**100%** 语句与分支覆盖率，无依赖
 
 ```python
 from snesrtc import Chip, Store
@@ -465,19 +465,20 @@ python3 -m conformance.reference
 ```
 
 ```
-epson: 200 scripts, 6086 operations compared, 9816 not compared, 0 disagreed
+epson: 200 scripts, 6129 operations compared whole, 1 compared except excused fields, 9772 not compared, 0 disagreed
+  fields excused under epson-irqf-not-writable on 1 operations
   not compared past epson-digit-fields-narrower-than-registers, reached by 195 scripts
   not compared past epson-oscillation-flag-cannot-be-originated, reached by 134 scripts
   ...
-sharp: 200 scripts, 323500 operations compared, 155 not compared, 0 disagreed
+sharp: 200 scripts, 323500 operations compared whole, 0 compared except excused fields, 155 not compared, 0 disagreed
   not compared past stamp-width-platform-dependent, reached by 2 scripts
 ```
 
-每个脚本都比较到第一个触及已声明分歧的操作为止。从那一点起，录制结果回答的是手册已经给出不同答案的问题，所以这些操作单独计数并注明名称。运行器能观察到、却不在 `divergences.json` 中的分歧会使运行失败，运行器在每个脚本上都从该文件读取列表。
+如果模型在某个字段遵循手册，而录制结果只把该字段当作普通存储，即 CD 中的 IRQ-F 或某种时制固定为 0 的 H10 位，运行器会继续比较，只豁免该字段：该行的其他位仍须一致，这些操作单独计数。其他已声明的分歧会让脚本的比较停在第一个触及它的操作，因为从那一点起，录制结果回答的是手册已经给出不同答案的问题，而且它的状态在之后运算读取的字段上已经不同，所以这些操作单独计数并注明名称。运行器能观察到、却不在 `divergences.json` 中的分歧会使运行失败，运行器在每个脚本上都从该文件读取列表。
 
 Sharp 部件几乎从头到尾都被比较，因为录制结果是它唯一的依据。唯一的排除项与录制程序有关：它用主机 `time_t` 的最大值检查时间戳，因此 64 位构建和 32 位构建在超过 2^31 秒的任何间隔上结果不同。
 
-Epson 脚本的上限为 200 个操作。比较平均在大约 30 个操作后停止，200 个脚本共 6086 个，所以该部件的覆盖率随脚本数量增长，而不是随脚本长度增长。
+Epson 脚本的上限为 200 个操作。比较平均在大约 30 个操作后停止，200 个脚本共 6130 个，所以该部件的覆盖率随脚本数量增长，而不是随脚本长度增长。
 
 两个时钟由各自的脚本驱动。在测试框架和录制结果中，它们共用一个 20 字节的存储区，而没有哪个卡带是这样的，因为没有卡带同时搭载这两个部件。时间也由脚本给出，因为参考实现读取的是挂钟时间。参考源码在构建时获取，从不纳入仓库。只有 [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) 中的驱动程序属于本仓库。
 

@@ -71,10 +71,12 @@ constants to the record, so a constant edited without the document is a failing
 test rather than a quiet change of claim.
 
 **Settled: agreement with the reference wherever the manual has not already
-answered differently.** 329,586 operations compared, no disagreements. Each
-script is compared only up to the first operation that reaches a declared
-divergence, and the operations past that point are counted apart and named rather
-than counted as agreements or dropped in silence.
+answered differently.** 329,630 operations compared, no disagreements. Where the
+model follows the manual in a field the recording keeps as plain storage, IRQ-F
+or a fixed bit of H10, the runner excuses that field alone and counts those
+operations apart. Every other declared divergence stops a script's comparison at
+the first operation that reaches it, and the operations past that point are
+counted apart and named rather than counted as agreements or dropped in silence.
 
 **Not settled: 13 things**, each in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) with
 what would close it. Eight are places the manual contradicts the recording, two
@@ -165,6 +167,8 @@ conformance/
   hardware.test.py  the gate that holds the model's constants to that file
   divergences.json  every place the manual and the recording part, and what would settle each
   reference.py      the differential runner, and what it refuses to compare
+  excusal.py        the fields the runner excuses where the model follows the manual
+  reading.py        how a quote and a recogniser's reading of a page are compared
   build.py          fetching the pinned reference and building the driver
   ref/driver.cpp    the driver that wraps the reference implementations
   links.py          the weekly check that every cited address still answers
@@ -182,8 +186,8 @@ would settle it, or the run fails.
   The runner reads the list of ids out of the record on every script rather than
   trusting a constant in the code, so adding a behaviour without recording it is
   caught rather than absorbed.
-- **The Epson comparison stops early on purpose.** 6,086 operations compared
-  against 9,816 not compared is not a weak run: past a declared divergence the
+- **The Epson comparison stops early on purpose.** 6,130 operations compared
+  against 9,772 not compared is not a weak run: past a declared divergence the
   recording is answering a question the manual already answered differently.
   Counting those as agreements would report the emulator's answer as the part's.
 - **A generated script is not a hand-written one.** Every script comes from a

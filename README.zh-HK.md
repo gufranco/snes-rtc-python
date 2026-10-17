@@ -8,7 +8,7 @@ Sharp S-RTC 與 Epson RTC-4513，即 Super Nintendo 卡帶可搭載的兩款實�
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** 個時鐘，**329,586** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**951** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
+**2** 個時鐘，**329,630** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**974** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
 
 ```python
 from snesrtc import Chip, Store
@@ -465,19 +465,20 @@ python3 -m conformance.reference
 ```
 
 ```
-epson: 200 scripts, 6086 operations compared, 9816 not compared, 0 disagreed
+epson: 200 scripts, 6129 operations compared whole, 1 compared except excused fields, 9772 not compared, 0 disagreed
+  fields excused under epson-irqf-not-writable on 1 operations
   not compared past epson-digit-fields-narrower-than-registers, reached by 195 scripts
   not compared past epson-oscillation-flag-cannot-be-originated, reached by 134 scripts
   ...
-sharp: 200 scripts, 323500 operations compared, 155 not compared, 0 disagreed
+sharp: 200 scripts, 323500 operations compared whole, 0 compared except excused fields, 155 not compared, 0 disagreed
   not compared past stamp-width-platform-dependent, reached by 2 scripts
 ```
 
-每個腳本只比對到第一個觸及已聲明分歧的操作為止。過了這一點，錄製回答的是手冊已給出不同答案的問題，因此這些操作會另行計數並列名。執行器能觀察到但不在 `divergences.json` 中的分歧會使該次執行失敗，而執行器在每個腳本上都會從該檔案讀取清單。
+若模型在某個欄位依從手冊，而錄製只把該欄位當作普通儲存，即 CD 中的 IRQ-F 或某種時制固定為 0 的 H10 位元，執行器會繼續比對，只豁免該欄位：該行其他位元仍須一致，這些操作另行計數。其他已聲明的分歧則令腳本的比對停在第一個觸及它的操作，因為過了這一點，錄製回答的是手冊已給出不同答案的問題，而其狀態在之後運算會讀取的欄位上已不同，因此這些操作會另行計數並列名。執行器能觀察到但不在 `divergences.json` 中的分歧會使該次執行失敗，而執行器在每個腳本上都會從該檔案讀取清單。
 
 Sharp 部件幾乎從頭到尾都有比對，因為錄製是它唯一的依據。唯一的排除與錄製器有關：它把時間戳記與主機 `time_t` 的最大值比較，因此 64 位元與 32 位元的建置在任何超過 2^31 秒的差距上結果不同。
 
-Epson 腳本上限為 200 個操作。比對平均在約 30 個操作後停止，200 個腳本合共 6086 個，因此該部件的覆蓋率隨腳本數量而非長度增長。
+Epson 腳本上限為 200 個操作。比對平均在約 30 個操作後停止，200 個腳本合共 6130 個，因此該部件的覆蓋率隨腳本數量而非長度增長。
 
 兩個時鐘由不同的腳本驅動。在測試框架和錄製中，它們共用一個 20 位元組的儲存區，而實際上沒有卡帶如此，因為沒有卡帶同時搭載兩個部件。時間也由腳本設定，因為參照實現讀取的是掛鐘時間。參照原始碼在建置時取得，從不納入儲存庫。只有 [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) 中的驅動程式屬於此儲存庫。
 

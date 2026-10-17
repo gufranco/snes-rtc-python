@@ -9,7 +9,7 @@ part has its manufacturer's application manual, so there is a document to
 disagree with, and the Sharp part has none, so there is nothing to disagree with
 and correspondingly nothing to be sure of.
 
-The settled surface is 329,586 operations compared against an independent
+The settled surface is 329,630 operations compared against an independent
 implementation with no disagreements, and every figure the Epson manual prints
 held against the model's own constants. What follows is the residue, and each
 entry is also in [`conformance/divergences.json`](conformance/divergences.json)
@@ -302,9 +302,10 @@ So the boundary is visible rather than implied:
   model's constants to it, so a constant edited without the document is a failing
   test rather than a quiet change of claim.
 - **That the two parts agree with the reference wherever the manual has not
-  already answered differently.** 329,586 operations compared, no disagreements,
-  with every comparison stopping at the first operation that reaches a declared
-  divergence rather than counting the recording's answer as the part's.
+  already answered differently.** 329,630 operations compared, no disagreements,
+  with a field the model takes from the manual excused alone, and every other
+  declared divergence stopping the comparison at the first operation that
+  reaches it rather than counting the recording's answer as the part's.
 - **That a divergence nobody wrote down fails the run.** The runner reads the
   list of ids out of the record on every script rather than trusting a constant.
 - **That nothing starts cleared.** Epson prints "At power-on, all registers and

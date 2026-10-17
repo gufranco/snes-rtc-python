@@ -17,6 +17,203 @@ HAS_DRIVER = BUILT.exists()
 HAS_COMPILER = shutil.which("g++") is not None
 
 
+class UndeclaredTest(unittest.TestCase):
+    def test_a_divergence_nobody_wrote_down_fails_the_run_rather_than_being_excused(
+        self,
+    ) -> None:
+        chosen = reference.Options(length=200, driver="/nowhere", seed=1)
+
+        tally = reference.sweep("epson", chosen, set())
+
+        self.assertEqual(tally.failed, 1)
+
+    def test_and_the_operations_after_it_are_still_counted_apart(self) -> None:
+        chosen = reference.Options(length=200, driver="/nowhere", seed=1)
+
+        tally = reference.sweep("epson", chosen, set())
+
+        self.assertGreater(tally.excluded, 0)
+
+
+class DeclarationTest(unittest.TestCase):
+    def test_the_divergence_file_names_every_entry(self) -> None:
+        self.assertIn("epson-hold-discards-elapsed-time", reference.declared())
+
+    def test_and_the_sharp_part_is_declared_undocumented(self) -> None:
+        self.assertIn("sharp-part-undocumented", reference.declared())
+
+
+class OptionTest(unittest.TestCase):
+    def test_the_defaults_are_enough(self) -> None:
+        chosen = reference.options([])
+
+        self.assertEqual(chosen.runs, reference.RUNS)
+
+    def test_the_number_of_runs_can_be_set(self) -> None:
+        self.assertEqual(reference.options(["--runs", "3"]).runs, 3)
+
+    def test_so_can_the_length_of_each(self) -> None:
+        self.assertEqual(reference.options(["--length", "50"]).length, 50)
+
+    def test_and_the_driver_to_compare_against(self) -> None:
+        self.assertEqual(reference.options(["--driver", "somewhere"]).driver, "somewhere")
+
+    def test_and_one_seed_on_its_own_for_reproducing_a_failure(self) -> None:
+        self.assertEqual(list(reference.options(["--seed", "22"]).seeds()), [22])
+
+    def test_without_one_every_seed_up_to_the_count_runs(self) -> None:
+        self.assertEqual(list(reference.options(["--runs", "3"]).seeds()), [0, 1, 2])
+
+    def test_and_the_run_can_start_somewhere_other_than_zero(self) -> None:
+        chosen = reference.options(["--runs", "3", "--from", "500"])
+
+        self.assertEqual(list(chosen.seeds()), [500, 501, 502])
+
+    def test_a_named_seed_still_wins_over_a_start(self) -> None:
+        chosen = reference.options(["--from", "500", "--seed", "7"])
+
+        self.assertEqual(list(chosen.seeds()), [7])
+
+    def test_an_option_with_no_value_is_refused(self) -> None:
+        with self.assertRaises(reference.Usage):
+            reference.options(["--runs"])
+
+    def test_an_option_the_runner_does_not_know_is_refused(self) -> None:
+        with self.assertRaises(reference.Usage):
+            reference.options(["--nonsense"])
+
+
+class ComparisonTest(unittest.TestCase):
+    def test_two_identical_transcripts_report_nothing(self) -> None:
+        self.assertEqual(reference.differences(["0F", "00"], ["0F", "00"]), [])
+
+    def test_a_line_that_differs_is_named_with_its_number(self) -> None:
+        found = reference.differences(["0F", "00"], ["0F", "01"])
+
+        self.assertEqual(found, [(1, "00", "01")])
+
+    def test_a_transcript_that_stops_early_is_reported_rather_than_ignored(self) -> None:
+        found = reference.differences(["0F", "00"], ["0F"])
+
+        self.assertEqual(found[0][0], 1)
+
+    def test_a_limit_stops_the_comparison_where_it_stops_being_settled(self) -> None:
+        self.assertEqual(reference.differences(["0F", "00"], ["0F", "01"], 1), [])
+
+    def test_a_line_missing_from_the_reference_is_reported(self) -> None:
+        # Arrange
+        expected = ["0F"]
+
+        # Act
+        found, _ = reference.explain(expected, ["0F", "00"])
+
+        # Assert
+        self.assertEqual(found, [(1, None, "00")])
+
+
+class TallyTest(unittest.TestCase):
+    def test_a_tally_with_nothing_refused_says_only_what_it_compared(self) -> None:
+        tally = reference.Tally("epson")
+        tally.add(reference.Replay(["00"], 1, set()), 1)
+
+        self.assertEqual(len(list(tally.report())), 1)
+
+    def test_and_one_with_something_refused_names_it(self) -> None:
+        tally = reference.Tally("epson")
+        tally.add(reference.Replay(["00", "01"], 1, {"epson-irqf-not-writable"}), 2)
+
+        self.assertIn("epson-irqf-not-writable", list(tally.report())[1])
+
+    def test_the_operations_not_compared_are_counted_rather_than_dropped(self) -> None:
+        tally = reference.Tally("epson")
+        tally.add(reference.Replay(["00", "01", "02"], 1, {"epson-irqf-not-writable"}), 3)
+
+        self.assertEqual((tally.compared, tally.excluded), (1, 2))
+
+    def test_an_operation_compared_except_excused_fields_is_counted_apart(self) -> None:
+        # Arrange
+        tally = reference.Tally("epson")
+
+        # Act
+        tally.add(reference.Replay(["00", "04"], 2, set()), 2, {1: {"epson-irqf-not-writable"}})
+
+        # Assert
+        self.assertEqual((tally.compared, tally.partly, tally.excluded), (1, 1, 0))
+
+    def test_and_the_report_names_what_was_excused(self) -> None:
+        # Arrange
+        tally = reference.Tally("epson")
+        tally.add(reference.Replay(["00", "04"], 2, set()), 2, {1: {"epson-irqf-not-writable"}})
+
+        # Act
+        said = list(tally.report())
+
+        # Assert
+        self.assertEqual(said[1], "  fields excused under epson-irqf-not-writable on 1 operations")
+
+
+@unittest.skipUnless(HAS_DRIVER and HAS_COMPILER, "the reference driver is not built")
+class AgainstReferenceTest(unittest.TestCase):
+    def test_the_sharp_model_agrees_with_the_recording_over_a_long_script(self) -> None:
+        script = reference.generate(seed=7, length=4000, part="sharp")
+
+        found = reference.differences(reference.ask(script, str(BUILT)), reference.replay(script))
+
+        self.assertEqual(found, [])
+
+    def test_the_epson_model_agrees_over_the_ground_the_recording_can_settle(self) -> None:
+        script = reference.generate(seed=7, length=4000, part="epson")
+        replayed = reference.observe(script)
+
+        found = reference.differences(
+            reference.ask(script, str(BUILT)), replayed.transcript, replayed.limit
+        )
+
+        self.assertEqual(found, [])
+
+
+class DriverFailureTest(unittest.TestCase):
+    def test_a_driver_that_fails_is_reported_rather_than_read_as_agreement(self) -> None:
+        with self.assertRaises(reference.Usage):
+            reference.ask([("dump", 0, 0)], "/usr/bin/false")
+
+
+@unittest.skipUnless(HAS_DRIVER, "the reference driver is not built")
+class WholeRunTest(unittest.TestCase):
+    def test_a_short_run_against_the_reference_agrees_and_says_so(self) -> None:
+        self.assertEqual(reference.run(["--runs", "2", "--length", "200"]), 0)
+
+
+class DisagreementTest(unittest.TestCase):
+    def wrong_driver(self) -> Path:
+        where = Path(tempfile.mkdtemp()) / "wrong"
+        where.write_text(
+            "#!/bin/sh\nwhile read -r line; do\n  case $line in\n  r*|dump*) echo ZZ ;;\n  esac\ndone\n"
+        )
+        where.chmod(where.stat().st_mode | stat.S_IXUSR)
+        return where
+
+    def test_a_driver_that_answers_differently_makes_the_run_fail(self) -> None:
+        self.assertEqual(
+            reference.run(["--runs", "1", "--length", "60", "--driver", str(self.wrong_driver())]),
+            1,
+        )
+
+    def test_and_a_run_of_them_stops_reporting_after_the_first_handful(self) -> None:
+        self.assertEqual(
+            reference.run(["--runs", "40", "--length", "60", "--driver", str(self.wrong_driver())]),
+            1,
+        )
+
+
+class EntryTest(unittest.TestCase):
+    def test_a_run_with_no_driver_present_says_so_rather_than_passing(self) -> None:
+        self.assertEqual(reference.main(["--driver", "/nowhere/at/all"]), 2)
+
+    def test_an_option_it_does_not_know_is_reported(self) -> None:
+        self.assertEqual(reference.main(["--nonsense"]), 2)
+
+
 class ScriptTest(unittest.TestCase):
     def test_a_script_is_as_long_as_it_was_asked_to_be(self) -> None:
         self.assertEqual(len(reference.generate(seed=1, length=40)), 40)
@@ -127,6 +324,17 @@ class ReplayTest(unittest.TestCase):
         self.assertEqual(len(reference.replay([("r", 0x1234, 0)])), 1)
 
 
+class GeneratorEdgeTest(unittest.TestCase):
+    def test_a_power_is_left_out_when_its_configuration_would_not_fit(self) -> None:
+        lengths = [
+            length
+            for length in range(6, 200)
+            if not any(op[0] == "power" for op in reference.generate(3, length))
+        ]
+
+        self.assertNotEqual(lengths, [])
+
+
 class WitnessTest(unittest.TestCase):
     def settled(self, script: list[reference.Operation]) -> reference.Replay:
         return reference.observe([("time", reference.START, 0), *reference.CONFIGURE, *script])
@@ -160,17 +368,20 @@ class WitnessTest(unittest.TestCase):
 
         self.assertEqual(replayed.reached, set())
 
-    def test_writing_the_interrupt_flag_is_refused(self) -> None:
-        replayed = self.settled(
-            [
-                ("w", epson.ENABLE, 0x01),
-                ("w", epson.DATA, epson.WRITE_MODE),
-                ("w", epson.DATA, epson.CD),
-                ("w", epson.DATA, epson.IRQ_F),
-            ]
-        )
+    def test_writing_the_interrupt_flag_stops_nothing(self) -> None:
+        # Arrange
+        script = [
+            ("w", epson.ENABLE, 0x01),
+            ("w", epson.DATA, epson.WRITE_MODE),
+            ("w", epson.DATA, epson.CD),
+            ("w", epson.DATA, epson.IRQ_F),
+        ]
 
-        self.assertIn("epson-irqf-not-writable", replayed.reached)
+        # Act
+        replayed = self.settled(script)
+
+        # Assert
+        self.assertEqual(replayed.reached, set())
 
     def test_so_is_the_range_bit(self) -> None:
         replayed = self.settled(
@@ -323,10 +534,25 @@ class RegisterWitnessTest(unittest.TestCase):
     def test_a_clock_register_write_reaches_nothing_on_its_own(self) -> None:
         self.assertEqual(reference._witness_register(self.held(), epson.MO10, 0xF), set())
 
-    def test_the_interrupt_flag_is_named(self) -> None:
-        found = reference._witness_register(self.held(), epson.CD, epson.IRQ_F)
+    def test_writing_the_interrupt_flag_is_left_to_the_excusal(self) -> None:
+        # Arrange
+        held = self.held()
 
-        self.assertEqual(found, {"epson-irqf-not-writable"})
+        # Act
+        found = reference._witness_register(held, epson.CD, epson.IRQ_F)
+
+        # Assert
+        self.assertEqual(found, set())
+
+    def test_and_so_is_a_tens_of_hours_write_carrying_a_fixed_bit(self) -> None:
+        # Arrange
+        held = self.held()
+
+        # Act
+        found = reference._witness_register(held, epson.H10, epson.H20 | epson.PM | 0x1)
+
+        # Assert
+        self.assertEqual(found, set())
 
     def test_the_adjustment_bit_is_named(self) -> None:
         found = reference._witness_register(self.held(), epson.CD, epson.ADJUST)
@@ -343,83 +569,8 @@ class RegisterWitnessTest(unittest.TestCase):
 
         self.assertIn("epson-hold-discards-elapsed-time", found)
 
-    def test_the_twenty_bit_written_in_twelve_hour_notation_is_named(self) -> None:
-        # Arrange
-        held = self.held()
-
-        # Act
-        found = reference._witness_register(held, epson.H10, epson.H20 | 0x1)
-
-        # Assert
-        self.assertEqual(found, {"epson-twelve-hour-mode-transient"})
-
-    def test_the_afternoon_bit_written_in_twenty_four_hour_notation_is_named(self) -> None:
-        # Arrange
-        held = self.held()
-        held.write(epson.CF, reference.CONFIGURED_CF)
-
-        # Act
-        found = reference._witness_register(held, epson.H10, epson.PM | 0x1)
-
-        # Assert
-        self.assertEqual(found, {"epson-digit-fields-narrower-than-registers"})
-
-    def test_a_tens_of_hours_write_inside_the_digit_reaches_nothing(self) -> None:
-        # Arrange
-        held = self.held()
-        held.write(epson.CF, reference.CONFIGURED_CF)
-
-        # Act
-        found = reference._witness_register(held, epson.H10, 0x2)
-
-        # Assert
-        self.assertEqual(found, set())
-
-    def test_masking_a_raised_interrupt_flag_is_named(self) -> None:
-        # Arrange
-        held = self.held()
-        held.write(epson.CD, reference.CONFIGURED_CD | epson.IRQ_F)
-
-        # Act
-        found = reference._witness_register(held, epson.CE, epson.MASK)
-
-        # Assert
-        self.assertEqual(found, {"epson-irqf-not-writable"})
-
-    def test_masking_with_no_flag_raised_reaches_nothing(self) -> None:
-        # Arrange
-        held = self.held()
-
-        # Act
-        found = reference._witness_register(held, epson.CE, epson.MASK)
-
-        # Assert
-        self.assertEqual(found, set())
-
-    def test_and_neither_does_leaving_a_raised_flag_unmasked(self) -> None:
-        # Arrange
-        held = self.held()
-        held.write(epson.CD, reference.CONFIGURED_CD | epson.IRQ_F)
-
-        # Act
-        found = reference._witness_register(held, epson.CE, epson.INT_STND)
-
-        # Assert
-        self.assertEqual(found, set())
-
 
 class ReadWitnessTest(unittest.TestCase):
-    def test_reading_control_register_d_with_the_interrupt_flag_set_is_refused(self) -> None:
-        cartridge = reference.Cartridge()
-        cartridge.store.write(epson.CD, reference.CONFIGURED_CD | epson.IRQ_F)
-        cartridge.write(epson.ENABLE, 0x01)
-        cartridge.write(epson.DATA, epson.READ_MODE)
-        cartridge.write(epson.DATA, epson.CD)
-
-        found = reference.witness(cartridge, ("r", epson.DATA, 0))
-
-        self.assertIn("epson-irqf-not-writable", found)
-
     def test_a_catch_up_inside_an_open_session_raises_the_read_flag(self) -> None:
         cartridge = reference.Cartridge()
         cartridge.store.write(epson.CF, reference.CONFIGURED_CF)
@@ -433,230 +584,78 @@ class ReadWitnessTest(unittest.TestCase):
 
         self.assertIn("epson-oscillation-flag-cannot-be-originated", found)
 
-    def test_reading_a_fixed_hour_bit_the_register_holds_is_refused(self) -> None:
+
+class ExcusalTest(unittest.TestCase):
+    def raised(self) -> reference.Replay:
+        return reference.observe(
+            [
+                ("time", reference.START, 0),
+                *reference.CONFIGURE,
+                ("store", epson.CE, epson.INT_STND | 0x4),
+                ("time", reference.START + 1, 0),
+                ("w", epson.ENABLE, 0x00),
+                ("w", epson.ENABLE, 0x01),
+                ("w", epson.DATA, epson.READ_MODE),
+                ("w", epson.DATA, epson.CD),
+                ("r", epson.DATA, 0),
+                ("dump", 0, 0),
+            ]
+        )
+
+    def test_a_raised_interrupt_flag_stops_nothing(self) -> None:
         # Arrange
-        held = store.Store(cleared=True)
-        held.write(epson.CF, reference.CONFIGURED_CF)
-        held.write(epson.H10, epson.PM | 0x1)
+        script = self.raised
 
         # Act
-        found = reference._witness_read(held, epson.H10)
+        replayed = script()
 
         # Assert
-        self.assertEqual(found, {"epson-digit-fields-narrower-than-registers"})
+        self.assertEqual((replayed.reached, replayed.limit), (set(), None))
 
-    def test_reading_the_tens_of_hours_inside_its_digit_is_compared(self) -> None:
+    def test_the_read_of_cd_is_compared_except_for_that_flag(self) -> None:
         # Arrange
-        held = store.Store(cleared=True)
-        held.write(epson.CF, reference.CONFIGURED_CF)
-        held.write(epson.H10, 0x2)
+        replayed = self.raised()
+        theirs = [f"{int(replayed.transcript[0], 16) & ~epson.IRQ_F:02X}", replayed.transcript[1]]
 
         # Act
-        found = reference._witness_read(held, epson.H10)
+        found, partly = reference.explain(theirs, replayed.transcript, None, replayed.excused)
 
         # Assert
-        self.assertEqual(found, set())
+        self.assertEqual((found, partly), ([], {0: {"epson-irqf-not-writable"}}))
 
-    def test_reading_any_other_register_is_compared(self) -> None:
+    def test_and_any_other_bit_of_it_still_has_to_agree(self) -> None:
         # Arrange
-        held = store.Store(cleared=True)
-        held.write(epson.H10, epson.H20)
+        replayed = self.raised()
+        theirs = [f"{int(replayed.transcript[0], 16) ^ epson.CAL_HW:02X}", replayed.transcript[1]]
 
         # Act
-        found = reference._witness_read(held, epson.MI1)
+        found, _ = reference.explain(theirs, replayed.transcript, None, replayed.excused)
 
         # Assert
-        self.assertEqual(found, set())
+        self.assertEqual([index for index, _, _ in found], [0])
 
-    def test_a_catch_up_in_interrupt_cycle_mode_is_refused(self) -> None:
+    def test_a_held_back_afternoon_bit_stops_the_comparison_at_the_next_catch_up(self) -> None:
         # Arrange
-        cartridge = reference.Cartridge()
-        cartridge.store.write(epson.CF, reference.CONFIGURED_CF)
-        cartridge.store.write(epson.CD, reference.CONFIGURED_CD)
-        cartridge.store.write(epson.CE, epson.INT_STND)
-
-        # Act
-        found = reference.witness(cartridge, ("w", epson.ENABLE, 0x00))
-
-        # Assert
-        self.assertIn("epson-irqf-not-writable", found)
-
-
-class UndeclaredTest(unittest.TestCase):
-    def test_a_divergence_nobody_wrote_down_fails_the_run_rather_than_being_excused(
-        self,
-    ) -> None:
-        chosen = reference.Options(length=200, driver="/nowhere", seed=1)
-
-        tally = reference.sweep("epson", chosen, set())
-
-        self.assertEqual(tally.failed, 1)
-
-    def test_and_the_operations_after_it_are_still_counted_apart(self) -> None:
-        chosen = reference.Options(length=200, driver="/nowhere", seed=1)
-
-        tally = reference.sweep("epson", chosen, set())
-
-        self.assertGreater(tally.excluded, 0)
-
-
-class GeneratorEdgeTest(unittest.TestCase):
-    def test_a_power_is_left_out_when_its_configuration_would_not_fit(self) -> None:
-        lengths = [
-            length
-            for length in range(6, 200)
-            if not any(op[0] == "power" for op in reference.generate(3, length))
+        script = [
+            ("time", reference.START, 0),
+            *reference.CONFIGURE,
+            ("w", epson.ENABLE, 0x01),
+            ("w", epson.DATA, epson.WRITE_MODE),
+            ("w", epson.DATA, epson.H10),
+            ("w", epson.DATA, epson.PM | 0x1),
+            ("dump", 0, 0),
+            ("w", epson.ENABLE, 0x00),
+            ("dump", 0, 0),
         ]
 
-        self.assertNotEqual(lengths, [])
-
-
-class DeclarationTest(unittest.TestCase):
-    def test_the_divergence_file_names_every_entry(self) -> None:
-        self.assertIn("epson-hold-discards-elapsed-time", reference.declared())
-
-    def test_and_the_sharp_part_is_declared_undocumented(self) -> None:
-        self.assertIn("sharp-part-undocumented", reference.declared())
-
-
-class OptionTest(unittest.TestCase):
-    def test_the_defaults_are_enough(self) -> None:
-        chosen = reference.options([])
-
-        self.assertEqual(chosen.runs, reference.RUNS)
-
-    def test_the_number_of_runs_can_be_set(self) -> None:
-        self.assertEqual(reference.options(["--runs", "3"]).runs, 3)
-
-    def test_so_can_the_length_of_each(self) -> None:
-        self.assertEqual(reference.options(["--length", "50"]).length, 50)
-
-    def test_and_the_driver_to_compare_against(self) -> None:
-        self.assertEqual(reference.options(["--driver", "somewhere"]).driver, "somewhere")
-
-    def test_and_one_seed_on_its_own_for_reproducing_a_failure(self) -> None:
-        self.assertEqual(list(reference.options(["--seed", "22"]).seeds()), [22])
-
-    def test_without_one_every_seed_up_to_the_count_runs(self) -> None:
-        self.assertEqual(list(reference.options(["--runs", "3"]).seeds()), [0, 1, 2])
-
-    def test_and_the_run_can_start_somewhere_other_than_zero(self) -> None:
-        chosen = reference.options(["--runs", "3", "--from", "500"])
-
-        self.assertEqual(list(chosen.seeds()), [500, 501, 502])
-
-    def test_a_named_seed_still_wins_over_a_start(self) -> None:
-        chosen = reference.options(["--from", "500", "--seed", "7"])
-
-        self.assertEqual(list(chosen.seeds()), [7])
-
-    def test_an_option_with_no_value_is_refused(self) -> None:
-        with self.assertRaises(reference.Usage):
-            reference.options(["--runs"])
-
-    def test_an_option_the_runner_does_not_know_is_refused(self) -> None:
-        with self.assertRaises(reference.Usage):
-            reference.options(["--nonsense"])
-
-
-class ComparisonTest(unittest.TestCase):
-    def test_two_identical_transcripts_report_nothing(self) -> None:
-        self.assertEqual(reference.differences(["0F", "00"], ["0F", "00"]), [])
-
-    def test_a_line_that_differs_is_named_with_its_number(self) -> None:
-        found = reference.differences(["0F", "00"], ["0F", "01"])
-
-        self.assertEqual(found, [(1, "00", "01")])
-
-    def test_a_transcript_that_stops_early_is_reported_rather_than_ignored(self) -> None:
-        found = reference.differences(["0F", "00"], ["0F"])
-
-        self.assertEqual(found[0][0], 1)
-
-    def test_a_limit_stops_the_comparison_where_it_stops_being_settled(self) -> None:
-        self.assertEqual(reference.differences(["0F", "00"], ["0F", "01"], 1), [])
-
-
-class TallyTest(unittest.TestCase):
-    def test_a_tally_with_nothing_refused_says_only_what_it_compared(self) -> None:
-        tally = reference.Tally("epson")
-        tally.add(reference.Replay(["00"], 1, set()), 1)
-
-        self.assertEqual(len(list(tally.report())), 1)
-
-    def test_and_one_with_something_refused_names_it(self) -> None:
-        tally = reference.Tally("epson")
-        tally.add(reference.Replay(["00", "01"], 1, {"epson-irqf-not-writable"}), 2)
-
-        self.assertIn("epson-irqf-not-writable", list(tally.report())[1])
-
-    def test_the_operations_not_compared_are_counted_rather_than_dropped(self) -> None:
-        tally = reference.Tally("epson")
-        tally.add(reference.Replay(["00", "01", "02"], 1, {"epson-irqf-not-writable"}), 3)
-
-        self.assertEqual((tally.compared, tally.excluded), (1, 2))
-
-
-@unittest.skipUnless(HAS_DRIVER and HAS_COMPILER, "the reference driver is not built")
-class AgainstReferenceTest(unittest.TestCase):
-    def test_the_sharp_model_agrees_with_the_recording_over_a_long_script(self) -> None:
-        script = reference.generate(seed=7, length=4000, part="sharp")
-
-        found = reference.differences(reference.ask(script, str(BUILT)), reference.replay(script))
-
-        self.assertEqual(found, [])
-
-    def test_the_epson_model_agrees_over_the_ground_the_recording_can_settle(self) -> None:
-        script = reference.generate(seed=7, length=4000, part="epson")
+        # Act
         replayed = reference.observe(script)
 
-        found = reference.differences(
-            reference.ask(script, str(BUILT)), replayed.transcript, replayed.limit
-        )
-
-        self.assertEqual(found, [])
-
-
-class DriverFailureTest(unittest.TestCase):
-    def test_a_driver_that_fails_is_reported_rather_than_read_as_agreement(self) -> None:
-        with self.assertRaises(reference.Usage):
-            reference.ask([("dump", 0, 0)], "/usr/bin/false")
-
-
-@unittest.skipUnless(HAS_DRIVER, "the reference driver is not built")
-class WholeRunTest(unittest.TestCase):
-    def test_a_short_run_against_the_reference_agrees_and_says_so(self) -> None:
-        self.assertEqual(reference.run(["--runs", "2", "--length", "200"]), 0)
-
-
-class DisagreementTest(unittest.TestCase):
-    def wrong_driver(self) -> Path:
-        where = Path(tempfile.mkdtemp()) / "wrong"
-        where.write_text(
-            "#!/bin/sh\nwhile read -r line; do\n  case $line in\n  r*|dump*) echo ZZ ;;\n  esac\ndone\n"
-        )
-        where.chmod(where.stat().st_mode | stat.S_IXUSR)
-        return where
-
-    def test_a_driver_that_answers_differently_makes_the_run_fail(self) -> None:
+        # Assert
         self.assertEqual(
-            reference.run(["--runs", "1", "--length", "60", "--driver", str(self.wrong_driver())]),
-            1,
+            (replayed.reached, replayed.settled),
+            ({"epson-digit-fields-narrower-than-registers"}, 1),
         )
-
-    def test_and_a_run_of_them_stops_reporting_after_the_first_handful(self) -> None:
-        self.assertEqual(
-            reference.run(["--runs", "40", "--length", "60", "--driver", str(self.wrong_driver())]),
-            1,
-        )
-
-
-class EntryTest(unittest.TestCase):
-    def test_a_run_with_no_driver_present_says_so_rather_than_passing(self) -> None:
-        self.assertEqual(reference.main(["--driver", "/nowhere/at/all"]), 2)
-
-    def test_an_option_it_does_not_know_is_reported(self) -> None:
-        self.assertEqual(reference.main(["--nonsense"]), 2)
 
 
 if __name__ == "__main__":

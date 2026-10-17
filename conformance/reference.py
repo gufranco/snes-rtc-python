@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from conformance.excusal import Excuse, Ledger, explained
 from snesrtc import epson, sharp, store
 
 USAGE = "usage: reference.py [--runs N] [--from N] [--length N] [--seed N] [--driver PATH]"
@@ -122,32 +123,12 @@ def witness(cartridge: Cartridge, operation: Operation) -> set[str]:
         if any(held.read(at) & epson.READ_FLAG for at in epson.READ_FLAG_AT):
             found.add("epson-oscillation-flag-cannot-be-originated")
 
-    if verb == "r" and first == epson.DATA and cartridge.epson.state != epson.INACTIVE:
-        found |= _witness_read(held, cartridge.epson.index)
-
     if _catches_up(cartridge, operation):
         found |= _witness_state(held)
         closing = verb == "w" and first == epson.ENABLE
         if not closing and _would_advance(cartridge):
             found.add("epson-oscillation-flag-cannot-be-originated")
-        if cartridge.epson.interrupting():
-            found.add("epson-irqf-not-writable")
     return found
-
-
-def _fixed_hour_bit(held: store.Store) -> tuple[int, str]:
-    if held.read(epson.CF) & epson.HOURS_24:
-        return epson.PM, "epson-digit-fields-narrower-than-registers"
-    return epson.H20, "epson-twelve-hour-mode-transient"
-
-
-def _witness_read(held: store.Store, index: int) -> set[str]:
-    if index == epson.CD and held.read(epson.CD) & epson.IRQ_F:
-        return {"epson-irqf-not-writable"}
-    bit, name = _fixed_hour_bit(held)
-    if index == epson.H10 and held.read(epson.H10) & bit:
-        return {name}
-    return set()
 
 
 def _would_advance(cartridge: Cartridge) -> bool:
@@ -174,15 +155,8 @@ def _catches_up(cartridge: Cartridge, operation: Operation) -> bool:
 
 def _witness_register(held: store.Store, index: int, value: int) -> set[str]:
     found: set[str] = set()
-    bit, name = _fixed_hour_bit(held)
-    if index == epson.H10 and value & bit:
-        found.add(name)
-    if index == epson.CE and value & epson.MASK and held.read(epson.CD) & epson.IRQ_F:
-        found.add("epson-irqf-not-writable")
     if index != epson.CD:
         return found
-    if value & epson.IRQ_F:
-        found.add("epson-irqf-not-writable")
     if value & epson.ADJUST:
         found.add("epson-thirty-second-adjust-lockout")
     if value & epson.CAL_HW:
@@ -265,10 +239,17 @@ def render(script: Sequence[Operation]) -> str:
 
 
 class Replay:
-    def __init__(self, transcript: list[str], settled: int, reached: set[str]) -> None:
+    def __init__(
+        self,
+        transcript: list[str],
+        settled: int,
+        reached: set[str],
+        excused: dict[int, Excuse] | None = None,
+    ) -> None:
         self.transcript = transcript
         self.settled = settled
         self.reached = reached
+        self.excused = excused or {}
 
     @property
     def limit(self) -> int | None:
@@ -277,7 +258,9 @@ class Replay:
 
 def observe(script: Sequence[Operation]) -> Replay:
     cartridge = Cartridge()
+    ledger = Ledger()
     transcript: list[str] = []
+    excused: dict[int, Excuse] = {}
     settled = -1
     reached: set[str] = set()
     settling = 1 + len(CONFIGURE)
@@ -287,26 +270,38 @@ def observe(script: Sequence[Operation]) -> Replay:
             settling -= 1
         else:
             found = witness(cartridge, operation)
+            if _catches_up(cartridge, operation):
+                found |= ledger.blocks(cartridge.epson)
             if found and settled < 0:
                 settled = len(transcript)
             reached |= found
-        verb, first, second = operation
-        if verb == "power":
+        if operation[0] == "power":
             settling = len(CONFIGURE)
-        if verb == "time":
-            cartridge.at = first
-        elif verb == "store":
-            cartridge.store.write(first, second)
-        elif verb == "power":
-            cartridge.power()
-        elif verb == "r":
-            transcript.append(f"{cartridge.read(first):02X}")
-        elif verb == "w":
-            cartridge.write(first, second)
-        else:
-            transcript.append(cartridge.dump())
+        excuse = ledger.excuse(cartridge.epson, operation)
+        ledger.follow(cartridge.epson, operation)
+        if _step(cartridge, operation, transcript) and excuse is not None:
+            excused[len(transcript) - 1] = excuse
 
-    return Replay(transcript, len(transcript) if settled < 0 else settled, reached)
+    return Replay(transcript, len(transcript) if settled < 0 else settled, reached, excused)
+
+
+def _step(cartridge: Cartridge, operation: Operation, transcript: list[str]) -> bool:
+    verb, first, second = operation
+    if verb == "time":
+        cartridge.at = first
+    elif verb == "store":
+        cartridge.store.write(first, second)
+    elif verb == "power":
+        cartridge.power()
+    elif verb == "w":
+        cartridge.write(first, second)
+    elif verb == "r":
+        transcript.append(f"{cartridge.read(first):02X}")
+        return True
+    else:
+        transcript.append(cartridge.dump())
+        return True
+    return False
 
 
 def replay(script: Sequence[Operation]) -> list[str]:
@@ -327,17 +322,36 @@ def ask(script: Sequence[Operation], driver: str) -> list[str]:
     return done.stdout.splitlines()
 
 
-def differences(
-    expected: Sequence[str], actual: Sequence[str], limit: int | None = None
-) -> list[tuple[int, str | None, str | None]]:
+Mismatch = tuple[int, str | None, str | None]
+
+
+def explain(
+    expected: Sequence[str],
+    actual: Sequence[str],
+    limit: int | None = None,
+    excused: dict[int, Excuse] | None = None,
+) -> tuple[list[Mismatch], dict[int, set[str]]]:
     reach = max(len(expected), len(actual)) if limit is None else limit
-    found = []
+    found: list[Mismatch] = []
+    partly: dict[int, set[str]] = {}
     for index in range(reach):
         theirs = expected[index] if index < len(expected) else None
         ours = actual[index] if index < len(actual) else None
-        if theirs != ours:
+        if theirs is None or ours is None:
             found.append((index, theirs, ours))
-    return found
+            continue
+        names = explained(theirs, ours, (excused or {}).get(index))
+        if names is None:
+            found.append((index, theirs, ours))
+        elif names:
+            partly[index] = names
+    return found, partly
+
+
+def differences(
+    expected: Sequence[str], actual: Sequence[str], limit: int | None = None
+) -> list[Mismatch]:
+    return explain(expected, actual, limit)[0]
 
 
 def options(argv: Sequence[str]) -> Options:
@@ -368,23 +382,35 @@ class Tally:
         self.part = part
         self.scripts = 0
         self.compared = 0
+        self.partly = 0
         self.excluded = 0
         self.failed = 0
         self.reached: dict[str, int] = {}
+        self.excused: dict[str, int] = {}
 
-    def add(self, replayed: Replay, produced: int) -> None:
+    def add(
+        self, replayed: Replay, produced: int, partly: dict[int, set[str]] | None = None
+    ) -> None:
+        held = partly or {}
         self.scripts += 1
-        self.compared += replayed.settled
+        self.compared += replayed.settled - len(held)
+        self.partly += len(held)
         self.excluded += max(0, produced - replayed.settled)
         for name in sorted(replayed.reached):
             self.reached[name] = self.reached.get(name, 0) + 1
+        for names in held.values():
+            for name in names:
+                self.excused[name] = self.excused.get(name, 0) + 1
 
     def report(self) -> Iterator[str]:
         where = f"{self.part}: " if self.part else ""
         yield (
-            f"{where}{self.scripts} scripts, {self.compared} operations compared, "
+            f"{where}{self.scripts} scripts, {self.compared} operations compared whole, "
+            f"{self.partly} compared except excused fields, "
             f"{self.excluded} not compared, {self.failed} disagreed"
         )
+        for name, count in sorted(self.excused.items()):
+            yield f"  fields excused under {name} on {count} operations"
         for name, count in sorted(self.reached.items()):
             yield f"  not compared past {name}, reached by {count} scripts"
 
@@ -404,8 +430,8 @@ def sweep(part: str, chosen: Options, known: set[str]) -> Tally:
             tally.add(replayed, len(replayed.transcript))
             continue
         theirs = ask(script, chosen.driver)
-        found = differences(theirs, replayed.transcript, replayed.limit)
-        tally.add(replayed, max(len(theirs), len(replayed.transcript)))
+        found, partly = explain(theirs, replayed.transcript, replayed.limit, replayed.excused)
+        tally.add(replayed, max(len(theirs), len(replayed.transcript)), partly)
         if not found:
             continue
         tally.failed += 1

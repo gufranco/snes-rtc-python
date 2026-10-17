@@ -8,7 +8,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** clocks, **329,586** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **951** tests, **100%** statement and branch coverage, no dependencies
+**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **974** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from snesrtc import Chip, Store
@@ -463,19 +463,20 @@ python3 -m conformance.reference
 ```
 
 ```
-epson: 200 scripts, 6086 operations compared, 9816 not compared, 0 disagreed
+epson: 200 scripts, 6129 operations compared whole, 1 compared except excused fields, 9772 not compared, 0 disagreed
+  fields excused under epson-irqf-not-writable on 1 operations
   not compared past epson-digit-fields-narrower-than-registers, reached by 195 scripts
   not compared past epson-oscillation-flag-cannot-be-originated, reached by 134 scripts
   ...
-sharp: 200 scripts, 323500 operations compared, 155 not compared, 0 disagreed
+sharp: 200 scripts, 323500 operations compared whole, 0 compared except excused fields, 155 not compared, 0 disagreed
   not compared past stamp-width-platform-dependent, reached by 2 scripts
 ```
 
-Each script is compared up to the first operation that reaches a declared divergence. Past that point the recording answers a question the manual already answered differently, so those operations are counted apart and named. A divergence the runner can witness that is not in `divergences.json` fails the run, and the runner reads the list from that file on every script.
+Where the model follows the manual in one field the recording keeps as plain storage, IRQ-F in CD or the bit of H10 a notation fixes at 0, the runner keeps comparing and excuses that field alone: every other bit of the line still has to agree, and those operations are counted apart. Every other declared divergence stops the script's comparison at the first operation that reaches it, because past that point the recording answers a question the manual already answered differently and its state differs in fields later arithmetic reads, so those operations are counted apart and named. A divergence the runner can witness that is not in `divergences.json` fails the run, and the runner reads the list from that file on every script.
 
 The Sharp part is compared almost end to end, because the recording is its only authority. The one exclusion is about the recorder: it tests its stamp against the maximum of the host's `time_t`, so a 64-bit and a 32-bit build disagree on any gap past 2^31 seconds.
 
-Epson scripts are capped at 200 operations. Comparison stops after about 30 on average, 6086 over 200 scripts, so the part's coverage grows with the number of scripts and not their length.
+Epson scripts are capped at 200 operations. Comparison stops after about 30 on average, 6130 over 200 scripts, so the part's coverage grows with the number of scripts and not their length.
 
 The two clocks are driven by separate scripts. In the harness and in the recording they share one 20-byte store, which no cartridge did, since none carried both parts. Time is scripted too, because the reference reads the wall clock. The reference sources are fetched at build time and never vendored. Only the driver in [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) belongs to this repository.
 
