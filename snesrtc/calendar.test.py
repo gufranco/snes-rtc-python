@@ -5,6 +5,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from conformance.driving import FROZEN, RECORDED, SHARP_CONTROL, SHARP_DATA
 from snesrtc import Chip, Store
 
 CONTROL = 0x2801
@@ -52,6 +53,14 @@ def weekday_written(year: int, month: int, day: int) -> int:
     for digit in digits(year, month, day, 0, 0, 0):
         chip.write(CONTROL, digit)
     return int(chip.store.read(12))
+
+
+def read_back_after(stored: list[int], seconds: int) -> list[int]:
+    held = Store(cleared=True, held=stored)
+    held.stamp = FROZEN
+    chip = Chip("s-rtc", held, now=lambda: FROZEN + seconds)
+    chip.write(SHARP_CONTROL, 0x0D)
+    return [chip.read(SHARP_DATA) for _ in range(15)]
 
 
 def month_lengths(year: int) -> list[int]:
@@ -133,6 +142,20 @@ class LengthTest(unittest.TestCase):
 
         # Assert
         self.assertEqual(moved, "<2023-13-31 00:00:00 weekday=1>")
+
+
+class HeldMonthTest(unittest.TestCase):
+    def test_a_month_above_twelve_held_by_the_battery_counts_as_the_reference_does(
+        self,
+    ) -> None:
+        # Arrange
+        cases = RECORDED["monthAboveTwelve"]["value"]
+
+        # Act
+        found = [read_back_after(one["stored"], one["secondsLater"]) for one in cases]
+
+        # Assert
+        self.assertEqual(found, [one["readBack"] for one in cases])
 
 
 class WeekdayTest(unittest.TestCase):
