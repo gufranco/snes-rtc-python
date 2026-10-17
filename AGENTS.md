@@ -68,7 +68,8 @@ settled quietly. There are fifteen entries.
 **Settled: every figure the Epson manual prints.**
 [`conformance/hardware.test.py`](conformance/hardware.test.py) holds the model's
 constants to the record, so a constant edited without the document is a failing
-test rather than a quiet change of claim.
+test rather than a quiet change of claim, and the `conformance/printed_*.test.py`
+files drive the model through each printed behaviour.
 
 **Settled: agreement with the reference wherever the manual has not already
 answered differently.** 329,630 operations compared, no disagreements. Where the
@@ -139,7 +140,7 @@ module of the same name.
 |:------|:-----|
 | Language | Python only |
 | Comments | None in source, and a docstring counts as one |
-| Test layout | `<module>.test.py` beside the module it covers |
+| Test layout | `<module>.test.py` beside the module it covers, split by subject into files named after what they hold once one passes 500 lines |
 | Test shape | Arrange, act, assert, each opened by its bare marker |
 | Coverage | 100% statements and branches, enforced |
 | Types | `mypy` at strict, plus every optional error class |
@@ -165,6 +166,8 @@ snesrtc/
 conformance/
   hardware.json     what Epson printed, fact by fact, with the sentence each came from
   hardware.test.py  the gate that holds the model's constants to that file
+  printed_*.test.py each printed behaviour, driven through the model, one subject per file
+  driving.py        the record loaded once, and the helpers that drive a chip for those tests
   divergences.json  every place the manual and the recording part, and what would settle each
   reference.py      the differential runner, and what it refuses to compare
   excusal.py        the fields the runner excuses where the model follows the manual
