@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from conformance import cartridge
-from snesrtc import epson
+from conformance.driving import DATA, ENABLE, READ_MODE, STATUS, WRITE_MODE
 
 
 def _writing(pairs: list[tuple[int, int]], where: int = 0x2D62) -> bytes:
@@ -23,17 +23,34 @@ def _writing(pairs: list[tuple[int, int]], where: int = 0x2D62) -> bytes:
 
 class PortTest(unittest.TestCase):
     def test_the_three_addresses_are_the_ones_the_package_answers_at(self) -> None:
-        self.assertEqual(sorted(cartridge.PORTS), sorted((epson.ENABLE, epson.DATA, epson.STATUS)))
+        # Arrange
+        expected = sorted((ENABLE, DATA, STATUS))
+
+        # Act
+        found = sorted(cartridge.PORTS)
+
+        # Assert
+        self.assertEqual(found, expected)
 
     def test_an_absolute_access_to_a_port_is_found(self) -> None:
+        # Arrange
         image = bytes((0x8D, 0x41, 0x48)) + b"\xea" * 64
 
-        self.assertEqual(cartridge.touching(image), {(epson.DATA, "write"): 1})
+        # Act
+        found = cartridge.touching(image)
+
+        # Assert
+        self.assertEqual(found, {(DATA, "write"): 1})
 
     def test_a_read_is_told_apart_from_a_write(self) -> None:
+        # Arrange
         image = bytes((0xAD, 0x42, 0x48)) + b"\xea" * 64
 
-        self.assertEqual(cartridge.touching(image), {(epson.STATUS, "read"): 1})
+        # Act
+        found = cartridge.touching(image)
+
+        # Assert
+        self.assertEqual(found, {(STATUS, "read"): 1})
 
     def test_an_access_to_anything_else_is_not(self) -> None:
         image = bytes((0x8D, 0x00, 0x21)) + b"\xea" * 64
@@ -122,11 +139,16 @@ class RecordedTest(unittest.TestCase):
         self.assertIn("HOLD", [bit for one in found["controls"] for bit in one["bits"]])
 
     def test_it_writes_the_mode_nibbles_the_package_uses(self) -> None:
+        # Arrange
+        expected = [f"{WRITE_MODE:#04x}", f"{READ_MODE:#04x}"]
+
+        # Act
         found = cartridge.recorded()
 
+        # Assert
         self.assertEqual(
             [found["modes"]["write"], found["modes"]["read"]],
-            [f"{epson.WRITE_MODE:#04x}", f"{epson.READ_MODE:#04x}"],
+            expected,
         )
 
     def test_it_names_the_cartridge_with_four_digests(self) -> None:

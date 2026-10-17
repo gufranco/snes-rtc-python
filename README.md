@@ -8,7 +8,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **985** tests, **100%** statement and branch coverage, no dependencies
+**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **1,007** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from snesrtc import Chip, Store
@@ -324,7 +324,7 @@ The two clocks rest on different evidence.
 | 2 | A recording from snes9x, pinned by commit | What the manual does not: how the SPC7110 turns a three-wire serial part into three cartridge addresses, what the counters do outside a documented range, and the whole of the Sharp part |
 | 3 | Nothing else | Nothing |
 
-Every figure on rung 1 is in [`conformance/hardware.json`](conformance/hardware.json) with the sentence it was read from, the document's digest and the date it was read. [`conformance/hardware.test.py`](conformance/hardware.test.py) checks the package's constants against it.
+Every figure on rung 1 is in [`conformance/hardware.json`](conformance/hardware.json) with the sentence it was read from, the document's digest and the date it was read. [`conformance/hardware.test.py`](conformance/hardware.test.py) drives the package and checks what it does against it.
 
 Where the manual and the recording disagree, the package follows the manual. Each of the 15 disagreements is an entry in [`conformance/divergences.json`](conformance/divergences.json) naming what the document says, what the recording does, which one the package follows, and what evidence would settle it.
 
@@ -522,11 +522,12 @@ The script opens by setting the time and configuring the Epson control registers
 uvx ruff@0.16.3 format --check .
 uvx ruff@0.16.3 check .
 uvx --python 3.12 mypy==1.14.1
-python3 -m coverage erase
+cov=(uvx --python 3.12 --from coverage==7.6.10 --with setuptools==84.0.0 coverage)
+"${cov[@]}" erase
 for file in $(find snesrtc conformance -name '*.test.py' | sort); do
-  python3 -m coverage run -a "$file"
+  "${cov[@]}" run -a "$file"
 done
-python3 -m coverage report
+"${cov[@]}" report
 ```
 
 Each module has a test file beside it, named after it, and each runs on its own. Coverage is a hard gate at 100% statement and branch, and mypy runs strict.

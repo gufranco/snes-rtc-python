@@ -16,11 +16,12 @@ uvx mypy@1.14.1
 pnpm install --frozen-lockfile && pnpm run format:check
 uvx yamllint==1.38.0 --strict .
 python3 -m conformance.build
-python3 -m coverage erase
+cov=(uvx --python 3.12 --from coverage==7.6.10 --with setuptools==84.0.0 coverage)
+"${cov[@]}" erase
 for f in $(find snesrtc conformance -name '*.test.py' | sort); do
-  python3 -m coverage run -a "$f" || echo "FAILED $f"
+  "${cov[@]}" run -a "$f" || echo "FAILED $f"
 done
-python3 -m coverage report
+"${cov[@]}" report
 python3 -m conformance.reference
 ```
 
@@ -37,9 +38,10 @@ back however correct it looks.
 1. [`conformance/hardware.json`](conformance/hardware.json) is Seiko Epson's own
    application manual for the RTC-4513, pinned fact by fact with the sentence
    each figure came from. It decides anything the manufacturer printed, and
-   [`conformance/hardware.test.py`](conformance/hardware.test.py) checks the
-   model's constants against it, and the `conformance/printed_*.test.py` files
-   drive the model through each printed behaviour.
+   [`conformance/hardware.test.py`](conformance/hardware.test.py) drives the
+   model and checks what it does against it, and the
+   `conformance/printed_*.test.py` files drive the model through each printed
+   behaviour.
 2. The recording, taken from the implementation pinned in
    [`conformance/pinned.json`](conformance/pinned.json), decides what the manual
    does not: the SPC7110 wrapper, out-of-range counters, and the whole of the

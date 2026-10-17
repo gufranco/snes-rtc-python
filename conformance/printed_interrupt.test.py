@@ -6,20 +6,26 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from conformance.driving import (
+    CAL_HW,
+    CD,
+    CE,
     DIGITS,
+    ENABLE,
     FACTS,
     FROZEN,
+    INT_STND,
+    IRQ_F,
+    S1,
     a_clock,
     read_back,
     written,
 )
-from snesrtc import epson
 
 UNIT_SECONDS = {"s": 1, "second": 1, "minute": 60, "hour": 3600}
 
 PERIOD_BITS = FACTS["controlRegisterE"]["bits"]
 
-EVERY_SECOND = epson.INT_STND | PERIOD_BITS["t0"]["mask"]
+EVERY_SECOND = INT_STND | PERIOD_BITS["t0"]["mask"]
 
 A_MINUTE_TURNING = (9, 5, 8, 5, 2, 1)
 
@@ -36,12 +42,12 @@ def period_in_seconds(period: str) -> Fraction:
 def flag_after_a_second(control_e: int, start: tuple[int, ...]) -> int:
     hand = [FROZEN]
     chip = a_clock(hand)
-    written(chip, epson.S1, *start, *DIGITS[6:])
-    written(chip, epson.CE, control_e)
-    chip.write(epson.ENABLE, 0x00)
+    written(chip, S1, *start, *DIGITS[6:])
+    written(chip, CE, control_e)
+    chip.write(ENABLE, 0x00)
     hand[0] += 1
-    chip.write(epson.ENABLE, 0x00)
-    return read_back(chip, epson.CD) & epson.IRQ_F
+    chip.write(ENABLE, 0x00)
+    return read_back(chip, CD) & IRQ_F
 
 
 class PrintedBehaviourTest(unittest.TestCase):
@@ -49,10 +55,10 @@ class PrintedBehaviourTest(unittest.TestCase):
         # Arrange
         fact = FACTS["controlRegisterD"]["bits"]["irqF"]
         chip = a_clock([FROZEN])
-        written(chip, epson.CD, epson.CAL_HW | fact["mask"])
+        written(chip, CD, CAL_HW | fact["mask"])
 
         # Act
-        answered = read_back(chip, epson.CD)
+        answered = read_back(chip, CD)
 
         # Assert
         self.assertEqual(answered & fact["mask"], 0 if fact["readOnly"] else fact["mask"])
@@ -62,14 +68,14 @@ class PrintedBehaviourTest(unittest.TestCase):
         flag = FACTS["controlRegisterD"]["bits"]["irqF"]["mask"]
         hand = [FROZEN]
         chip = a_clock(hand)
-        written(chip, epson.S1, *DIGITS)
-        written(chip, epson.CE, EVERY_SECOND)
-        chip.write(epson.ENABLE, 0x00)
+        written(chip, S1, *DIGITS)
+        written(chip, CE, EVERY_SECOND)
+        chip.write(ENABLE, 0x00)
         hand[0] += 1
-        chip.write(epson.ENABLE, 0x00)
+        chip.write(ENABLE, 0x00)
 
         # Act
-        answered = (read_back(chip, epson.CD), read_back(chip, epson.CD))
+        answered = (read_back(chip, CD), read_back(chip, CD))
 
         # Assert
         self.assertEqual((answered[0] & flag, answered[1] & flag), (flag, 0))
@@ -85,18 +91,18 @@ class PrintedBehaviourTest(unittest.TestCase):
         )
 
         # Assert
-        self.assertEqual(raised, (epson.IRQ_F, 0))
+        self.assertEqual(raised, (IRQ_F, 0))
 
     def test_and_setting_mask_puts_down_a_flag_already_raised(self) -> None:
         # Arrange
         mask = PERIOD_BITS["mask"]["mask"]
-        chip = a_clock([FROZEN], control_d=epson.CAL_HW | epson.IRQ_F)
+        chip = a_clock([FROZEN], control_d=CAL_HW | IRQ_F)
 
         # Act
-        written(chip, epson.CE, EVERY_SECOND | mask)
+        written(chip, CE, EVERY_SECOND | mask)
 
         # Assert
-        self.assertEqual(chip.store.read(epson.CD) & epson.IRQ_F, 0)
+        self.assertEqual(chip.store.read(CD) & IRQ_F, 0)
 
     def test_interrupt_cycle_mode_holds_the_flag_and_fixed_period_mode_does_not(self) -> None:
         # Arrange
@@ -110,13 +116,13 @@ class PrintedBehaviourTest(unittest.TestCase):
         )
 
         # Assert
-        self.assertEqual(raised, (epson.IRQ_F, 0))
+        self.assertEqual(raised, (IRQ_F, 0))
 
     def test_each_printed_period_raises_the_flag_when_its_digit_increments(self) -> None:
         # Arrange
         rows = FACTS["controlRegisterE"]["periodTable"]["rows"]
         chosen = [
-            epson.INT_STND
+            INT_STND
             | (PERIOD_BITS["t1"]["mask"] if row["t1"] else 0)
             | (PERIOD_BITS["t0"]["mask"] if row["t0"] else 0)
             for row in rows

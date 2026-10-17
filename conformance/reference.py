@@ -115,7 +115,7 @@ def witness(cartridge: Cartridge, operation: Operation) -> set[str]:
         found.add("epson-writes-during-read-mode")
 
     if verb == "w" and first == epson.DATA and cartridge.epson.state == epson.WRITING:
-        found |= _witness_register(held, cartridge.epson.index, second & epson.NIBBLE)
+        found |= witness_register(held, cartridge.epson.index, second & epson.NIBBLE)
 
     if verb == "w" and first == epson.ENABLE and not second & 1:
         if held.read(epson.CF) & epson.TEST:
@@ -123,22 +123,22 @@ def witness(cartridge: Cartridge, operation: Operation) -> set[str]:
         if any(held.read(at) & epson.READ_FLAG for at in epson.READ_FLAG_AT):
             found.add("epson-oscillation-flag-cannot-be-originated")
 
-    if _catches_up(cartridge, operation):
+    if catches_up(cartridge, operation):
         found |= _witness_state(held)
         closing = verb == "w" and first == epson.ENABLE
-        if not closing and _would_advance(cartridge):
+        if not closing and would_advance(cartridge):
             found.add("epson-oscillation-flag-cannot-be-originated")
     return found
 
 
-def _would_advance(cartridge: Cartridge) -> bool:
+def would_advance(cartridge: Cartridge) -> bool:
     chip = cartridge.epson
     if chip.stopped() or cartridge.store.read(epson.CD) & epson.HOLD:
         return False
     return chip.elapsed(cartridge.at & 0xFFFFFFFF) > 0
 
 
-def _catches_up(cartridge: Cartridge, operation: Operation) -> bool:
+def catches_up(cartridge: Cartridge, operation: Operation) -> bool:
     verb, first, second = operation
     if verb == "w" and first == epson.ENABLE and not second & 1:
         return True
@@ -153,7 +153,7 @@ def _catches_up(cartridge: Cartridge, operation: Operation) -> bool:
     return bool(value & epson.ADJUST or (value ^ held) & epson.HOLD)
 
 
-def _witness_register(held: store.Store, index: int, value: int) -> set[str]:
+def witness_register(held: store.Store, index: int, value: int) -> set[str]:
     found: set[str] = set()
     if index != epson.CD:
         return found
@@ -270,7 +270,7 @@ def observe(script: Sequence[Operation]) -> Replay:
             settling -= 1
         else:
             found = witness(cartridge, operation)
-            if _catches_up(cartridge, operation):
+            if catches_up(cartridge, operation):
                 found |= ledger.blocks(cartridge.epson)
             if found and settled < 0:
                 settled = len(transcript)

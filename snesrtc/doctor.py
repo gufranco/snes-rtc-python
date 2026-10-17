@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Protocol, override
 
 
-def _version(where: Path | None = None) -> str:
+def installed_version(where: Path | None = None) -> str:
     found = re.search(
         r"""VERSION\s*[:=][^"']*["']([^"']+)["']""",
         (where or Path(__file__).resolve().parent / "version.py").read_text(),
@@ -21,7 +21,7 @@ def _version(where: Path | None = None) -> str:
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def _reachable(root: Path = ROOT, path: list[str] | None = None) -> bool:
+def reachable(root: Path = ROOT, path: list[str] | None = None) -> bool:
     where = sys.path if path is None else path
     if str(root) in where:
         return False
@@ -29,11 +29,11 @@ def _reachable(root: Path = ROOT, path: list[str] | None = None) -> bool:
     return True
 
 
-_reachable()
+reachable()
 
 from snesrtc import environment, models  # noqa: E402
 
-VERSION = _version()
+VERSION = installed_version()
 
 PIN = ROOT / "conformance" / "pinned.json"
 
@@ -122,7 +122,7 @@ def _clock(name: str, build: Callable[..., Resettable]) -> Finding:
     )
 
 
-def _time_source(build: Callable[..., Ticking]) -> Finding:
+def check_time_source(build: Callable[..., Ticking]) -> Finding:
     try:
         built = build(WITNESS, now=lambda: MOMENT)
         told = built.now()
@@ -142,7 +142,7 @@ def _time_source(build: Callable[..., Ticking]) -> Finding:
     )
 
 
-def _foreign(build: Callable[..., Addressed]) -> Finding:
+def check_foreign(build: Callable[..., Addressed]) -> Finding:
     try:
         built = build(WITNESS)
         elsewhere = max(models.lookup(WITNESS).addresses) + 1
@@ -214,8 +214,8 @@ def examine(
 ) -> list[Finding]:
     found = [_python(), _package()]
     found.extend(_clock(name, build) for name in sorted(models.MODELS))
-    found.append(_time_source(build))
-    found.append(_foreign(build))
+    found.append(check_time_source(build))
+    found.append(check_foreign(build))
     found.append(_reference(pin))
     found.append(_driver(driver))
     return found

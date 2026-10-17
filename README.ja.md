@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-時計**2**種、リファレンスと比較した操作**329,630**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**985**件、命令と分岐のカバレッジ**100%**、依存関係なし
+時計**2**種、リファレンスと比較した操作**329,630**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**1,007**件、命令と分岐のカバレッジ**100%**、依存関係なし
 
 ```python
 from snesrtc import Chip, Store
@@ -324,7 +324,7 @@ False True 29 0
 | 2 | コミットでピン留めしたsnes9xの記録 | マニュアルにないこと。SPC7110が3線式シリアルチップを3つのカートリッジアドレスに変換する方法、文書化された範囲外でのカウンタの動作、そしてシャープのチップのすべて |
 | 3 | それ以外なし | なし |
 
-段1の数値はすべて[`conformance/hardware.json`](conformance/hardware.json)に、読み取った元の文、文書のダイジェスト、読み取った日付とともに記録されています。[`conformance/hardware.test.py`](conformance/hardware.test.py)はパッケージの定数をそれと照合します。
+段1の数値はすべて[`conformance/hardware.json`](conformance/hardware.json)に、読み取った元の文、文書のダイジェスト、読み取った日付とともに記録されています。[`conformance/hardware.test.py`](conformance/hardware.test.py)はパッケージを動かし、その振る舞いをそれと照合します。
 
 マニュアルと記録が食い違う場合、パッケージはマニュアルに従います。15件の食い違いはそれぞれ[`conformance/divergences.json`](conformance/divergences.json)のエントリになっており、文書の記述、記録の動作、パッケージがどちらに従うか、何が決着をつける根拠になるかを示しています。
 
@@ -524,11 +524,12 @@ print(len(script), reference.render(script).splitlines()[:4])
 uvx ruff@0.16.3 format --check .
 uvx ruff@0.16.3 check .
 uvx --python 3.12 mypy==1.14.1
-python3 -m coverage erase
+cov=(uvx --python 3.12 --from coverage==7.6.10 --with setuptools==84.0.0 coverage)
+"${cov[@]}" erase
 for file in $(find snesrtc conformance -name '*.test.py' | sort); do
-  python3 -m coverage run -a "$file"
+  "${cov[@]}" run -a "$file"
 done
-python3 -m coverage report
+"${cov[@]}" report
 ```
 
 各モジュールには、その名前を付けたテストファイルが隣にあり、それぞれ単独で実行できます。カバレッジは命令と分岐の100%が必須のゲートで、mypyはstrictで実行します。

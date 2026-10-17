@@ -8,7 +8,7 @@ Sharp S-RTC 與 Epson RTC-4513，即 Super Nintendo 卡帶可搭載的兩款實�
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** 個時鐘，**329,630** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**985** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
+**2** 個時鐘，**329,630** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**1,007** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
 
 ```python
 from snesrtc import Chip, Store
@@ -324,7 +324,7 @@ False True 29 0
 | 2 | snes9x 的一份錄製，以提交固定 | 手冊未涉及的部分：SPC7110 如何把三線串列部件轉為三個卡帶位址、計數器在文件記載範圍以外的行為，以及 Sharp 部件的全部 |
 | 3 | 別無其他 | 無 |
 
-層級 1 的每個數值都記錄在 [`conformance/hardware.json`](conformance/hardware.json) 中，附有其出處的句子、文件的摘要值和閱讀日期。[`conformance/hardware.test.py`](conformance/hardware.test.py) 據此檢查套件的常數。
+層級 1 的每個數值都記錄在 [`conformance/hardware.json`](conformance/hardware.json) 中，附有其出處的句子、文件的摘要值和閱讀日期。[`conformance/hardware.test.py`](conformance/hardware.test.py) 驅動套件，並據此檢查其行為。
 
 手冊與錄製不一致時，套件依從手冊。15 處分歧各自是 [`conformance/divergences.json`](conformance/divergences.json) 中的一個條目，寫明文件所述、錄製的行為、套件依從哪一方，以及什麼證據可以定案。
 
@@ -524,11 +524,12 @@ print(len(script), reference.render(script).splitlines()[:4])
 uvx ruff@0.16.3 format --check .
 uvx ruff@0.16.3 check .
 uvx --python 3.12 mypy==1.14.1
-python3 -m coverage erase
+cov=(uvx --python 3.12 --from coverage==7.6.10 --with setuptools==84.0.0 coverage)
+"${cov[@]}" erase
 for file in $(find snesrtc conformance -name '*.test.py' | sort); do
-  python3 -m coverage run -a "$file"
+  "${cov[@]}" run -a "$file"
 done
-python3 -m coverage report
+"${cov[@]}" report
 ```
 
 每個模組旁邊都有一個以其命名的測試檔案，各自可單獨執行。覆蓋率是 100% 語句及分支的硬性關卡，mypy 以嚴格模式執行。

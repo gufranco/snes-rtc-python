@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from snesrtc import epson, store
+from snesrtc import Chip, Store
 
 HARDWARE = Path(__file__).resolve().parent / "hardware.json"
 
@@ -20,6 +20,10 @@ FACTS: dict[str, Any] = EPSON["facts"]
 
 ROWS: list[dict[str, Any]] = FACTS["registerTable"]["rows"]
 
+RECORDED: dict[str, Any] = SHARP["recordedFacts"]
+
+BITS = ("d0", "d1", "d2", "d3")
+
 FROZEN = 1_000_000_000
 
 DAY = 86_400
@@ -28,44 +32,84 @@ HOUR = 3_600
 
 DIGITS = (0, 0, 0, 3, 2, 1, 8, 1, 8, 0, 6, 2)
 
+ENABLE, DATA, STATUS = 0x4840, 0x4841, 0x4842
 
-def a_clock(
-    hand: list[int], control_f: int = epson.HOURS_24, control_d: int = epson.CAL_HW
-) -> epson.Chip:
-    held = store.Store(cleared=True)
-    held.stamp = hand[0]
-    held.write(epson.CF, control_f)
-    held.write(epson.CD, control_d)
-    return epson.Chip(held, now=lambda: hand[0])
+SHARP_DATA: int = RECORDED["dataAddress"]
 
+SHARP_CONTROL: int = RECORDED["controlAddress"]
 
-def opened(chip: epson.Chip, mode: int, index: int) -> None:
-    chip.write(epson.ENABLE, 0x01)
-    chip.write(epson.DATA, mode)
-    chip.write(epson.DATA, index)
+WRITE_MODE: int = FACTS["writeModeCode"]["value"]
+
+READ_MODE: int = FACTS["readModeCode"]["value"]
+
+REGISTERS: int = FACTS["registerCount"]["value"]
+
+NIBBLE = (1 << FACTS["registerWidthBits"]["value"]) - 1
 
 
-def written(chip: epson.Chip, index: int, *nibbles: int) -> None:
-    opened(chip, epson.WRITE_MODE, index)
-    for one in nibbles:
-        chip.write(epson.DATA, one)
-
-
-def read_back(chip: epson.Chip, index: int) -> int:
-    opened(chip, epson.READ_MODE, index)
-    return chip.read(epson.DATA)
-
-
-def located(spelled: str) -> tuple[int, int]:
-    name, _, bit = spelled.strip().partition(".")
-    address = next(row["address"] for row in ROWS if row["name"] == name)
-    return int(address), 1 << int(bit.removeprefix("D"))
+def register(name: str) -> int:
+    return next(int(row["address"]) for row in ROWS if row["name"] == name)
 
 
 def named_bit(name: str) -> tuple[int, int]:
     return next(
         (int(row["address"]), 1 << at)
         for row in ROWS
-        for at, key in enumerate(("d0", "d1", "d2", "d3"))
+        for at, key in enumerate(BITS)
         if row[key] == name
     )
+
+
+def mask_of(name: str) -> int:
+    return named_bit(name)[1]
+
+
+S1, S10, MI1, MI10 = register("S1"), register("S10"), register("MI1"), register("MI10")
+
+H1, H10, D1, D10 = register("H1"), register("H10"), register("D1"), register("D10")
+
+MO1, MO10, Y1, Y10 = register("MO1"), register("MO10"), register("Y1"), register("Y10")
+
+W, CD, CE, CF = register("W"), register("CD"), register("CE"), register("CF")
+
+HOLD, CAL_HW, IRQ_F, ADJUST = (mask_of(name) for name in ("HOLD", "CAL/HW", "IRQ-F", "30ADJ."))
+
+MASK, INT_STND = mask_of("MASK"), mask_of("INT/STND")
+
+RESET, STOP, HOURS_24, TEST = (mask_of(name) for name in ("RESET", "STOP", "24/12", "TEST"))
+
+PM, H20, OSC_FLAG = mask_of("PM/AM"), mask_of("h20"), mask_of("fo")
+
+READ_FLAG = mask_of("fr")
+
+READ_FLAG_AT = tuple(int(row["address"]) for row in ROWS if row["d3"] == "fr")
+
+
+def a_clock(hand: list[int], control_f: int = HOURS_24, control_d: int = CAL_HW) -> Any:
+    held = Store(cleared=True)
+    held.stamp = hand[0]
+    held.write(CF, control_f)
+    held.write(CD, control_d)
+    return Chip("rtc-4513", held, now=lambda: hand[0])
+
+
+def opened(chip: Any, mode: int, index: int) -> None:
+    chip.write(ENABLE, 0x01)
+    chip.write(DATA, mode)
+    chip.write(DATA, index)
+
+
+def written(chip: Any, index: int, *nibbles: int) -> None:
+    opened(chip, WRITE_MODE, index)
+    for one in nibbles:
+        chip.write(DATA, one)
+
+
+def read_back(chip: Any, index: int) -> int:
+    opened(chip, READ_MODE, index)
+    return int(chip.read(DATA))
+
+
+def located(spelled: str) -> tuple[int, int]:
+    name, _, bit = spelled.strip().partition(".")
+    return register(name), 1 << int(bit.removeprefix("D"))

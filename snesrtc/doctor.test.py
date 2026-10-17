@@ -8,11 +8,11 @@ import tempfile
 import unittest
 import unittest.mock
 from pathlib import Path
-from typing import NoReturn, override
+from typing import Any, NoReturn
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from snesrtc import doctor, models, sharp, store
+from snesrtc import MODELS, doctor
 
 
 class Complaint(Exception):
@@ -26,6 +26,10 @@ def a_finding(
     advice: str | None = None,
 ) -> doctor.Finding:
     return doctor.Finding(name, ok, detail, advice)
+
+
+def exploding(_name: str, **_options: object) -> Any:
+    raise Complaint("the clock exploded")
 
 
 def a_pin(name: str = "snes9x", commit: str = "2971061") -> Path:
@@ -72,31 +76,38 @@ class ExamineTest(unittest.TestCase):
         self.assertIn("snesrtc", [one.name for one in doctor.examine()])
 
     def test_and_one_finding_per_clock_it_covers(self) -> None:
-        from snesrtc import models
+        # Arrange
+        covered = sorted(MODELS)
 
+        # Act
         names = [one.name for one in doctor.examine()]
 
-        for model in models.MODELS:
-            self.assertIn(model, names, model)
+        # Assert
+        self.assertEqual([model for model in covered if model not in names], [])
 
     def test_every_finding_carries_a_detail(self) -> None:
         for one in doctor.examine():
             self.assertTrue(one.detail, one.name)
 
     def test_a_clock_that_will_not_build_is_reported_rather_than_hidden(self) -> None:
-        def boom(_name: str) -> models.Built:
-            raise Complaint("the clock exploded")
+        # Arrange
+        build = exploding
 
-        self.assertTrue(any(not one.ok for one in doctor.examine(build=boom)))
+        # Act
+        found = doctor.examine(build=build)
+
+        # Assert
+        self.assertEqual([one.ok for one in found if one.name in MODELS], [False, False])
 
     def test_and_the_report_carries_what_it_said_and_what_kind(self) -> None:
-        def boom(_name: str) -> models.Built:
-            raise Complaint("the clock exploded")
+        # Arrange
+        build = exploding
 
-        text = "\n".join(one.report for one in doctor.examine(build=boom))
+        # Act
+        text = "\n".join(one.report for one in doctor.examine(build=build))
 
-        self.assertIn("the clock exploded", text)
-        self.assertIn("Complaint", text)
+        # Assert
+        self.assertIn("Complaint: the clock exploded", text)
 
     def test_a_clock_is_reported_with_the_addresses_it_answers(self) -> None:
         for one in doctor.examine():
@@ -109,18 +120,22 @@ class ExamineTest(unittest.TestCase):
         self.assertIn("and resets", found[0].detail)
 
     def test_a_clock_that_builds_and_will_not_reset_is_reported_as_broken(self) -> None:
-        class WillNotReset(sharp.Chip):
-            @override
-            def reset(self) -> NoReturn:
+        # Arrange
+        class WillNotReset:
+            @staticmethod
+            def reset() -> NoReturn:
                 raise Complaint("the line did nothing")
 
-        found = [
-            one
-            for one in doctor.examine(build=lambda name, **options: WillNotReset(store.Store()))
-            if one.name == "s-rtc"
-        ]
+        def build(_name: str, **_options: object) -> Any:
+            return WillNotReset()
 
-        self.assertFalse(found[0].ok)
+        # Act
+        found = [one for one in doctor.examine(build=build) if one.name == "s-rtc"]
+
+        # Assert
+        self.assertEqual(
+            [(one.ok, one.detail) for one in found], [(False, "Complaint: the line did nothing")]
+        )
 
 
 class TimeSourceTest(unittest.TestCase):
@@ -133,23 +148,28 @@ class TimeSourceTest(unittest.TestCase):
                 self.assertTrue(one.ok)
 
     def test_a_clock_that_ignores_what_it_was_told_is_a_failure(self) -> None:
+        # Arrange
         class Deaf:
             @staticmethod
             def now() -> int:
                 return 0
 
-        found = doctor._time_source(lambda _name, **_options: Deaf())
+        # Act
+        found = doctor.check_time_source(lambda _name, **_options: Deaf())
 
-        self.assertFalse(found.ok)
+        # Assert
+        self.assertIs(found.ok, False)
 
     def test_a_source_that_throws_is_reported_rather_than_swallowed(self) -> None:
+        # Arrange
         def boom(_name: str, **_options: object) -> doctor.Ticking:
             raise Complaint("no clock at all")
 
-        found = doctor._time_source(boom)
+        # Act
+        found = doctor.check_time_source(boom)
 
-        self.assertFalse(found.ok)
-        self.assertIn("no clock at all", found.detail)
+        # Assert
+        self.assertEqual((found.ok, found.detail), (False, "Complaint: no clock at all"))
 
 
 class ForeignAddressTest(unittest.TestCase):
@@ -159,6 +179,7 @@ class ForeignAddressTest(unittest.TestCase):
                 self.assertTrue(one.ok)
 
     def test_a_clock_that_answers_anything_there_is_a_failure(self) -> None:
+        # Arrange
         class TooKind:
             open_bus = 0x00
 
@@ -166,18 +187,22 @@ class ForeignAddressTest(unittest.TestCase):
             def read(_address: int) -> int:
                 return 0x42
 
-        found = doctor._foreign(lambda _name, **_options: TooKind())
+        # Act
+        found = doctor.check_foreign(lambda _name, **_options: TooKind())
 
-        self.assertFalse(found.ok)
+        # Assert
+        self.assertIs(found.ok, False)
 
     def test_a_read_that_throws_is_reported_rather_than_swallowed(self) -> None:
+        # Arrange
         def boom(_name: str, **_options: object) -> doctor.Addressed:
             raise Complaint("no bus at all")
 
-        found = doctor._foreign(boom)
+        # Act
+        found = doctor.check_foreign(boom)
 
-        self.assertFalse(found.ok)
-        self.assertIn("no bus at all", found.detail)
+        # Assert
+        self.assertEqual((found.ok, found.detail), (False, "Complaint: no bus at all"))
 
 
 class PinTest(unittest.TestCase):
@@ -307,10 +332,15 @@ class PathTest(unittest.TestCase):
         self.assertEqual(doctor.VERSION, found.group(1))
 
     def test_a_version_file_naming_nothing_reads_as_unknown(self) -> None:
+        # Arrange
         where = Path(tempfile.mkdtemp()) / "version.py"
         where.write_text("NOTHING = 1\n")
 
-        self.assertEqual(doctor._version(where), "unknown")
+        # Act
+        found = doctor.installed_version(where)
+
+        # Assert
+        self.assertEqual(found, "unknown")
 
 
 class ReachableTest(unittest.TestCase):
@@ -319,7 +349,7 @@ class ReachableTest(unittest.TestCase):
         path: list[str] = []
 
         # Act
-        added = doctor._reachable(Path("/somewhere"), path)
+        added = doctor.reachable(Path("/somewhere"), path)
 
         # Assert
         self.assertEqual((added, path), (True, ["/somewhere"]))
@@ -329,7 +359,7 @@ class ReachableTest(unittest.TestCase):
         path = ["/somewhere"]
 
         # Act
-        added = doctor._reachable(Path("/somewhere"), path)
+        added = doctor.reachable(Path("/somewhere"), path)
 
         # Assert
         self.assertEqual((added, path), (False, ["/somewhere"]))

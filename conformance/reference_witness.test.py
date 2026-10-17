@@ -1,11 +1,33 @@
 import sys
 import unittest
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from conformance import reference
-from snesrtc import epson, store
+from conformance.driving import (
+    ADJUST,
+    CAL_HW,
+    CD,
+    CE,
+    CF,
+    DATA,
+    ENABLE,
+    H10,
+    H20,
+    HOLD,
+    INT_STND,
+    IRQ_F,
+    MO10,
+    PM,
+    READ_MODE,
+    S1,
+    STOP,
+    TEST,
+    WRITE_MODE,
+)
+from snesrtc import Store
 
 
 class WitnessTest(unittest.TestCase):
@@ -14,7 +36,7 @@ class WitnessTest(unittest.TestCase):
 
     def test_a_configured_script_that_touches_nothing_declared_is_compared_whole(self) -> None:
         # Arrange
-        given = [("r", epson.DATA, 0), ("dump", 0, 0)]
+        given = [("r", DATA, 0), ("dump", 0, 0)]
 
         # Act
         replayed = self.settled(given)
@@ -24,7 +46,7 @@ class WitnessTest(unittest.TestCase):
 
     def test_and_is_compared_to_its_end(self) -> None:
         # Arrange
-        given = [("r", epson.DATA, 0), ("dump", 0, 0)]
+        given = [("r", DATA, 0), ("dump", 0, 0)]
 
         # Act
         replayed = self.settled(given)
@@ -40,7 +62,7 @@ class WitnessTest(unittest.TestCase):
 
         # Act
         replayed = self.settled(
-            [("store", epson.MO10, 8), ("dump", 0, 0), ("w", epson.ENABLE, 0), ("dump", 0, 0)]
+            [("store", MO10, 8), ("dump", 0, 0), ("w", ENABLE, 0), ("dump", 0, 0)]
         )
 
         # Assert
@@ -48,7 +70,7 @@ class WitnessTest(unittest.TestCase):
 
     def test_but_not_before_it(self) -> None:
         # Arrange
-        given = [("store", epson.MO10, 8), ("dump", 0, 0)]
+        given = [("store", MO10, 8), ("dump", 0, 0)]
 
         # Act
         replayed = self.settled(given)
@@ -59,10 +81,10 @@ class WitnessTest(unittest.TestCase):
     def test_writing_the_interrupt_flag_stops_nothing(self) -> None:
         # Arrange
         script = [
-            ("w", epson.ENABLE, 0x01),
-            ("w", epson.DATA, epson.WRITE_MODE),
-            ("w", epson.DATA, epson.CD),
-            ("w", epson.DATA, epson.IRQ_F),
+            ("w", ENABLE, 0x01),
+            ("w", DATA, WRITE_MODE),
+            ("w", DATA, CD),
+            ("w", DATA, IRQ_F),
         ]
 
         # Act
@@ -74,10 +96,10 @@ class WitnessTest(unittest.TestCase):
     def test_writing_the_range_bit_is_refused(self) -> None:
         # Arrange
         given = [
-            ("w", epson.ENABLE, 1),
-            ("w", epson.DATA, epson.WRITE_MODE),
-            ("w", epson.DATA, epson.CD),
-            ("w", epson.DATA, epson.CAL_HW),
+            ("w", ENABLE, 1),
+            ("w", DATA, WRITE_MODE),
+            ("w", DATA, CD),
+            ("w", DATA, CAL_HW),
         ]
 
         # Act
@@ -89,10 +111,10 @@ class WitnessTest(unittest.TestCase):
     def test_and_a_write_while_the_chip_is_in_read_mode(self) -> None:
         # Arrange
         given = [
-            ("w", epson.ENABLE, 1),
-            ("w", epson.DATA, epson.READ_MODE),
-            ("w", epson.DATA, 0),
-            ("w", epson.DATA, 0),
+            ("w", ENABLE, 1),
+            ("w", DATA, READ_MODE),
+            ("w", DATA, 0),
+            ("w", DATA, 0),
         ]
 
         # Act
@@ -103,7 +125,7 @@ class WitnessTest(unittest.TestCase):
 
     def test_closing_a_chip_that_holds_the_test_bit_is_refused(self) -> None:
         # Arrange
-        given = [("store", epson.CF, reference.CONFIGURED_CF | epson.TEST), ("w", epson.ENABLE, 0)]
+        given = [("store", CF, reference.CONFIGURED_CF | TEST), ("w", ENABLE, 0)]
 
         # Act
         replayed = self.settled(given)
@@ -179,13 +201,13 @@ class StampWidthTest(unittest.TestCase):
 
 
 class CatchUpTest(unittest.TestCase):
-    def opened(self, index: int, mode: int = epson.WRITE_MODE) -> reference.Cartridge:
+    def opened(self, index: int, mode: int = WRITE_MODE) -> reference.Cartridge:
         cartridge = reference.Cartridge()
-        cartridge.store.write(epson.CF, reference.CONFIGURED_CF)
-        cartridge.store.write(epson.CD, reference.CONFIGURED_CD)
-        cartridge.write(epson.ENABLE, 0x01)
-        cartridge.write(epson.DATA, mode)
-        cartridge.write(epson.DATA, index)
+        cartridge.store.write(CF, reference.CONFIGURED_CF)
+        cartridge.store.write(CD, reference.CONFIGURED_CD)
+        cartridge.write(ENABLE, 0x01)
+        cartridge.write(DATA, mode)
+        cartridge.write(DATA, index)
         return cartridge
 
     def test_closing_the_chip_writes_the_time_back(self) -> None:
@@ -193,104 +215,102 @@ class CatchUpTest(unittest.TestCase):
         cartridge = reference.Cartridge()
 
         # Act
-        caught_up = reference._catches_up(cartridge, ("w", epson.ENABLE, 0x00))
+        caught_up = reference.catches_up(cartridge, ("w", ENABLE, 0x00))
 
         # Assert
         self.assertTrue(caught_up)
 
     def test_a_write_to_control_register_f_writes_it_back(self) -> None:
         # Arrange
-        given = epson.CF
+        given = CF
 
         # Act
         cartridge = self.opened(given)
 
         # Assert
-        self.assertTrue(reference._catches_up(cartridge, ("w", epson.DATA, 0)))
+        self.assertTrue(reference.catches_up(cartridge, ("w", DATA, 0)))
 
     def test_a_write_to_a_clock_register_does_not(self) -> None:
         # Arrange
-        given = epson.S1
+        given = S1
 
         # Act
         cartridge = self.opened(given)
 
         # Assert
-        self.assertFalse(reference._catches_up(cartridge, ("w", epson.DATA, 1)))
+        self.assertFalse(reference.catches_up(cartridge, ("w", DATA, 1)))
 
     def test_an_adjustment_does(self) -> None:
         # Arrange
-        given = epson.CD
+        given = CD
 
         # Act
         cartridge = self.opened(given)
 
         # Assert
-        self.assertTrue(reference._catches_up(cartridge, ("w", epson.DATA, epson.ADJUST)))
+        self.assertTrue(reference.catches_up(cartridge, ("w", DATA, ADJUST)))
 
     def test_a_control_register_d_write_that_changes_nothing_does_not(self) -> None:
         # Arrange
-        given = epson.CD
+        given = CD
 
         # Act
         cartridge = self.opened(given)
 
         # Assert
-        self.assertFalse(
-            reference._catches_up(cartridge, ("w", epson.DATA, reference.CONFIGURED_CD))
-        )
+        self.assertFalse(reference.catches_up(cartridge, ("w", DATA, reference.CONFIGURED_CD)))
 
     def test_a_read_never_does(self) -> None:
         # Arrange
-        given = epson.CF
+        given = CF
 
         # Act
         cartridge = self.opened(given)
 
         # Assert
-        self.assertFalse(reference._catches_up(cartridge, ("r", epson.DATA, 0)))
+        self.assertFalse(reference.catches_up(cartridge, ("r", DATA, 0)))
 
 
 class AdvanceTest(unittest.TestCase):
     def test_a_running_clock_with_time_behind_it_advances(self) -> None:
         # Arrange
         cartridge = reference.Cartridge()
-        cartridge.store.write(epson.CF, reference.CONFIGURED_CF)
+        cartridge.store.write(CF, reference.CONFIGURED_CF)
 
         # Act
         cartridge.at = reference.START + 5
 
         # Assert
-        self.assertTrue(reference._would_advance(cartridge))
+        self.assertTrue(reference.would_advance(cartridge))
 
     def test_a_stopped_one_does_not(self) -> None:
         # Arrange
         cartridge = reference.Cartridge()
-        cartridge.store.write(epson.CF, reference.CONFIGURED_CF | epson.STOP)
+        cartridge.store.write(CF, reference.CONFIGURED_CF | STOP)
 
         # Act
         cartridge.at = reference.START + 5
 
         # Assert
-        self.assertFalse(reference._would_advance(cartridge))
+        self.assertFalse(reference.would_advance(cartridge))
 
     def test_nor_does_a_held_one(self) -> None:
         # Arrange
         cartridge = reference.Cartridge()
-        cartridge.store.write(epson.CF, reference.CONFIGURED_CF)
-        cartridge.store.write(epson.CD, reference.CONFIGURED_CD | epson.HOLD)
+        cartridge.store.write(CF, reference.CONFIGURED_CF)
+        cartridge.store.write(CD, reference.CONFIGURED_CD | HOLD)
 
         # Act
         cartridge.at = reference.START + 5
 
         # Assert
-        self.assertFalse(reference._would_advance(cartridge))
+        self.assertFalse(reference.would_advance(cartridge))
 
 
 class RegisterWitnessTest(unittest.TestCase):
-    def held(self) -> store.Store:
-        held = store.Store(cleared=True)
-        held.write(epson.CD, reference.CONFIGURED_CD)
+    def held(self) -> Any:
+        held = Store(cleared=True)
+        held.write(CD, reference.CONFIGURED_CD)
         return held
 
     def test_a_clock_register_write_reaches_nothing_on_its_own(self) -> None:
@@ -298,7 +318,7 @@ class RegisterWitnessTest(unittest.TestCase):
         expected: set[str] = set()
 
         # Act
-        found = reference._witness_register(self.held(), epson.MO10, 15)
+        found = reference.witness_register(self.held(), MO10, 15)
 
         # Assert
         self.assertEqual(found, expected)
@@ -308,7 +328,7 @@ class RegisterWitnessTest(unittest.TestCase):
         held = self.held()
 
         # Act
-        found = reference._witness_register(held, epson.CD, epson.IRQ_F)
+        found = reference.witness_register(held, CD, IRQ_F)
 
         # Assert
         self.assertEqual(found, set())
@@ -318,7 +338,7 @@ class RegisterWitnessTest(unittest.TestCase):
         held = self.held()
 
         # Act
-        found = reference._witness_register(held, epson.H10, epson.H20 | epson.PM | 1)
+        found = reference.witness_register(held, H10, H20 | PM | 1)
 
         # Assert
         self.assertEqual(found, set())
@@ -328,7 +348,7 @@ class RegisterWitnessTest(unittest.TestCase):
         held = self.held()
 
         # Act
-        found = reference._witness_register(held, epson.CD, epson.ADJUST)
+        found = reference.witness_register(held, CD, ADJUST)
 
         # Assert
         self.assertIn("epson-thirty-second-adjust-lockout", found)
@@ -338,7 +358,7 @@ class RegisterWitnessTest(unittest.TestCase):
         held = self.held()
 
         # Act
-        found = reference._witness_register(held, epson.CD, epson.CAL_HW)
+        found = reference.witness_register(held, CD, CAL_HW)
 
         # Assert
         self.assertIn("epson-cd-bit1-add-second", found)
@@ -348,7 +368,7 @@ class RegisterWitnessTest(unittest.TestCase):
         held = self.held()
 
         # Act
-        found = reference._witness_register(held, epson.CD, epson.HOLD)
+        found = reference.witness_register(held, CD, HOLD)
 
         # Assert
         self.assertIn("epson-hold-discards-elapsed-time", found)
@@ -358,15 +378,15 @@ class ReadWitnessTest(unittest.TestCase):
     def test_a_catch_up_inside_an_open_session_raises_the_read_flag(self) -> None:
         # Arrange
         cartridge = reference.Cartridge()
-        cartridge.store.write(epson.CF, reference.CONFIGURED_CF)
-        cartridge.store.write(epson.CD, reference.CONFIGURED_CD)
-        cartridge.write(epson.ENABLE, 0x01)
-        cartridge.write(epson.DATA, epson.WRITE_MODE)
-        cartridge.write(epson.DATA, epson.CF)
+        cartridge.store.write(CF, reference.CONFIGURED_CF)
+        cartridge.store.write(CD, reference.CONFIGURED_CD)
+        cartridge.write(ENABLE, 0x01)
+        cartridge.write(DATA, WRITE_MODE)
+        cartridge.write(DATA, CF)
         cartridge.at = reference.START + 5
 
         # Act
-        found = reference.witness(cartridge, ("w", epson.DATA, reference.CONFIGURED_CF))
+        found = reference.witness(cartridge, ("w", DATA, reference.CONFIGURED_CF))
 
         # Assert
         self.assertIn("epson-oscillation-flag-cannot-be-originated", found)
@@ -378,13 +398,13 @@ class ExcusalTest(unittest.TestCase):
             [
                 ("time", reference.START, 0),
                 *reference.CONFIGURE,
-                ("store", epson.CE, epson.INT_STND | 0x4),
+                ("store", CE, INT_STND | 0x4),
                 ("time", reference.START + 1, 0),
-                ("w", epson.ENABLE, 0x00),
-                ("w", epson.ENABLE, 0x01),
-                ("w", epson.DATA, epson.READ_MODE),
-                ("w", epson.DATA, epson.CD),
-                ("r", epson.DATA, 0),
+                ("w", ENABLE, 0x00),
+                ("w", ENABLE, 0x01),
+                ("w", DATA, READ_MODE),
+                ("w", DATA, CD),
+                ("r", DATA, 0),
                 ("dump", 0, 0),
             ]
         )
@@ -402,7 +422,7 @@ class ExcusalTest(unittest.TestCase):
     def test_the_read_of_cd_is_compared_except_for_that_flag(self) -> None:
         # Arrange
         replayed = self.raised()
-        theirs = [f"{int(replayed.transcript[0], 16) & ~epson.IRQ_F:02X}", replayed.transcript[1]]
+        theirs = [f"{int(replayed.transcript[0], 16) & ~IRQ_F:02X}", replayed.transcript[1]]
 
         # Act
         found, partly = reference.explain(theirs, replayed.transcript, None, replayed.excused)
@@ -413,7 +433,7 @@ class ExcusalTest(unittest.TestCase):
     def test_and_any_other_bit_of_it_still_has_to_agree(self) -> None:
         # Arrange
         replayed = self.raised()
-        theirs = [f"{int(replayed.transcript[0], 16) ^ epson.CAL_HW:02X}", replayed.transcript[1]]
+        theirs = [f"{int(replayed.transcript[0], 16) ^ CAL_HW:02X}", replayed.transcript[1]]
 
         # Act
         found, _ = reference.explain(theirs, replayed.transcript, None, replayed.excused)
@@ -426,12 +446,12 @@ class ExcusalTest(unittest.TestCase):
         script = [
             ("time", reference.START, 0),
             *reference.CONFIGURE,
-            ("w", epson.ENABLE, 0x01),
-            ("w", epson.DATA, epson.WRITE_MODE),
-            ("w", epson.DATA, epson.H10),
-            ("w", epson.DATA, epson.PM | 0x1),
+            ("w", ENABLE, 0x01),
+            ("w", DATA, WRITE_MODE),
+            ("w", DATA, H10),
+            ("w", DATA, PM | 0x1),
             ("dump", 0, 0),
-            ("w", epson.ENABLE, 0x00),
+            ("w", ENABLE, 0x00),
             ("dump", 0, 0),
         ]
 

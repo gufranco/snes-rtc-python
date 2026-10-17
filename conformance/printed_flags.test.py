@@ -5,16 +5,26 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from conformance.driving import (
+    CAL_HW,
+    CF,
+    D10,
+    DATA,
     DIGITS,
+    ENABLE,
     FACTS,
     FROZEN,
+    HOURS_24,
+    MI10,
+    MO10,
+    READ_FLAG,
+    S1,
+    WRITE_MODE,
     a_clock,
     located,
     opened,
     read_back,
     written,
 )
-from snesrtc import epson
 
 
 def flag_written(address: int, values: tuple[int, ...]) -> list[int]:
@@ -42,13 +52,13 @@ class PrintedBehaviourTest(unittest.TestCase):
         flags = [located(one) for one in FACTS["readFlag"]["bit"].split(",")]
         hand = [FROZEN]
         chip = a_clock(hand)
-        written(chip, epson.S1, *DIGITS)
-        chip.write(epson.ENABLE, 0x00)
+        written(chip, S1, *DIGITS)
+        chip.write(ENABLE, 0x00)
         hand[0] += 5
-        opened(chip, epson.WRITE_MODE, epson.CF)
+        opened(chip, WRITE_MODE, CF)
 
         # Act
-        chip.write(epson.DATA, epson.HOURS_24)
+        chip.write(DATA, HOURS_24)
 
         # Assert
         self.assertEqual(
@@ -64,7 +74,7 @@ class PrintedBehaviourTest(unittest.TestCase):
             chip.store.write(address, chip.store.read(address) | mask)
 
         # Act
-        chip.write(epson.ENABLE, 0x00)
+        chip.write(ENABLE, 0x00)
 
         # Assert
         self.assertEqual(
@@ -76,36 +86,36 @@ class PrintedBehaviourTest(unittest.TestCase):
     ) -> None:
         # Arrange
         dated = FACTS["controlRegisterD"]["bits"]["calHw"]["mask"]
-        chip = a_clock([FROZEN], control_d=epson.CAL_HW & ~dated)
-        written(chip, epson.D10, epson.READ_FLAG)
-        written(chip, epson.MO10, epson.READ_FLAG)
+        chip = a_clock([FROZEN], control_d=CAL_HW & ~dated)
+        written(chip, D10, READ_FLAG)
+        written(chip, MO10, READ_FLAG)
 
         # Act
-        chip.write(epson.ENABLE, 0x00)
+        chip.write(ENABLE, 0x00)
 
         # Assert
         self.assertEqual(
-            [chip.store.read(at) & epson.READ_FLAG for at in (epson.D10, epson.MO10)],
-            [epson.READ_FLAG] * 2,
+            [chip.store.read(at) & READ_FLAG for at in (D10, MO10)],
+            [READ_FLAG] * 2,
         )
 
     def test_and_a_tick_does_not_raise_them(self) -> None:
         # Arrange
         dated = FACTS["controlRegisterD"]["bits"]["calHw"]["mask"]
         hand = [FROZEN]
-        chip = a_clock(hand, control_d=epson.CAL_HW & ~dated)
-        written(chip, epson.S1, *DIGITS)
-        chip.write(epson.ENABLE, 0x00)
+        chip = a_clock(hand, control_d=CAL_HW & ~dated)
+        written(chip, S1, *DIGITS)
+        chip.write(ENABLE, 0x00)
         hand[0] += 5
-        opened(chip, epson.WRITE_MODE, epson.CF)
+        opened(chip, WRITE_MODE, CF)
 
         # Act
-        chip.write(epson.DATA, epson.HOURS_24)
+        chip.write(DATA, HOURS_24)
 
         # Assert
         self.assertEqual(
-            [chip.store.read(at) & epson.READ_FLAG for at in (epson.MI10, epson.D10, epson.MO10)],
-            [epson.READ_FLAG, 0, 0],
+            [chip.store.read(at) & READ_FLAG for at in (MI10, D10, MO10)],
+            [READ_FLAG, 0, 0],
         )
 
 

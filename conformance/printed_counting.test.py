@@ -7,13 +7,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from conformance.driving import (
     DAY,
     DIGITS,
+    ENABLE,
     FACTS,
     FROZEN,
+    S1,
+    S10,
+    W,
     a_clock,
     read_back,
     written,
 )
-from snesrtc import epson
 
 EXAMPLE_YEAR = 1993
 
@@ -49,9 +52,9 @@ def a_second_before_midnight(year: int, month: int, day: int) -> tuple[int, ...]
 def a_second_after(date: tuple[int, int, int]) -> tuple[int, int, int]:
     hand = [FROZEN]
     chip = a_clock(hand)
-    written(chip, epson.S1, *a_second_before_midnight(*date))
+    written(chip, S1, *a_second_before_midnight(*date))
     hand[0] += 1
-    chip.write(epson.ENABLE, 0x00)
+    chip.write(ENABLE, 0x00)
     moment = chip.moment()
     return moment.year, moment.month, moment.day
 
@@ -62,18 +65,18 @@ def the_top_held(row: dict[str, object]) -> int:
     top = row["countRange"]
     assert isinstance(top, list)
     written(chip, address, top[1])
-    return chip.digit(address)
+    return int(chip.digit(address))
 
 
 def weekdays_counted(days: int) -> list[int]:
     hand = [FROZEN]
     chip = a_clock(hand)
-    written(chip, epson.S1, *DIGITS[:12], 0)
+    written(chip, S1, *DIGITS[:12], 0)
     counted = []
     for _ in range(days):
         hand[0] += DAY
-        chip.write(epson.ENABLE, 0x00)
-        counted.append(chip.digit(epson.W))
+        chip.write(ENABLE, 0x00)
+        counted.append(chip.digit(W))
     return counted
 
 
@@ -82,23 +85,23 @@ class PrintedBehaviourTest(unittest.TestCase):
         # Arrange
         hand = [FROZEN]
         chip = a_clock(hand)
-        written(chip, epson.S1, 9, 0, *DIGITS[2:])
+        written(chip, S1, 9, 0, *DIGITS[2:])
         hand[0] += 1
 
         # Act
-        chip.write(epson.ENABLE, 0x00)
+        chip.write(ENABLE, 0x00)
 
         # Assert
-        carried = (chip.digit(epson.S1), chip.digit(epson.S10))
+        carried = (chip.digit(S1), chip.digit(S10))
         self.assertEqual("bcd" if carried == (0, 1) else "binary", FACTS["encoding"]["value"])
 
     def test_an_impossible_value_the_manual_warns_against_can_still_be_set(self) -> None:
         # Arrange
         chip = a_clock([FROZEN])
-        written(chip, epson.S1, 0x0C)
+        written(chip, S1, 0x0C)
 
         # Act
-        answered = read_back(chip, epson.S1)
+        answered = read_back(chip, S1)
 
         # Assert
         self.assertEqual(answered == 0x0C, FACTS["outOfRangeValuesNotSpecified"]["value"])

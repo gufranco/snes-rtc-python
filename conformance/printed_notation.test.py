@@ -6,16 +6,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from conformance.driving import (
     DIGITS,
+    ENABLE,
     FACTS,
     FROZEN,
+    H1,
+    H10,
     HOUR,
+    HOURS_24,
+    PM,
+    S1,
     a_clock,
     located,
     named_bit,
     read_back,
     written,
 )
-from snesrtc import epson
 
 
 def tens_of_hours(control_f: int) -> set[int]:
@@ -23,14 +28,14 @@ def tens_of_hours(control_f: int) -> set[int]:
     seen = set()
     for hour in range(24):
         chip.store_hour(hour)
-        seen.add(chip.digit(epson.H10))
+        seen.add(chip.digit(H10))
     return seen
 
 
 def hour_read(control_f: int, tens: int) -> int:
     chip = a_clock([FROZEN], control_f=control_f)
-    written(chip, epson.H1, 3, tens)
-    return chip.hour()
+    written(chip, H1, 3, tens)
+    return int(chip.hour())
 
 
 class PrintedBehaviourTest(unittest.TestCase):
@@ -41,7 +46,7 @@ class PrintedBehaviourTest(unittest.TestCase):
         twelve, twenty_four = (int(top) for top in tops.split(","))
 
         # Act
-        seen = (tens_of_hours(0), tens_of_hours(epson.HOURS_24))
+        seen = (tens_of_hours(0), tens_of_hours(HOURS_24))
 
         # Assert
         self.assertEqual(
@@ -64,7 +69,7 @@ class PrintedBehaviourTest(unittest.TestCase):
         notation = FACTS["controlRegisterF"]["bits"]["twentyFourTwelve"]["mask"]
 
         # Act
-        read = (hour_read(notation, epson.PM), hour_read(0, epson.PM))
+        read = (hour_read(notation, PM), hour_read(0, PM))
 
         # Assert
         self.assertEqual(read, (3, 15))
@@ -88,13 +93,13 @@ class PrintedBehaviourTest(unittest.TestCase):
         address, bit = named_bit(fact["bit"])
         hand = [FROZEN]
         chip = a_clock(hand, control_f=0)
-        written(chip, epson.S1, *DIGITS)
+        written(chip, S1, *DIGITS)
 
         # Act
         seen = []
         for _ in range(24):
             hand[0] += HOUR
-            chip.write(epson.ENABLE, 0x00)
+            chip.write(ENABLE, 0x00)
             seen.append(int(bool(chip.store.read(address) & bit)))
 
         # Assert

@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** 个时钟，**329,630** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**985** 个测试，**100%** 语句与分支覆盖率，无依赖
+**2** 个时钟，**329,630** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**1,007** 个测试，**100%** 语句与分支覆盖率，无依赖
 
 ```python
 from snesrtc import Chip, Store
@@ -324,7 +324,7 @@ False True 29 0
 | 2 | snes9x 的一份录制结果，按提交固定 | 手册没有说明的内容：SPC7110 如何把三线串行部件变成三个卡带地址，计数器在文档范围之外的行为，以及 Sharp 部件的全部内容 |
 | 3 | 别无其他 | 无 |
 
-第 1 层的每个数值都记录在 [`conformance/hardware.json`](conformance/hardware.json) 中，附有其出处的原句、文档的摘要值和读取日期。[`conformance/hardware.test.py`](conformance/hardware.test.py) 据此检查包中的常量。
+第 1 层的每个数值都记录在 [`conformance/hardware.json`](conformance/hardware.json) 中，附有其出处的原句、文档的摘要值和读取日期。[`conformance/hardware.test.py`](conformance/hardware.test.py) 驱动该包，并据此检查其行为。
 
 手册与录制结果不一致时，包以手册为准。15 处不一致中的每一处都是 [`conformance/divergences.json`](conformance/divergences.json) 中的一个条目，写明文档怎么说、录制结果怎么做、包遵循哪一方，以及什么证据能解决该问题。
 
@@ -524,11 +524,12 @@ print(len(script), reference.render(script).splitlines()[:4])
 uvx ruff@0.16.3 format --check .
 uvx ruff@0.16.3 check .
 uvx --python 3.12 mypy==1.14.1
-python3 -m coverage erase
+cov=(uvx --python 3.12 --from coverage==7.6.10 --with setuptools==84.0.0 coverage)
+"${cov[@]}" erase
 for file in $(find snesrtc conformance -name '*.test.py' | sort); do
-  python3 -m coverage run -a "$file"
+  "${cov[@]}" run -a "$file"
 done
-python3 -m coverage report
+"${cov[@]}" report
 ```
 
 每个模块旁边都有一个以其命名的测试文件，每个测试文件都能单独运行。覆盖率是一项硬性门禁检查，要求 100% 语句与分支覆盖，mypy 以严格模式运行。

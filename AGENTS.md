@@ -66,10 +66,12 @@ settled quietly. There are fifteen entries.
 ## What is settled and what is not
 
 **Settled: every figure the Epson manual prints.**
-[`conformance/hardware.test.py`](conformance/hardware.test.py) holds the model's
-constants to the record, so a constant edited without the document is a failing
-test rather than a quiet change of claim, and the `conformance/printed_*.test.py`
-files drive the model through each printed behaviour.
+[`conformance/hardware.test.py`](conformance/hardware.test.py) drives the model
+and holds what it does to the record, so a constant edited without the document
+is a failing test rather than a quiet change of claim, and the
+`conformance/printed_*.test.py` files drive the model through each printed
+behaviour. Every test reaches the package only through what `snesrtc` exports and
+what the README documents on it.
 
 **Settled: agreement with the reference wherever the manual has not already
 answered differently.** 329,630 operations compared, no disagreements. Where the
@@ -108,11 +110,12 @@ ruff check .
 mypy
 pnpm run format:check
 uvx yamllint==1.38.0 --strict .
-python3 -m coverage erase
+cov=(uvx --python 3.12 --from coverage==7.6.10 --with setuptools==84.0.0 coverage)
+"${cov[@]}" erase
 for file in $(find snesrtc conformance -name '*.test.py' | sort); do
-  python3 -m coverage run -a "$file"
+  "${cov[@]}" run -a "$file"
 done
-python3 -m coverage report
+"${cov[@]}" report
 ```
 
 Then the throughput floor, which runs outside the coverage step because a tracer
@@ -165,9 +168,10 @@ snesrtc/
   version.py     rewritten by the release job and by nothing else
 conformance/
   hardware.json     what Epson printed, fact by fact, with the sentence each came from
-  hardware.test.py  the gate that holds the model's constants to that file
+  hardware.test.py  the gate that drives the model and holds what it does to that file
+  hardware_sources.test.py  the documents, the Sharp part's recorded facts and the divergences
   printed_*.test.py each printed behaviour, driven through the model, one subject per file
-  driving.py        the record loaded once, and the helpers that drive a chip for those tests
+  driving.py        the record loaded once, the register and bit names read from it, and the helpers that drive a chip
   divergences.json  every place the manual and the recording part, and what would settle each
   reference.py      the differential runner, and what it refuses to compare
   excusal.py        the fields the runner excuses where the model follows the manual
