@@ -1,3 +1,4 @@
+---
 name: Something is wrong
 description: A register reads the wrong thing, or nothing works at all
 labels: ["bug"]

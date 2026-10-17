@@ -14,6 +14,7 @@ uvx ruff@0.16.3 format --check .
 uvx ruff@0.16.3 check .
 uvx mypy@1.14.1
 pnpm install --frozen-lockfile && pnpm run format:check
+uvx yamllint==1.38.0 --strict .
 python3 -m conformance.build
 python3 -m coverage erase
 for f in $(find snesrtc conformance -name '*.test.py' | sort); do

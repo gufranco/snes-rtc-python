@@ -1,23 +1,8 @@
-# Nothing here is new work. It is the same gate the pipeline runs, run again on a
-# schedule against whatever the ecosystem looks like that week.
-#
-# A model of a fixed piece of silicon does not change, so a green build today is
-# usually a green build next year. What moves underneath it is everything else: a
-# new Python release changes integer or annotation behaviour, a linter release
-# adds a rule, a checker release finds something the old one did not, a runner
-# image swaps a default. Each of those turns a passing project into a failing one
-# without a commit, and the difference between hearing about it on a Monday and
-# hearing about it from the next person to open a pull request is this file.
-#
-# It runs on the newest Python available rather than the pinned one, because the
-# point is to find out what the next version breaks before it is the only version
-# anybody has.
+---
 name: Weekly
 
 on:
   schedule:
-    # Early Monday, UTC. Late enough that a release landing over the weekend is
-    # already published, early enough to be read before the week starts.
     - cron: "19 6 * * 1"
   workflow_dispatch:
 
@@ -35,9 +20,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The oldest version supported and the newest that exists. A break in the
-        # first is a regression; a break in the second is a warning about the
-        # release everyone is about to be on.
         python: ["3.12", "3.14"]
     steps:
       - uses: actions/checkout@v7
@@ -47,9 +29,7 @@ jobs:
           python-version: ${{ matrix.python }}
           allow-prereleases: true
 
-      # Unpinned on purpose, which is the whole point of this file and the one
-      # place in the project where that is true. Every other workflow pins.
-      - name: Install the newest tools
+      - name: Install the newest tools, unpinned on purpose
         run: |
           python -m pip install --disable-pip-version-check \
             --upgrade ruff mypy coverage
@@ -81,13 +61,6 @@ jobs:
       - name: Coverage must still be total
         run: python -m coverage report
 
-      # The scripts the pipeline runs start at seed zero every time, so the same
-      # ground is walked on every push. This starts somewhere different each week,
-      # by offsetting the seed by the week of the year past the range the pipeline
-      # reaches. Over a year the schedule covers ground the gate never sees.
-      #
-      # A disagreement here is a candidate rather than a verdict. It prints the
-      # part and the seed, and `--seed` runs that one script again on its own.
       - name: Both clocks on ground the pipeline never reaches
         run: |
           week=$(date -u +%V)
