@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-時計**2**種、リファレンスと比較した操作**329,630**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**983**件、命令と分岐のカバレッジ**100%**、依存関係なし
+時計**2**種、リファレンスと比較した操作**329,630**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**985**件、命令と分岐のカバレッジ**100%**、依存関係なし
 
 ```python
 from snesrtc import Chip, Store
