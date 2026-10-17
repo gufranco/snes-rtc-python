@@ -4,10 +4,11 @@ import json
 import re
 import subprocess
 import sys
-import unicodedata
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any, NamedTuple
+
+from .reading import RECOGNISED, close_reading, flatten
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -22,13 +23,6 @@ BORROWED = 12
 TABLE = re.compile(r"Table\s+(\d+(?:[-.]\d+)*)")
 
 BAR = 0.4
-
-DASHES = (0x2013, 0x2014, 0x2212)
-
-SINGLES = (0x2018, 0x2019, 0x2032)
-
-DOUBLES = (0x201C, 0x201D)
-
 
 PAGELESS: tuple[str, ...] = ()
 
@@ -47,22 +41,18 @@ class Verdict(NamedTuple):
         return bool(self.windows) and self.placed / self.windows >= BAR
 
 
-def flatten(text: str) -> str:
-    text = unicodedata.normalize("NFKD", text)
-    for code in DASHES:
-        text = text.replace(chr(code), "-")
-    for code in SINGLES:
-        text = text.replace(chr(code), "'")
-    for code in DOUBLES:
-        text = text.replace(chr(code), '"')
-    return re.sub(r"[^a-z0-9]+", "", text.lower())
-
-
 def windows(quote: str) -> list[str]:
     words = [one for one in re.split(r"\s+", quote) if one]
     if len(words) <= WINDOW:
         return [flatten(quote)]
     return [flatten(" ".join(words[at : at + WINDOW])) for at in range(len(words) - WINDOW + 1)]
+
+
+def searched(node: dict[str, Any], key: str, here: str, quote: str) -> list[tuple[str, str]]:
+    if key != "quote" or not close_reading(quote, node.get(RECOGNISED)):
+        return [(here, quote)]
+    reading: list[str] = node[RECOGNISED]
+    return [(f"{here}.{RECOGNISED}[{at}]", one) for at, one in enumerate(reading)]
 
 
 def said(node: Any, trail: str = "") -> list[tuple[str, str]]:
@@ -72,7 +62,7 @@ def said(node: Any, trail: str = "") -> list[tuple[str, str]]:
             here = f"{trail}.{key}" if trail else key
             if key.endswith(("quote", "Quote")) and isinstance(value, str):
                 if not (node.get("assembled") or node.get("saysNothing")):
-                    found.append((here, value))
+                    found.extend(searched(node, key, here, value))
             elif key.endswith(("quotes", "Quotes")) and isinstance(value, list):
                 found.extend(
                     (f"{here}[{at}]", one) for at, one in enumerate(value) if isinstance(one, str)
@@ -350,7 +340,7 @@ def _plain(node: Any, trail: str = "") -> list[tuple[str, str]]:
     if isinstance(node, dict):
         for key, value in node.items():
             here = f"{trail}.{key}" if trail else key
-            if key.endswith(("quote", "Quote", "quotes", "Quotes")):
+            if key.endswith(("quote", "Quote", "quotes", "Quotes")) or key == RECOGNISED:
                 continue
             found.extend(_plain(value, here))
     elif isinstance(node, list):

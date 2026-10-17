@@ -11,28 +11,21 @@ from typing import Any, ClassVar, override
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from conformance import quotes  # noqa: E402
+from conformance import quotes, reading  # noqa: E402
 
 PRINTED = "the quick brown fox jumps over the lazy dog and then keeps running for a while"
 
 
-class FlattenTest(unittest.TestCase):
-    def test_punctuation_and_spacing_stop_mattering(self) -> None:
-        self.assertEqual(quotes.flatten("A, b.  C!"), "abc")
-
-    def test_a_typographic_dash_reads_as_a_plain_one(self) -> None:
-        self.assertEqual(quotes.flatten(f"a{chr(0x2014)}b"), "ab")
-
-    def test_a_curly_quote_reads_as_a_straight_one(self) -> None:
-        self.assertEqual(quotes.flatten(f"it{chr(0x2019)}s"), "its")
-
-    def test_and_a_typographic_double_quote_does_too(self) -> None:
-        self.assertEqual(quotes.flatten(f"{chr(0x201C)}x{chr(0x201D)}"), "x")
-
-
 class WindowTest(unittest.TestCase):
     def test_a_quote_shorter_than_the_window_is_one_window(self) -> None:
-        self.assertEqual(quotes.windows("a b c"), [quotes.flatten("a b c")])
+        # Arrange
+        quote = "a b c"
+
+        # Act
+        found = quotes.windows(quote)
+
+        # Assert
+        self.assertEqual(found, [reading.flatten(quote)])
 
     def test_a_longer_one_is_scored_on_overlapping_runs(self) -> None:
         found = quotes.windows(PRINTED)
@@ -105,6 +98,56 @@ class ReadingTest(unittest.TestCase):
         self.assertEqual(stray, [])
 
 
+class RecognisedReadingTest(unittest.TestCase):
+    QUOTE = "Set the timing of the interrupt cycle mode or fixed-period waveform mode."
+
+    def test_a_reading_one_letter_off_is_searched_for_instead_of_the_quote(self) -> None:
+        # Arrange
+        read = ["Set the timing of the interrupt cycle made", "or fixed-period waveform mode."]
+
+        # Act
+        found = quotes.said({"quote": self.QUOTE, reading.RECOGNISED: read})
+
+        # Assert
+        self.assertEqual(
+            found,
+            [("quote.recognisedAs[0]", read[0]), ("quote.recognisedAs[1]", read[1])],
+        )
+
+    def test_a_reading_that_drifts_further_leaves_the_quote_to_be_searched(self) -> None:
+        # Arrange
+        read = ["Set the tuning of the interrupt cycle made or fixed-period waveform mode."]
+
+        # Act
+        found = quotes.said({"quote": self.QUOTE, reading.RECOGNISED: read})
+
+        # Assert
+        self.assertEqual(found, [("quote", self.QUOTE)])
+
+    def test_a_reading_beside_a_supporting_quote_is_not_applied_to_it(self) -> None:
+        # Arrange
+        read = ["Set the timing of the interrupt cycle made or fixed-period waveform mode."]
+
+        # Act
+        found = quotes.said({"maskQuote": self.QUOTE, reading.RECOGNISED: read})
+
+        # Assert
+        self.assertEqual(found, [("maskQuote", self.QUOTE)])
+
+    def test_the_reading_is_not_reported_as_words_borrowed_under_a_key_nobody_checks(
+        self,
+    ) -> None:
+        # Arrange
+        read = ["Set the timing of the interrupt cycle made or fixed-period waveform mode."]
+        held = ("held.json", {"facts": {"a": {reading.RECOGNISED: read}}})
+
+        # Act
+        found = quotes.borrowed([held], {"fax.pdf": reading.flatten(read[0])})
+
+        # Assert
+        self.assertEqual(found, [])
+
+
 class LibraryTest(unittest.TestCase):
     def test_a_machine_with_no_documents_has_an_empty_library(self) -> None:
         self.assertEqual(quotes.library(ROOT / "no such folder"), {})
@@ -174,7 +217,7 @@ class VerdictTest(unittest.TestCase):
 class VerifyTest(unittest.TestCase):
     @override
     def setUp(self) -> None:
-        self.books = {"real.pdf": quotes.flatten(PRINTED)}
+        self.books = {"real.pdf": reading.flatten(PRINTED)}
 
     def test_a_sentence_the_document_carries_is_located(self) -> None:
         found = quotes.verify([("here", PRINTED)], self.books)
@@ -187,10 +230,13 @@ class VerifyTest(unittest.TestCase):
         self.assertEqual((found[0].found, found[0].document), (False, None))
 
     def test_the_best_of_several_documents_is_the_one_named(self) -> None:
-        books = {"poor.pdf": quotes.flatten("the quick brown"), **self.books}
+        # Arrange
+        books = {"poor.pdf": reading.flatten("the quick brown"), **self.books}
 
+        # Act
         found = quotes.verify([("here", PRINTED)], books)
 
+        # Assert
         self.assertEqual(found[0].document, "real.pdf")
 
 
@@ -229,13 +275,23 @@ class EntryPointTest(unittest.TestCase):
         self.assertEqual((status, "none was checked" in said), (0, True))
 
     def test_with_documents_and_every_quote_placed_it_passes(self) -> None:
-        status, said = self.run_with({"real.pdf": quotes.flatten(PRINTED)}, [("here", PRINTED)])
+        # Arrange
+        books = {"real.pdf": reading.flatten(PRINTED)}
 
+        # Act
+        status, said = self.run_with(books, [("here", PRINTED)])
+
+        # Assert
         self.assertEqual((status, "0 not" in said), (0, True))
 
     def test_a_sentence_no_document_carries_asks_for_a_person(self) -> None:
-        status, said = self.run_with({"real.pdf": quotes.flatten(PRINTED)}, [("here", "absent")])
+        # Arrange
+        books = {"real.pdf": reading.flatten(PRINTED)}
 
+        # Act
+        status, said = self.run_with(books, [("here", "absent")])
+
+        # Assert
         self.assertEqual((status, "1 not" in said), (1, True))
 
 
@@ -467,10 +523,10 @@ class AttributionTest(unittest.TestCase):
         )
 
     BOOKS: ClassVar[dict[str, str]] = {
-        "right.pdf": quotes.flatten(
+        "right.pdf": reading.flatten(
             "the quick brown fox jumps over the lazy dog and keeps running"
         ),
-        "wrong.pdf": quotes.flatten("nothing here resembles the sentence above in any way at all"),
+        "wrong.pdf": reading.flatten("nothing here resembles the sentence above in any way at all"),
     }
 
     def test_a_quote_in_the_document_it_names_is_accepted(self) -> None:
@@ -686,7 +742,7 @@ class TableCatalogueTest(unittest.TestCase):
 
 class BorrowedTextTest(unittest.TestCase):
     LONG = "the quick brown fox jumps over the lazy dog and then turns around and runs home"
-    BOOKS: ClassVar[dict[str, str]] = {"right.pdf": quotes.flatten(LONG)}
+    BOOKS: ClassVar[dict[str, str]] = {"right.pdf": reading.flatten(LONG)}
 
     def a_record(self, key: str, text: str) -> tuple[str, dict[str, Any]]:
         return ("held.json", {"facts": {"a": {key: text}}})

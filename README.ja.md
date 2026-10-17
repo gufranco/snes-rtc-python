@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-時計**2**種、リファレンスと比較した操作**329,630**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**920**件、命令と分岐のカバレッジ**100%**、依存関係なし
+時計**2**種、リファレンスと比較した操作**329,586**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**951**件、命令と分岐のカバレッジ**100%**、依存関係なし
 
 ```python
 from snesrtc import Chip, Store
@@ -192,7 +192,7 @@ SPC7110は、このチップの3線式シリアルインターフェースを3�
 | `CE` | 14 | t1 | t0 | INT/STND | MASK | |
 | `CF` | 15 | TEST | 24/12 | STOP | RESET | |
 
-`snesrtc.epson`は各レジスタを番号で`S1`から`CF`まで名付け、各制御ビットをマスクで名付けています。CDには`HOLD`、`CAL_HW`、`IRQ_F`、`ADJUST`、CFには`RESET`、`STOP`、`HOURS_24`、`TEST`があります。ほかに`ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`PM`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`NOON`、`YEAR_PIVOT`、`STAMP_LIMIT`と、`state`の5つの値`INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING`、`WRITING`があります。
+`snesrtc.epson`は各レジスタを番号で`S1`から`CF`まで名付け、各制御ビットをマスクで名付けています。CDには`HOLD`、`CAL_HW`、`IRQ_F`、`ADJUST`、CFには`RESET`、`STOP`、`HOURS_24`、`TEST`、CEには`MASK`、`INT_STND`があります。ほかに`ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`CALENDAR_READ_FLAG_AT`、`PM`、`H20`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`HOUR`、`WHOLE_SECONDS_PER_PERIOD`、`PERIOD_SHIFT`、`PERIOD_BITS`、`NOON`、`YEAR_PIVOT`、`STAMP_LIMIT`と、`state`の5つの値`INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING`、`WRITING`があります。
 
 ```python
 from snesrtc import Chip, Store, epson
@@ -338,7 +338,7 @@ False True 29 0
 
 **HOLDは時計を止めません。**マニュアルには"The clock continues to run"とあり、HOLDが立っている間に失われた最初のインクリメントは"is compensated for when the hold condition is released (+1 second)."とあります。HOLDを解除すると1秒加算され、マニュアルの時計設定手順は書き込みを1秒以内に終えるよう警告しています。
 
-**秒を加算する制御ビットはありません。**CDのビット1はCAL/HWです。クリアすると日付カウンタが止まり、それらのレジスタはRAMとして残ります。文書化された唯一のソフトウェアによる調整は、CDのビット3の30ADJ.です。
+**秒を加算する制御ビットはありません。**CDのビット1はCAL/HWです。クリアすると日付カウンタが止まり、それらのレジスタはRAMとして残ります。D10とMO10の読み出しフラグも同じ扱いで、CAL/HWがクリアされている間は、秒が進んでもチップの選択を解除しても変わりません。文書化された唯一のソフトウェアによる調整は、CDのビット3の30ADJ.です。
 
 **電源投入時の状態は12時間表記です。**マニュアルには"At power-on, all registers and the STD.P output are undefined."とあります。ゼロで起動するレジスタファイルは24/12がクリアされており、これは12時間表記です。CAL/HWもクリアされており、これは日付を止めます。
 
@@ -369,7 +369,9 @@ print(clock.moment())
 
 午後11:59:59から1秒経過します。時は12になりPMがクリアされ、これは午前0時です。曜日カウンタは0から1に進み、CAL/HWがクリアされているので日は1のままです。
 
-**IRQ-Fには書き込めません。**マニュアルには"A write instruction for the IRQ-F bit is not executed."とあります。このビットはチップが立て、CDを読むとクリアされます。
+**IRQ-Fには書き込めません。**マニュアルには"A write instruction for the IRQ-F bit is not executed."とあります。CEのINT/STNDが立っていれば、t1とt0が選ぶ桁の繰り上がりでこのビットが立ち、CDを読むとクリアされます。MASKが立っている間は0と読め、MASKを立てるとすでに立っているフラグも下がります。固定周期モードではフラグが立つのは7.8 msだけで、モデルが数える1秒より短いため、そこでは立てません。
+
+**表記ごとにH10の1ビットが0に固定されます。**12時間表記では"The h20 bit cannot be written and is fixed to "0"."、24時間表記では"A write attempt to the PM/AM bit is disregarded, and the bit will always read "0"."とあります。書き込みはそのビットを捨て、読み出しはレジスタの中身にかかわらず0を返します。
 
 **TESTはチップが選択解除されたときにクリアされます。**RESETを立ててCFに書き込んだ場合もクリアされます。
 
@@ -447,7 +449,7 @@ False
 
 それぞれが[`conformance/divergences.json`](conformance/divergences.json)のエントリで、理由と何がそれを変えるかが記されています。
 
-**割り込みはありません。**CEは1/64秒、1秒、1分、1時間の4つの周期から1つを選び、STD.Pピンを駆動します。SPC7110がそのピンをスーパーファミコンのプログラムから読める場所へつないでいると述べた文書はないので、CEは保存されますが何も駆動しません。
+**割り込みはありません。**CEは1/64秒、1秒、1分、1時間の4つの周期から1つを選び、STD.Pピンを駆動します。SPC7110がそのピンをスーパーファミコンのプログラムから読める場所へつないでいると述べた文書はないので、CEはどのピンも駆動せず、コンソールに届く割り込みもありません。CDでプログラムが読めるIRQ-Fへの作用はモデル化しています。
 
 **水晶のずれはありません。**マニュアルには、25度Cで0プラスマイナス25 ppm、2次温度係数が1度Cの2乗あたり-0.035 ppm、そして"At 11.574 ppm, the daily clock error is about one second per day."とあります。これらの数値は記録に含まれています。これらはモデルが知り得ない温度でのモジュール群全体の範囲を示すものなので、シミュレーションはしません。
 
@@ -463,7 +465,7 @@ python3 -m conformance.reference
 ```
 
 ```
-epson: 200 scripts, 6130 operations compared, 9772 not compared, 0 disagreed
+epson: 200 scripts, 6086 operations compared, 9816 not compared, 0 disagreed
   not compared past epson-digit-fields-narrower-than-registers, reached by 195 scripts
   not compared past epson-oscillation-flag-cannot-be-originated, reached by 134 scripts
   ...
@@ -475,7 +477,7 @@ sharp: 200 scripts, 323500 operations compared, 155 not compared, 0 disagreed
 
 シャープのチップはほぼ最初から最後まで比較されます。記録がその唯一の根拠だからです。唯一の除外は記録器に関するものです。記録器はスタンプをホストの`time_t`の最大値と比べるので、64ビットと32ビットのビルドは2^31秒を超える差で食い違います。
 
-エプソンのスクリプトは200操作が上限です。比較は平均で約30操作、200スクリプトで6130操作の後に止まるので、このチップのカバレッジはスクリプトの長さではなく数に応じて増えます。
+エプソンのスクリプトは200操作が上限です。比較は平均で約30操作、200スクリプトで6086操作の後に止まるので、このチップのカバレッジはスクリプトの長さではなく数に応じて増えます。
 
 2つの時計は別々のスクリプトで動かします。テストハーネスでも記録でも両者は1つの20バイトのストアを共有しますが、両方のチップを載せたカートリッジはなかったので、実際のカートリッジでそうなったことはありません。リファレンスが壁時計を読むため、時刻もスクリプトで与えます。リファレンスのソースはビルド時に取得し、リポジトリには取り込みません。このリポジトリに属するのは[`conformance/ref/driver.cpp`](conformance/ref/driver.cpp)のドライバだけです。
 

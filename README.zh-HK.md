@@ -8,7 +8,7 @@ Sharp S-RTC 與 Epson RTC-4513，即 Super Nintendo 卡帶可搭載的兩款實�
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** 個時鐘，**329,630** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**920** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
+**2** 個時鐘，**329,586** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**951** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
 
 ```python
 from snesrtc import Chip, Store
@@ -192,7 +192,7 @@ SPC7110 把該部件的三線串列介面轉為三個卡帶位址。程式以會
 | `CE` | 14 | t1 | t0 | INT/STND | MASK | |
 | `CF` | 15 | TEST | 24/12 | STOP | RESET | |
 
-`snesrtc.epson` 以索引命名每個暫存器，由 `S1` 至 `CF`，並以遮罩命名每個控制位元：CD 中的 `HOLD`、`CAL_HW`、`IRQ_F` 和 `ADJUST`，CF 中的 `RESET`、`STOP`、`HOURS_24` 和 `TEST`。它還包含 `ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`PM`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`NOON`、`YEAR_PIVOT` 和 `STAMP_LIMIT`，以及五個 `state` 值 `INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING` 和 `WRITING`。
+`snesrtc.epson` 以索引命名每個暫存器，由 `S1` 至 `CF`，並以遮罩命名每個控制位元：CD 中的 `HOLD`、`CAL_HW`、`IRQ_F` 和 `ADJUST`，CF 中的 `RESET`、`STOP`、`HOURS_24` 和 `TEST`，以及 CE 中的 `MASK` 和 `INT_STND`。它還包含 `ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`CALENDAR_READ_FLAG_AT`、`PM`、`H20`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`HOUR`、`WHOLE_SECONDS_PER_PERIOD`、`PERIOD_SHIFT`、`PERIOD_BITS`、`NOON`、`YEAR_PIVOT` 和 `STAMP_LIMIT`，以及五個 `state` 值 `INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING` 和 `WRITING`。
 
 ```python
 from snesrtc import Chip, Store, epson
@@ -338,7 +338,7 @@ False True 29 0
 
 **HOLD 不會停止時鐘。** 手冊說「The clock continues to run」，並說 HOLD 設定期間錯過的第一次遞增「is compensated for when the hold condition is released (+1 second).」釋放 HOLD 會加一秒，而手冊中設定時鐘的程序亦警告寫入必須在一秒內完成。
 
-**沒有控制位元會加一秒。** CD 位元 1 是 CAL/HW。清零時，它關閉日期計數器，令這些暫存器作為 RAM 使用。唯一有文件記載的軟件調整，是 CD 位元 3 上的 30ADJ. 位元。
+**沒有控制位元會加一秒。** CD 位元 1 是 CAL/HW。清零時，它關閉日期計數器，令這些暫存器作為 RAM 使用。D10 和 MO10 中的讀取旗標亦一樣：CAL/HW 清零期間，時間前進或取消選取晶片都不會改動它們。唯一有文件記載的軟件調整，是 CD 位元 3 上的 30ADJ. 位元。
 
 **十二小時制是上電時的狀態。** 手冊：「At power-on, all registers and the STD.P output are undefined.」上電時全為零的暫存器組中，24/12 為清零，即十二小時制，CAL/HW 亦為清零，日期因而停止。
 
@@ -369,7 +369,9 @@ print(clock.moment())
 
 在 11:59:59 PM 過了一秒。小時變為 12 且 PM 清零，即午夜。星期計數器由 0 變為 1，而日仍停在 1，因為 CAL/HW 為清零。
 
-**IRQ-F 不能寫入。** 手冊：「A write instruction for the IRQ-F bit is not executed.」它由部件設定，讀取 CD 會清除它。
+**IRQ-F 不能寫入。** 手冊：「A write instruction for the IRQ-F bit is not executed.」CE 的 INT/STND 已設定時，t1 和 t0 所選位數的進位會設定它，讀取 CD 會清除它。MASK 設定期間它讀出 0，設定 MASK 亦會清除已設定的旗標。固定週期模式下旗標只維持 7.8 ms，短於模型計算的一秒，所以在該模式下不會設定。
+
+**每種時制都把 H10 的一個位元固定為 0。** 十二小時制：「The h20 bit cannot be written and is fixed to "0".」二十四小時制：「A write attempt to the PM/AM bit is disregarded, and the bit will always read "0".」寫入時該位元被捨棄，讀取時不論暫存器內容都讀出 0。
 
 **取消選取晶片時 TEST 會清除**，在 RESET 已設定時寫入 CF 也會清除它。
 
@@ -447,7 +449,7 @@ False
 
 每項都是 [`conformance/divergences.json`](conformance/divergences.json) 中的一個條目，附有原因及什麼會改變它。
 
-**沒有中斷。** CE 選擇四個週期之一：1/64 秒、1 秒、1 分鐘或 1 小時，並驅動 STD.P 引腳。沒有文件說明 SPC7110 把該引腳接到 Super Nintendo 程式可以讀取的任何地方，因此 CE 只被儲存，不驅動任何東西。
+**沒有中斷。** CE 選擇四個週期之一：1/64 秒、1 秒、1 分鐘或 1 小時，並驅動 STD.P 引腳。沒有文件說明 SPC7110 把該引腳接到 Super Nintendo 程式可以讀取的任何地方，因此 CE 不驅動任何引腳，亦沒有中斷到達主機。它對 IRQ-F 的作用則有建模，程式可在 CD 中讀到 IRQ-F。
 
 **沒有晶體漂移。** 手冊給出 25 攝氏度時為 0 加減 25 ppm，二次溫度係數為每攝氏度平方 -0.035 ppm，以及「At 11.574 ppm, the daily clock error is about one second per day.」這些數值已在記錄中。它們界定的是一批模組在某個溫度下的範圍，而模型無法得知該溫度，因此不作模擬。
 
@@ -463,7 +465,7 @@ python3 -m conformance.reference
 ```
 
 ```
-epson: 200 scripts, 6130 operations compared, 9772 not compared, 0 disagreed
+epson: 200 scripts, 6086 operations compared, 9816 not compared, 0 disagreed
   not compared past epson-digit-fields-narrower-than-registers, reached by 195 scripts
   not compared past epson-oscillation-flag-cannot-be-originated, reached by 134 scripts
   ...
@@ -475,7 +477,7 @@ sharp: 200 scripts, 323500 operations compared, 155 not compared, 0 disagreed
 
 Sharp 部件幾乎從頭到尾都有比對，因為錄製是它唯一的依據。唯一的排除與錄製器有關：它把時間戳記與主機 `time_t` 的最大值比較，因此 64 位元與 32 位元的建置在任何超過 2^31 秒的差距上結果不同。
 
-Epson 腳本上限為 200 個操作。比對平均在約 30 個操作後停止，200 個腳本合共 6130 個，因此該部件的覆蓋率隨腳本數量而非長度增長。
+Epson 腳本上限為 200 個操作。比對平均在約 30 個操作後停止，200 個腳本合共 6086 個，因此該部件的覆蓋率隨腳本數量而非長度增長。
 
 兩個時鐘由不同的腳本驅動。在測試框架和錄製中，它們共用一個 20 位元組的儲存區，而實際上沒有卡帶如此，因為沒有卡帶同時搭載兩個部件。時間也由腳本設定，因為參照實現讀取的是掛鐘時間。參照原始碼在建置時取得，從不納入儲存庫。只有 [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) 中的驅動程式屬於此儲存庫。
 

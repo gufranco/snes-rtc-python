@@ -101,6 +101,7 @@
         "powerOnStateUndefined": {
           "value": true,
           "quote": "At power-on, all registers and the STD.P output are undefined.",
+          "recognisedAs": ["At power-on, ail registers and", "the STD.P output are undefined."],
           "why": "This is the manufacturer's own statement of the rule this family applies everywhere: a model that starts its registers at zero is modelling a state the part does not guarantee. snesrtc.store.Store derives every unwritten byte from a seed for exactly this reason.",
           "document": "applicationManual",
           "filePage": 14,
@@ -430,16 +431,28 @@
           ]
         },
         "twelveHourNotation": {
+          "bit": "h20",
+          "reads": 0,
           "quote": "Possible time settings are 12 a.m. to 11 a.m., and 12 p.m. to 11 p.m. The h20 bit cannot be written and is fixed to \"0\". The clock does not increment the h20 bit.",
           "document": "applicationManual",
           "filePage": 8,
-          "manualPage": 6
+          "manualPage": 6,
+          "heldBy": [
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_the_twenty_bit_cannot_be_written_in_twelve_hour_notation",
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_and_the_clock_never_increments_it"
+          ]
         },
         "twentyFourHourNotation": {
+          "bit": "PM/AM",
+          "reads": 0,
           "quote": "Possible time settings are 0 to 23. A write attempt to the PM/AM bit is disregarded, and the bit will always read \"0\".",
           "document": "applicationManual",
           "filePage": 8,
-          "manualPage": 6
+          "manualPage": 6,
+          "heldBy": [
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_a_write_to_the_afternoon_bit_is_disregarded_in_twenty_four_hour_notation",
+            "conformance/hardware.test.py::PrintedBehaviourTest.test_and_the_afternoon_bit_reads_zero_whatever_the_register_holds"
+          ]
         },
         "controlRegisterD": {
           "address": 13,
@@ -461,7 +474,11 @@
               "quote": "When this bit is \"1\": clock range is seconds to 10 years, and weekdays. When this bit is \"0\": clock range is seconds to 10 hours, and weekdays. When the bit is \"0\", the six registers D1 to Y10 can be used as 4-bit RAM. The bits marked with * and the fr flag in the D10 and MO10 registers can also be used separately as RAM.",
               "document": "applicationManual",
               "filePage": 9,
-              "manualPage": 7
+              "manualPage": 7,
+              "heldBy": [
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_with_the_calendar_off_the_read_flags_beside_the_date_keep_what_was_written",
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_and_a_tick_does_not_raise_them"
+              ]
             },
             "irqF": {
               "mask": 4,
@@ -469,7 +486,11 @@
               "quote": "A write instruction for the IRQ-F bit is not executed. This bit is set to \"1\" when the digit increment specified by t1,t0 is executed. The setting is maintained until the CD register has been read, and then returns to \"0\".",
               "document": "applicationManual",
               "filePage": 7,
-              "manualPage": 5
+              "manualPage": 5,
+              "heldBy": [
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_a_write_to_the_interrupt_flag_is_not_executed",
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_the_period_increment_raises_the_interrupt_flag_until_cd_is_read"
+              ]
             },
             "thirtySecondAdjust": {
               "mask": 8,
@@ -494,7 +515,11 @@
               "quote": "When this bit is \"1\", IRQ-F cannot be \"1\" and the STD.P output is open.",
               "document": "applicationManual",
               "filePage": 11,
-              "manualPage": 9
+              "manualPage": 9,
+              "heldBy": [
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_under_mask_the_period_increment_leaves_the_interrupt_flag_down",
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_and_setting_mask_puts_down_a_flag_already_raised"
+              ]
             },
             "intStnd": {
               "mask": 2,
@@ -502,7 +527,10 @@
               "document": "applicationManual",
               "filePage": 10,
               "manualPage": 8,
-              "unreachable": "The bit chooses the waveform on the STD.P pin, which the model has no pin for and no document shows the SPC7110 routing anywhere a program can see."
+              "wholeSeconds": "Besides the waveform on the STD.P pin, which the model has no pin for, the bit decides how long IRQ-F stays up, and that a program can read in CD. In interrupt cycle mode the flag holds until CD is read, and the model raises it. In fixed-period mode it falls again after 7.8 ms, below the whole second the model counts in, so the model does not raise it there.",
+              "heldBy": [
+                "conformance/hardware.test.py::PrintedBehaviourTest.test_interrupt_cycle_mode_holds_the_flag_and_fixed_period_mode_does_not"
+              ]
             },
             "t0": {
               "mask": 4
@@ -513,6 +541,9 @@
           },
           "periodTable": {
             "quote": "Set the timing of the interrupt cycle mode or fixed-period waveform mode.",
+            "recognisedAs": [
+              "Set the timing of the interrupt cycle made or fixed-period waveform mode."
+            ],
             "rows": [
               {
                 "t1": 0,
@@ -537,7 +568,10 @@
             ],
             "document": "applicationManual",
             "filePage": 10,
-            "manualPage": 8
+            "manualPage": 8,
+            "heldBy": [
+              "conformance/hardware.test.py::PrintedBehaviourTest.test_each_printed_period_raises_the_flag_when_its_digit_increments"
+            ]
           },
           "fixedPeriodLowMilliseconds": {
             "value": 7.8,
@@ -547,7 +581,7 @@
             "manualPage": 8,
             "unreachable": "The figure is the width of a low pulse on the STD.P pin, which the model has no pin for and no sub-second time to measure it in."
           },
-          "notModelledHere": "Every bit of CE drives the STD.P output pin. No documentation says the SPC7110 routes STD.P anywhere a Super Nintendo program can observe it, so this package stores the register and models no interrupt. See divergences.json entry epson-std-p-unrouted."
+          "notModelledHere": "Every bit of CE drives the STD.P output pin. No documentation says the SPC7110 routes STD.P anywhere a Super Nintendo program can observe it, so this package models no pin and no interrupt reaching the console. CE also governs IRQ-F in CD, which a program can read, and that is modelled. See divergences.json entries epson-std-p-unrouted and epson-irqf-not-writable."
         },
         "controlRegisterF": {
           "address": 15,
@@ -683,7 +717,7 @@
           "pages": 18,
           "note": "A fax of the manufacturer's application manual, transmitted by Epson Europe Electronics on 1999-12-01. Manual pages 1 through 16 were transmitted and read. The contents page lists a page 17 of handling and packaging notes that the transmission does not include; it covers static electricity, soldering and mounting, and carries no behavioural content.",
           "file": "rtc4513.pdf",
-          "itIsAPhotograph": "The transmission carries no text layer at all, so nothing can search it and a citation into it is followed by rendering the page and reading it. Two of the quotes taken from it place below the bar the checker sets, and both are on the page they name: the recogniser reads the interrupt cycle sentence as \"timing of the interrupt cycle made or fixed-period waveform mode\", one letter wrong, and it breaks the power-on sentence into fragments. Neither quote was edited to match what the recogniser produced, because that would record the recogniser's mistakes as the manufacturer's words.",
+          "itIsAPhotograph": "The transmission carries no text layer at all, so nothing can search it and a citation into it is followed by rendering the page and reading it. Two of the quotes taken from it place below the bar the checker sets, and both are on the page they name: the recogniser reads the interrupt cycle sentence as \"timing of the interrupt cycle made or fixed-period waveform mode\", one letter wrong, and it breaks the power-on sentence into fragments. Neither quote was edited to match what the recogniser produced, because that would record the recogniser's mistakes as the manufacturer's words. What the recogniser produced is kept beside each under recognisedAs, and the checker searches for that reading instead only when it differs from the quote by at most two letters, so a reading that drifts further fails the check.",
           "howThePagesWereFound": "Every page was rendered and recognised, and each quote was scored against every page by five-word windows. Thirty three of the thirty nine that carried no page place on one page and nowhere else. Six do not and are left without one: four are electrical characteristic rows and one is a table header, all of them tables flattened into a sentence that no contiguous search can locate, and the sixth is the interrupt period sentence the fax garbles. A page guessed from a neighbouring quote would read exactly like a page that was found.",
           "pageNumbering": "filePage is the page of the transmission, counting the cover. manualPage is the number Epson printed, which is two lower: the transmission's own counter reads 016 on the page whose printed number is 14, and 018 on the page printed 16, which is the last one sent."
         },

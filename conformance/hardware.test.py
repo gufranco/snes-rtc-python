@@ -1,6 +1,7 @@
 import json
 import sys
 import unittest
+from fractions import Fraction
 from pathlib import Path
 from typing import override
 
@@ -33,6 +34,18 @@ HOUR = 3_600
 DIGITS = (0, 0, 0, 3, 2, 1, 8, 1, 8, 0, 6, 2)
 
 EXAMPLE_YEAR = 1993
+
+UNIT_SECONDS = {"s": 1, "second": 1, "minute": 60, "hour": 3600}
+
+PERIOD_BITS = FACTS["controlRegisterE"]["bits"]
+
+EVERY_SECOND = epson.INT_STND | PERIOD_BITS["t0"]["mask"]
+
+A_MINUTE_TURNING = (9, 5, 8, 5, 2, 1)
+
+A_SECOND_TURNING = (8, 5, 9, 5, 2, 1)
+
+AN_HOUR_TURNING = (9, 5, 9, 5, 2, 1)
 
 MONTH_NAMES = (
     "January",
@@ -183,6 +196,31 @@ def hours_moved(*control_f: int) -> int:
     hand[0] += HOUR
     chip.write(epson.ENABLE, 0x00)
     return chip.digit(epson.H1) - DIGITS[epson.H1]
+
+
+def named_bit(name: str) -> tuple[int, int]:
+    return next(
+        (row["address"], 1 << at)
+        for row in ROWS
+        for at, key in enumerate(("d0", "d1", "d2", "d3"))
+        if row[key] == name
+    )
+
+
+def period_in_seconds(period: str) -> Fraction:
+    count, unit = period.split()
+    return Fraction(count) * UNIT_SECONDS[unit]
+
+
+def flag_after_a_second(control_e: int, start: tuple[int, ...]) -> int:
+    hand = [FROZEN]
+    chip = a_clock(hand)
+    written(chip, epson.S1, *start, *DIGITS[6:])
+    written(chip, epson.CE, control_e)
+    chip.write(epson.ENABLE, 0x00)
+    hand[0] += 1
+    chip.write(epson.ENABLE, 0x00)
+    return read_back(chip, epson.CD) & epson.IRQ_F
 
 
 def adjusted(seconds: int, mask: int) -> tuple[int, int, int]:
@@ -922,6 +960,193 @@ class PrintedBehaviourTest(unittest.TestCase):
 
         # Assert
         self.assertEqual(chip.store.read(epson.CF) & test, 0)
+
+    def test_the_twenty_bit_cannot_be_written_in_twelve_hour_notation(self) -> None:
+        # Arrange
+        fact = FACTS["twelveHourNotation"]
+        address, bit = named_bit(fact["bit"])
+        chip = a_clock([FROZEN], control_f=0)
+        written(chip, address, bit | 0x1)
+
+        # Act
+        answered = read_back(chip, address)
+
+        # Assert
+        self.assertEqual((int(bool(answered & bit)), answered & 0x1), (fact["reads"], 0x1))
+
+    def test_and_the_clock_never_increments_it(self) -> None:
+        # Arrange
+        fact = FACTS["twelveHourNotation"]
+        address, bit = named_bit(fact["bit"])
+        hand = [FROZEN]
+        chip = a_clock(hand, control_f=0)
+        written(chip, epson.S1, *DIGITS)
+
+        # Act
+        seen = []
+        for _ in range(24):
+            hand[0] += HOUR
+            chip.write(epson.ENABLE, 0x00)
+            seen.append(int(bool(chip.store.read(address) & bit)))
+
+        # Assert
+        self.assertEqual(seen, [fact["reads"]] * 24)
+
+    def test_a_write_to_the_afternoon_bit_is_disregarded_in_twenty_four_hour_notation(
+        self,
+    ) -> None:
+        # Arrange
+        fact = FACTS["twentyFourHourNotation"]
+        address, bit = named_bit(fact["bit"])
+        chip = a_clock([FROZEN])
+
+        # Act
+        written(chip, address, bit | 0x1)
+
+        # Assert
+        self.assertEqual(
+            (int(bool(chip.store.read(address) & bit)), chip.digit(address)), (fact["reads"], 1)
+        )
+
+    def test_and_the_afternoon_bit_reads_zero_whatever_the_register_holds(self) -> None:
+        # Arrange
+        fact = FACTS["twentyFourHourNotation"]
+        address, bit = named_bit(fact["bit"])
+        chip = a_clock([FROZEN])
+        chip.store.write(address, bit | 0x1)
+
+        # Act
+        answered = read_back(chip, address)
+
+        # Assert
+        self.assertEqual((int(bool(answered & bit)), answered & 0x1), (fact["reads"], 0x1))
+
+    def test_with_the_calendar_off_the_read_flags_beside_the_date_keep_what_was_written(
+        self,
+    ) -> None:
+        # Arrange
+        dated = FACTS["controlRegisterD"]["bits"]["calHw"]["mask"]
+        chip = a_clock([FROZEN], control_d=epson.CAL_HW & ~dated)
+        written(chip, epson.D10, epson.READ_FLAG)
+        written(chip, epson.MO10, epson.READ_FLAG)
+
+        # Act
+        chip.write(epson.ENABLE, 0x00)
+
+        # Assert
+        self.assertEqual(
+            [chip.store.read(at) & epson.READ_FLAG for at in (epson.D10, epson.MO10)],
+            [epson.READ_FLAG] * 2,
+        )
+
+    def test_and_a_tick_does_not_raise_them(self) -> None:
+        # Arrange
+        dated = FACTS["controlRegisterD"]["bits"]["calHw"]["mask"]
+        hand = [FROZEN]
+        chip = a_clock(hand, control_d=epson.CAL_HW & ~dated)
+        written(chip, epson.S1, *DIGITS)
+        chip.write(epson.ENABLE, 0x00)
+        hand[0] += 5
+        opened(chip, epson.WRITE_MODE, epson.CF)
+
+        # Act
+        chip.write(epson.DATA, epson.HOURS_24)
+
+        # Assert
+        self.assertEqual(
+            [chip.store.read(at) & epson.READ_FLAG for at in (epson.MI10, epson.D10, epson.MO10)],
+            [epson.READ_FLAG, 0, 0],
+        )
+
+    def test_a_write_to_the_interrupt_flag_is_not_executed(self) -> None:
+        # Arrange
+        fact = FACTS["controlRegisterD"]["bits"]["irqF"]
+        chip = a_clock([FROZEN])
+        written(chip, epson.CD, epson.CAL_HW | fact["mask"])
+
+        # Act
+        answered = read_back(chip, epson.CD)
+
+        # Assert
+        self.assertEqual(answered & fact["mask"], 0 if fact["readOnly"] else fact["mask"])
+
+    def test_the_period_increment_raises_the_interrupt_flag_until_cd_is_read(self) -> None:
+        # Arrange
+        flag = FACTS["controlRegisterD"]["bits"]["irqF"]["mask"]
+        hand = [FROZEN]
+        chip = a_clock(hand)
+        written(chip, epson.S1, *DIGITS)
+        written(chip, epson.CE, EVERY_SECOND)
+        chip.write(epson.ENABLE, 0x00)
+        hand[0] += 1
+        chip.write(epson.ENABLE, 0x00)
+
+        # Act
+        answered = (read_back(chip, epson.CD), read_back(chip, epson.CD))
+
+        # Assert
+        self.assertEqual((answered[0] & flag, answered[1] & flag), (flag, 0))
+
+    def test_under_mask_the_period_increment_leaves_the_interrupt_flag_down(self) -> None:
+        # Arrange
+        mask = PERIOD_BITS["mask"]["mask"]
+
+        # Act
+        raised = (
+            flag_after_a_second(EVERY_SECOND, DIGITS[:6]),
+            flag_after_a_second(EVERY_SECOND | mask, DIGITS[:6]),
+        )
+
+        # Assert
+        self.assertEqual(raised, (epson.IRQ_F, 0))
+
+    def test_and_setting_mask_puts_down_a_flag_already_raised(self) -> None:
+        # Arrange
+        mask = PERIOD_BITS["mask"]["mask"]
+        chip = a_clock([FROZEN], control_d=epson.CAL_HW | epson.IRQ_F)
+
+        # Act
+        written(chip, epson.CE, EVERY_SECOND | mask)
+
+        # Assert
+        self.assertEqual(chip.store.read(epson.CD) & epson.IRQ_F, 0)
+
+    def test_interrupt_cycle_mode_holds_the_flag_and_fixed_period_mode_does_not(self) -> None:
+        # Arrange
+        interrupt_cycle = PERIOD_BITS["intStnd"]["mask"]
+        every_second = PERIOD_BITS["t0"]["mask"]
+
+        # Act
+        raised = (
+            flag_after_a_second(every_second | interrupt_cycle, DIGITS[:6]),
+            flag_after_a_second(every_second, DIGITS[:6]),
+        )
+
+        # Assert
+        self.assertEqual(raised, (epson.IRQ_F, 0))
+
+    def test_each_printed_period_raises_the_flag_when_its_digit_increments(self) -> None:
+        # Arrange
+        rows = FACTS["controlRegisterE"]["periodTable"]["rows"]
+        chosen = [
+            epson.INT_STND
+            | (PERIOD_BITS["t1"]["mask"] if row["t1"] else 0)
+            | (PERIOD_BITS["t0"]["mask"] if row["t0"] else 0)
+            for row in rows
+        ]
+
+        # Act
+        raised = [
+            tuple(
+                bool(flag_after_a_second(control_e, start))
+                for start in (A_SECOND_TURNING, A_MINUTE_TURNING, AN_HOUR_TURNING)
+            )
+            for control_e in chosen
+        ]
+
+        # Assert
+        seconds = [period_in_seconds(row["period"]) for row in rows]
+        self.assertEqual(raised, [(period <= 1, period <= 60, True) for period in seconds])
 
 
 if __name__ == "__main__":

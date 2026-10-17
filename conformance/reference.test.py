@@ -343,6 +343,70 @@ class RegisterWitnessTest(unittest.TestCase):
 
         self.assertIn("epson-hold-discards-elapsed-time", found)
 
+    def test_the_twenty_bit_written_in_twelve_hour_notation_is_named(self) -> None:
+        # Arrange
+        held = self.held()
+
+        # Act
+        found = reference._witness_register(held, epson.H10, epson.H20 | 0x1)
+
+        # Assert
+        self.assertEqual(found, {"epson-twelve-hour-mode-transient"})
+
+    def test_the_afternoon_bit_written_in_twenty_four_hour_notation_is_named(self) -> None:
+        # Arrange
+        held = self.held()
+        held.write(epson.CF, reference.CONFIGURED_CF)
+
+        # Act
+        found = reference._witness_register(held, epson.H10, epson.PM | 0x1)
+
+        # Assert
+        self.assertEqual(found, {"epson-digit-fields-narrower-than-registers"})
+
+    def test_a_tens_of_hours_write_inside_the_digit_reaches_nothing(self) -> None:
+        # Arrange
+        held = self.held()
+        held.write(epson.CF, reference.CONFIGURED_CF)
+
+        # Act
+        found = reference._witness_register(held, epson.H10, 0x2)
+
+        # Assert
+        self.assertEqual(found, set())
+
+    def test_masking_a_raised_interrupt_flag_is_named(self) -> None:
+        # Arrange
+        held = self.held()
+        held.write(epson.CD, reference.CONFIGURED_CD | epson.IRQ_F)
+
+        # Act
+        found = reference._witness_register(held, epson.CE, epson.MASK)
+
+        # Assert
+        self.assertEqual(found, {"epson-irqf-not-writable"})
+
+    def test_masking_with_no_flag_raised_reaches_nothing(self) -> None:
+        # Arrange
+        held = self.held()
+
+        # Act
+        found = reference._witness_register(held, epson.CE, epson.MASK)
+
+        # Assert
+        self.assertEqual(found, set())
+
+    def test_and_neither_does_leaving_a_raised_flag_unmasked(self) -> None:
+        # Arrange
+        held = self.held()
+        held.write(epson.CD, reference.CONFIGURED_CD | epson.IRQ_F)
+
+        # Act
+        found = reference._witness_register(held, epson.CE, epson.INT_STND)
+
+        # Assert
+        self.assertEqual(found, set())
+
 
 class ReadWitnessTest(unittest.TestCase):
     def test_reading_control_register_d_with_the_interrupt_flag_set_is_refused(self) -> None:
@@ -368,6 +432,54 @@ class ReadWitnessTest(unittest.TestCase):
         found = reference.witness(cartridge, ("w", epson.DATA, reference.CONFIGURED_CF))
 
         self.assertIn("epson-oscillation-flag-cannot-be-originated", found)
+
+    def test_reading_a_fixed_hour_bit_the_register_holds_is_refused(self) -> None:
+        # Arrange
+        held = store.Store(cleared=True)
+        held.write(epson.CF, reference.CONFIGURED_CF)
+        held.write(epson.H10, epson.PM | 0x1)
+
+        # Act
+        found = reference._witness_read(held, epson.H10)
+
+        # Assert
+        self.assertEqual(found, {"epson-digit-fields-narrower-than-registers"})
+
+    def test_reading_the_tens_of_hours_inside_its_digit_is_compared(self) -> None:
+        # Arrange
+        held = store.Store(cleared=True)
+        held.write(epson.CF, reference.CONFIGURED_CF)
+        held.write(epson.H10, 0x2)
+
+        # Act
+        found = reference._witness_read(held, epson.H10)
+
+        # Assert
+        self.assertEqual(found, set())
+
+    def test_reading_any_other_register_is_compared(self) -> None:
+        # Arrange
+        held = store.Store(cleared=True)
+        held.write(epson.H10, epson.H20)
+
+        # Act
+        found = reference._witness_read(held, epson.MI1)
+
+        # Assert
+        self.assertEqual(found, set())
+
+    def test_a_catch_up_in_interrupt_cycle_mode_is_refused(self) -> None:
+        # Arrange
+        cartridge = reference.Cartridge()
+        cartridge.store.write(epson.CF, reference.CONFIGURED_CF)
+        cartridge.store.write(epson.CD, reference.CONFIGURED_CD)
+        cartridge.store.write(epson.CE, epson.INT_STND)
+
+        # Act
+        found = reference.witness(cartridge, ("w", epson.ENABLE, 0x00))
+
+        # Assert
+        self.assertIn("epson-irqf-not-writable", found)
 
 
 class UndeclaredTest(unittest.TestCase):

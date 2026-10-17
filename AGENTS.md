@@ -71,7 +71,7 @@ constants to the record, so a constant edited without the document is a failing
 test rather than a quiet change of claim.
 
 **Settled: agreement with the reference wherever the manual has not already
-answered differently.** 329,630 operations compared, no disagreements. Each
+answered differently.** 329,586 operations compared, no disagreements. Each
 script is compared only up to the first operation that reaches a declared
 divergence, and the operations past that point are counted apart and named rather
 than counted as agreements or dropped in silence.
@@ -182,8 +182,8 @@ would settle it, or the run fails.
   The runner reads the list of ids out of the record on every script rather than
   trusting a constant in the code, so adding a behaviour without recording it is
   caught rather than absorbed.
-- **The Epson comparison stops early on purpose.** 6,130 operations compared
-  against 9,772 not compared is not a weak run: past a declared divergence the
+- **The Epson comparison stops early on purpose.** 6,086 operations compared
+  against 9,816 not compared is not a weak run: past a declared divergence the
   recording is answering a question the manual already answered differently.
   Counting those as agreements would report the emulator's answer as the part's.
 - **A generated script is not a hand-written one.** Every script comes from a

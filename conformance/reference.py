@@ -122,21 +122,32 @@ def witness(cartridge: Cartridge, operation: Operation) -> set[str]:
         if any(held.read(at) & epson.READ_FLAG for at in epson.READ_FLAG_AT):
             found.add("epson-oscillation-flag-cannot-be-originated")
 
-    reading_control_d = (
-        verb == "r"
-        and first == epson.DATA
-        and cartridge.epson.state != epson.INACTIVE
-        and cartridge.epson.index == epson.CD
-    )
-    if reading_control_d and held.read(epson.CD) & epson.IRQ_F:
-        found.add("epson-irqf-not-writable")
+    if verb == "r" and first == epson.DATA and cartridge.epson.state != epson.INACTIVE:
+        found |= _witness_read(held, cartridge.epson.index)
 
     if _catches_up(cartridge, operation):
         found |= _witness_state(held)
         closing = verb == "w" and first == epson.ENABLE
         if not closing and _would_advance(cartridge):
             found.add("epson-oscillation-flag-cannot-be-originated")
+        if cartridge.epson.interrupting():
+            found.add("epson-irqf-not-writable")
     return found
+
+
+def _fixed_hour_bit(held: store.Store) -> tuple[int, str]:
+    if held.read(epson.CF) & epson.HOURS_24:
+        return epson.PM, "epson-digit-fields-narrower-than-registers"
+    return epson.H20, "epson-twelve-hour-mode-transient"
+
+
+def _witness_read(held: store.Store, index: int) -> set[str]:
+    if index == epson.CD and held.read(epson.CD) & epson.IRQ_F:
+        return {"epson-irqf-not-writable"}
+    bit, name = _fixed_hour_bit(held)
+    if index == epson.H10 and held.read(epson.H10) & bit:
+        return {name}
+    return set()
 
 
 def _would_advance(cartridge: Cartridge) -> bool:
@@ -163,6 +174,11 @@ def _catches_up(cartridge: Cartridge, operation: Operation) -> bool:
 
 def _witness_register(held: store.Store, index: int, value: int) -> set[str]:
     found: set[str] = set()
+    bit, name = _fixed_hour_bit(held)
+    if index == epson.H10 and value & bit:
+        found.add(name)
+    if index == epson.CE and value & epson.MASK and held.read(epson.CD) & epson.IRQ_F:
+        found.add("epson-irqf-not-writable")
     if index != epson.CD:
         return found
     if value & epson.IRQ_F:

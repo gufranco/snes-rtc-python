@@ -57,7 +57,11 @@ READ_FLAG = 0x8
 
 READ_FLAG_AT = (MI10, H10, D10, MO10, W)
 
+CALENDAR_READ_FLAG_AT = (D10, MO10)
+
 PM = 0x4
+
+H20 = 0x2
 
 HOLD = 0x1
 
@@ -66,6 +70,14 @@ CAL_HW = 0x2
 IRQ_F = 0x4
 
 ADJUST = 0x8
+
+MASK = 0x1
+
+INT_STND = 0x2
+
+PERIOD_SHIFT = 2
+
+PERIOD_BITS = 0x3
 
 RESET = 0x1
 
@@ -80,6 +92,10 @@ STOPPED = RESET | STOP
 HALF_MINUTE = 30
 
 MINUTE = 60
+
+HOUR = 3600
+
+WHOLE_SECONDS_PER_PERIOD = (1, 1, MINUTE, HOUR)
 
 NOON = 12
 
@@ -131,7 +147,7 @@ class Chip:
         if self.state in (INACTIVE, MODE_SELECT):
             return 0x00
         self.status = READY
-        value = self.store.read(self.index) & NIBBLE
+        value = self.visible(self.index)
         if self.index == CD:
             self.store.write(CD, self.store.read(CD) & ~IRQ_F & NIBBLE)
         self.index = (self.index + 1) % REGISTERS
@@ -172,13 +188,30 @@ class Chip:
             self.write_register(value & NIBBLE)
             self.index = (self.index + 1) % REGISTERS
 
+    def visible(self, index: int) -> int:
+        held = self.store.read(index) & NIBBLE
+        if index == H10:
+            return held & ~self.fixed_hour_bit() & NIBBLE
+        if index == CD and self.masked():
+            return held & ~IRQ_F & NIBBLE
+        return held
+
     def write_register(self, value: int) -> None:
         if self.index == CD:
             self.write_control_d(value)
+        elif self.index == CE:
+            self.write_control_e(value)
         elif self.index == CF:
             self.write_control_f(value)
+        elif self.index == H10:
+            self.store.write(H10, value & ~self.fixed_hour_bit() & NIBBLE)
         else:
             self.store.write(self.index, value)
+
+    def write_control_e(self, value: int) -> None:
+        self.store.write(CE, value)
+        if value & MASK:
+            self.store.write(CD, self.store.read(CD) & ~IRQ_F & NIBBLE)
 
     def write_control_d(self, value: int) -> None:
         held = self.store.read(CD) & NIBBLE
@@ -205,7 +238,7 @@ class Chip:
 
     def release_hold(self) -> None:
         if self.elapsed(self.now() & 0xFFFFFFFF) > 0:
-            self.store_moment(calendar.advance(self.moment(), 1))
+            self.advance(1)
         self.store.stamp = self.now() & 0xFFFFFFFF
 
     def adjust_to_nearest_minute(self) -> None:
@@ -224,16 +257,42 @@ class Chip:
         kept = self.store.read(index) & ~mask & NIBBLE
         self.store.write(index, kept | (value & mask))
 
+    def read_flag_at(self) -> tuple[int, ...]:
+        if self.dated():
+            return READ_FLAG_AT
+        return tuple(index for index in READ_FLAG_AT if index not in CALENDAR_READ_FLAG_AT)
+
     def clear_read_flag(self) -> None:
-        for index in READ_FLAG_AT:
+        for index in self.read_flag_at():
             self.store.write(index, self.store.read(index) & ~READ_FLAG & NIBBLE)
 
     def set_read_flag(self) -> None:
-        for index in READ_FLAG_AT:
+        for index in self.read_flag_at():
             self.store.write(index, self.store.read(index) | READ_FLAG)
 
     def twenty_four_hour(self) -> bool:
         return bool(self.store.read(CF) & HOURS_24)
+
+    def fixed_hour_bit(self) -> int:
+        return PM if self.twenty_four_hour() else H20
+
+    def masked(self) -> bool:
+        return bool(self.store.read(CE) & MASK)
+
+    def interrupting(self) -> bool:
+        return bool(self.store.read(CE) & INT_STND) and not self.masked()
+
+    def period(self) -> int:
+        return WHOLE_SECONDS_PER_PERIOD[(self.store.read(CE) >> PERIOD_SHIFT) & PERIOD_BITS]
+
+    def advance(self, gap: int) -> None:
+        before = self.moment()
+        self.store_moment(calendar.advance(before, gap))
+        if not self.interrupting():
+            return
+        into = (before.minute * MINUTE + before.second) % self.period()
+        if into + gap >= self.period():
+            self.store.write(CD, self.store.read(CD) | IRQ_F)
 
     def dated(self) -> bool:
         return bool(self.store.read(CD) & CAL_HW)
@@ -252,7 +311,7 @@ class Chip:
         current = (self.now() - offset) & 0xFFFFFFFF
         gap = 0 if self.stopped() else self.elapsed(current)
         if gap > 0:
-            self.store_moment(calendar.advance(self.moment(), gap))
+            self.advance(gap)
             self.set_read_flag()
         self.store.stamp = current
 

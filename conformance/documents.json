@@ -23,7 +23,7 @@
       "sha256": "409b8a5a3030fe432dd7dafbf4719944abac890cc5cbebbf96fb8313f9caca33",
       "bytes": 509740,
       "pages": 18,
-      "noTextLayer": "A fax, transmitted by Epson Europe Electronics on 1999-12-01, with no text layer at all. Nothing can search it, so a citation into it is followed by rendering the page and reading it, and two quotes place below the checker's bar because the recogniser garbles them rather than because they are not on the page."
+      "noTextLayer": "A fax, transmitted by Epson Europe Electronics on 1999-12-01, with no text layer at all. Nothing can search it, so a citation into it is followed by rendering the page and reading it, and two quotes the recogniser garbles carry its reading under recognisedAs, which the checker searches for instead when it differs from the quote by at most two letters."
     },
     {
       "file": "manufacturer/RTC-4513_en.pdf",

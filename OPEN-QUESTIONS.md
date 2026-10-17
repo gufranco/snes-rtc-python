@@ -9,7 +9,7 @@ part has its manufacturer's application manual, so there is a document to
 disagree with, and the Sharp part has none, so there is nothing to disagree with
 and correspondingly nothing to be sure of.
 
-The settled surface is 329,630 operations compared against an independent
+The settled surface is 329,586 operations compared against an independent
 implementation with no disagreements, and every figure the Epson manual prints
 held against the model's own constants. What follows is the residue, and each
 entry is also in [`conformance/divergences.json`](conformance/divergences.json)
@@ -126,17 +126,23 @@ part of the time.
 **What would settle or reopen it.** A capture reading a register back after
 writing a free-RAM bit, showing whether the counter chain was disturbed.
 
-### Whether the interrupt flag can be written.
+### Whether the interrupt flag can be written, and what raises it.
 
-**The document says.** It cannot. A write instruction for IRQ-F is not executed.
+**The document says.** It cannot be written. A write instruction for IRQ-F is
+not executed. The increment t1 and t0 select raises it, a read of CD clears it,
+and while MASK is set it cannot be 1. In fixed-period mode it falls again after
+7.8 ms.
 
 **What the recording does.** Stores all four bits of a write to register 13,
-IRQ-F included.
+IRQ-F included, never raises the bit itself, and treats MASK as plain storage.
 
-**What this project follows.** The document.
+**What this project follows.** The document, raising the flag in interrupt cycle
+mode only. In fixed-period mode the flag is up for less than the whole second
+this package counts in, so it is never raised there.
 
 **What would settle or reopen it.** A capture writing register 13 with bit 2 set
-and reading it straight back.
+and reading it straight back, and one reading CD before and after a second ticks
+in interrupt cycle mode, then again with MASK set.
 
 ### Whether the test bit clears itself.
 
@@ -296,7 +302,7 @@ So the boundary is visible rather than implied:
   model's constants to it, so a constant edited without the document is a failing
   test rather than a quiet change of claim.
 - **That the two parts agree with the reference wherever the manual has not
-  already answered differently.** 329,630 operations compared, no disagreements,
+  already answered differently.** 329,586 operations compared, no disagreements,
   with every comparison stopping at the first operation that reaches a declared
   divergence rather than counting the recording's answer as the part's.
 - **That a divergence nobody wrote down fails the run.** The runner reads the
@@ -314,8 +320,9 @@ Absent rather than unknown, and absent on purpose:
   clocked interface appears here rather than appearing as a stub.
 - **The interrupt output.** Control register E selects one of four periods and
   drives a pin. No document says the SPC7110 routes that pin anywhere a program
-  can observe, so the register is stored and drives nothing. Modelling an
-  interrupt that reaches nothing would be inventing a wire.
+  can observe, so the register drives no pin. Modelling an interrupt that
+  reaches nothing would be inventing a wire. What CE does to IRQ-F, which a
+  program reads in CD, is modelled.
 - **Crystal drift.** The manual gives the figures, and they are recorded. They
   are not simulated, because a tolerance bounds a population of modules rather
   than describing the one in a cartridge, and it depends on a temperature the

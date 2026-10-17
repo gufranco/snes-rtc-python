@@ -62,7 +62,8 @@
         "rung": 1,
         "claim": "Six of the thirteen clock registers carry a digit narrower than the four-bit register. S10 bit 3 is the oscillator flag, MI10, D10, MO10 and W bit 3 are the read flag, H10 bit 3 is the read flag and bit 2 is PM/AM, and D10 bit 2 and MO10 bits 2 and 1 are free RAM.",
         "quote": "Bits marked with * can be freely written to and used as RAM.",
-        "source": "Seiko Epson, Application Manual RTC-4513, register table on manual page 5, corroborated by the catalogue extract",
+        "twentyFourHourQuote": "A write attempt to the PM/AM bit is disregarded, and the bit will always read \"0\".",
+        "source": "Seiko Epson, Application Manual RTC-4513, register table on manual page 5, corroborated by the catalogue extract, and the notation rules on manual page 6",
         "supportingCountRanges": "The table's own count range column gives 0 to 5 for S10 and MI10, 0 to 1 and 2 for H10, 0 to 3 for D10, 0 to 1 for MO10, and 0 to 6 for W. None of those reaches 9, which a four-bit digit field would."
       },
       "referenceDoes": {
@@ -71,7 +72,7 @@
         "source": "pinned.json"
       },
       "packageFollows": "document",
-      "consequence": "A program that uses MO10 bits 1 and 2 as the RAM the manual offers no longer shifts the month by tens. Under the reference's reading, setting MO10 to 6 to store a flag reads back as month 60 plus the ones digit.",
+      "consequence": "A program that uses MO10 bits 1 and 2 as the RAM the manual offers no longer shifts the month by tens. Under the reference's reading, setting MO10 to 6 to store a flag reads back as month 60 plus the ones digit. In twenty-four hour notation a write to the PM/AM bit is dropped and the bit reads 0, where the reference stores it and reads it back.",
       "wouldSettleIt": [
         "A logic capture reading back a register after writing a free-RAM bit, showing whether the counter chain was disturbed."
       ],
@@ -82,22 +83,25 @@
       "id": "epson-irqf-not-writable",
       "severity": "contradiction",
       "status": "open",
-      "topic": "Whether a program can write bit 2 of control register D.",
+      "topic": "What writes, raises, masks and clears bit 2 of control register D.",
       "documentSays": {
         "rung": 1,
-        "claim": "It cannot.",
+        "claim": "A program cannot write it. The increment of the digit t1,t0 selects raises it, and in interrupt cycle mode it holds until CD is read. While MASK is set it cannot be 1. In fixed-period mode it falls again after 7.8 ms.",
+        "maskQuote": "When this bit is \"1\", IRQ-F cannot be \"1\" and the STD.P output is open.",
+        "fixedPeriodQuote": "When this bit is \"0\", the IRQ-F bit reverts to \"0\" after 7.8 ms or earlier if the IRQ-F bit is read before that.",
         "quote": "A write instruction for the IRQ-F bit is not executed. This bit is set to \"1\" when the digit increment specified by t1,t0 is executed. The setting is maintained until the CD register has been read, and then returns to \"0\".",
-        "source": "Seiko Epson, Application Manual RTC-4513, manual page 5"
+        "source": "Seiko Epson, Application Manual RTC-4513, manual pages 5, 8 and 9"
       },
       "referenceDoes": {
         "rung": 3,
-        "claim": "Stores all four bits of a write to register 13, including IRQ-F.",
+        "claim": "Stores all four bits of a write to register 13, including IRQ-F, never raises the bit itself, and treats control register E as plain storage, so MASK has no effect on it.",
         "source": "pinned.json"
       },
       "packageFollows": "document",
-      "consequence": "Writing register 13 leaves bit 2 holding whatever the increment logic last put there rather than what the program wrote.",
+      "consequence": "Writing register 13 leaves bit 2 holding whatever the increment logic last put there rather than what the program wrote. In interrupt cycle mode the increment t1,t0 selects raises the bit, a read of CD clears it, and setting MASK puts it down and holds it there. In fixed-period mode the flag is up for 7.8 ms, below the whole second this package counts in, so it is never raised there.",
       "wouldSettleIt": [
-        "A logic capture writing register 13 with bit 2 set and reading it straight back."
+        "A logic capture writing register 13 with bit 2 set and reading it straight back.",
+        "A logic capture with CE set to interrupt cycle mode and a one-second period, reading CD before and after a second ticks, then again with MASK set."
       ],
       "why": "The manual states it in the imperative and repeats the read-to-clear rule beside it.",
       "parts": ["Epson RTC-4513"]
@@ -238,7 +242,7 @@
         "source": "Seiko Epson, Application Manual RTC-4513, manual pages 8 and 9"
       },
       "packageFollows": "neither",
-      "consequence": "Control register E is stored and read back and drives nothing. No interrupt is generated.",
+      "consequence": "Control register E is stored and read back and drives no pin, and no interrupt reaches the console. What it does to IRQ-F, which a program reads in CD, is modelled and recorded under epson-irqf-not-writable.",
       "why": "STD.P is a pin on the module. No document describes the SPC7110 routing it anywhere a Super Nintendo program can observe, and modelling an interrupt that reaches nothing would be inventing a wire. Closed rather than open because the missing evidence is about the cartridge board, not about the part.",
       "wouldReopenIt": "A cartridge board trace, or a shipped program that polls something explicable only as an RTC interrupt.",
       "parts": ["Epson RTC-4513"]

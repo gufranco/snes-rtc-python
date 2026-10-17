@@ -8,7 +8,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **920** tests, **100%** statement and branch coverage, no dependencies
+**2** clocks, **329,586** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **951** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from snesrtc import Chip, Store
@@ -192,7 +192,7 @@ Reading `$4840` returns the last value written there. Reading CD clears IRQ-F.
 | `CE` | 14 | t1 | t0 | INT/STND | MASK | |
 | `CF` | 15 | TEST | 24/12 | STOP | RESET | |
 
-`snesrtc.epson` names each register by its index, `S1` through `CF`, and each control bit by its mask: `HOLD`, `CAL_HW`, `IRQ_F` and `ADJUST` in CD, `RESET`, `STOP`, `HOURS_24` and `TEST` in CF. It also carries `ENABLE`, `DATA`, `STATUS`, `WRITE_MODE`, `READ_MODE`, `READY`, `REGISTERS`, `DIGIT_MASK`, `OSC_FLAG`, `READ_FLAG`, `READ_FLAG_AT`, `PM`, `STOPPED`, `NIBBLE`, `HALF_MINUTE`, `MINUTE`, `NOON`, `YEAR_PIVOT` and `STAMP_LIMIT`, and the five `state` values as `INACTIVE`, `MODE_SELECT`, `INDEX_SELECT`, `READING` and `WRITING`.
+`snesrtc.epson` names each register by its index, `S1` through `CF`, and each control bit by its mask: `HOLD`, `CAL_HW`, `IRQ_F` and `ADJUST` in CD, `RESET`, `STOP`, `HOURS_24` and `TEST` in CF, and `MASK` and `INT_STND` in CE. It also carries `ENABLE`, `DATA`, `STATUS`, `WRITE_MODE`, `READ_MODE`, `READY`, `REGISTERS`, `DIGIT_MASK`, `OSC_FLAG`, `READ_FLAG`, `READ_FLAG_AT`, `CALENDAR_READ_FLAG_AT`, `PM`, `H20`, `STOPPED`, `NIBBLE`, `HALF_MINUTE`, `MINUTE`, `HOUR`, `WHOLE_SECONDS_PER_PERIOD`, `PERIOD_SHIFT`, `PERIOD_BITS`, `NOON`, `YEAR_PIVOT` and `STAMP_LIMIT`, and the five `state` values as `INACTIVE`, `MODE_SELECT`, `INDEX_SELECT`, `READING` and `WRITING`.
 
 ```python
 from snesrtc import Chip, Store, epson
@@ -338,7 +338,7 @@ Where the manual and the recording disagree, the package follows the manual. Eac
 
 **HOLD does not stop the clock.** The manual says "The clock continues to run", and that the first increment missed while HOLD is set "is compensated for when the hold condition is released (+1 second)." Releasing HOLD adds one second, and the manual's procedure for setting the clock warns that the write must finish within one second.
 
-**No control bit adds a second.** CD bit 1 is CAL/HW. Clear, it switches the date counters off and leaves those registers as RAM. The one documented software adjustment is 30ADJ. on CD bit 3.
+**No control bit adds a second.** CD bit 1 is CAL/HW. Clear, it switches the date counters off and leaves those registers as RAM. The read flags in D10 and MO10 go with them: neither a tick nor deselecting the chip touches them while CAL/HW is clear. The one documented software adjustment is 30ADJ. on CD bit 3.
 
 **Twelve-hour notation is the power-on state.** The manual: "At power-on, all registers and the STD.P output are undefined." A register file that powers up as zeroes has 24/12 clear, which is twelve-hour notation, and CAL/HW clear, which stops the date.
 
@@ -369,7 +369,9 @@ print(clock.moment())
 
 At 11:59:59 PM one second passes. The hour becomes 12 with PM clear, which is midnight. The weekday counter moves from 0 to 1, and the day stays at 1 because CAL/HW is clear.
 
-**IRQ-F cannot be written.** The manual: "A write instruction for the IRQ-F bit is not executed." The part sets it, and reading CD clears it.
+**IRQ-F cannot be written.** The manual: "A write instruction for the IRQ-F bit is not executed." With INT/STND set in CE, the increment that t1 and t0 select raises it, and reading CD clears it. While MASK is set it reads 0, and setting MASK puts down a flag already raised. In fixed-period mode the flag stays up for 7.8 ms, under the whole second the model counts in, so it is not raised there.
+
+**Each notation fixes one bit of H10 at 0.** In twelve-hour notation "The h20 bit cannot be written and is fixed to "0"." In twenty-four hour notation "A write attempt to the PM/AM bit is disregarded, and the bit will always read "0"." A write drops that bit, and a read shows 0 whatever the register holds.
 
 **TEST clears when the chip is deselected**, and a write to CF with RESET set clears it too.
 
@@ -445,7 +447,7 @@ A seeded store holds the same bytes on every read and different bytes for a diff
 
 Each is an entry in [`conformance/divergences.json`](conformance/divergences.json) with the reason and what would change it.
 
-**No interrupt.** CE selects one of four periods, 1/64 second, 1 second, 1 minute or 1 hour, and drives the STD.P pin. No document says the SPC7110 routes that pin anywhere a Super Nintendo program can read, so CE is stored and drives nothing.
+**No interrupt.** CE selects one of four periods, 1/64 second, 1 second, 1 minute or 1 hour, and drives the STD.P pin. No document says the SPC7110 routes that pin anywhere a Super Nintendo program can read, so CE drives no pin and no interrupt reaches the console. What it does to IRQ-F, which a program reads in CD, is modelled.
 
 **No crystal drift.** The manual gives 0 plus or minus 25 ppm at 25 degrees C, a secondary temperature coefficient of -0.035 ppm per degree C squared, and "At 11.574 ppm, the daily clock error is about one second per day." The figures are in the record. They bound a population of modules at a temperature the model cannot know, so they are not simulated.
 
@@ -461,7 +463,7 @@ python3 -m conformance.reference
 ```
 
 ```
-epson: 200 scripts, 6130 operations compared, 9772 not compared, 0 disagreed
+epson: 200 scripts, 6086 operations compared, 9816 not compared, 0 disagreed
   not compared past epson-digit-fields-narrower-than-registers, reached by 195 scripts
   not compared past epson-oscillation-flag-cannot-be-originated, reached by 134 scripts
   ...
@@ -473,7 +475,7 @@ Each script is compared up to the first operation that reaches a declared diverg
 
 The Sharp part is compared almost end to end, because the recording is its only authority. The one exclusion is about the recorder: it tests its stamp against the maximum of the host's `time_t`, so a 64-bit and a 32-bit build disagree on any gap past 2^31 seconds.
 
-Epson scripts are capped at 200 operations. Comparison stops after about 30 on average, 6130 over 200 scripts, so the part's coverage grows with the number of scripts and not their length.
+Epson scripts are capped at 200 operations. Comparison stops after about 30 on average, 6086 over 200 scripts, so the part's coverage grows with the number of scripts and not their length.
 
 The two clocks are driven by separate scripts. In the harness and in the recording they share one 20-byte store, which no cartridge did, since none carried both parts. Time is scripted too, because the reference reads the wall clock. The reference sources are fetched at build time and never vendored. Only the driver in [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) belongs to this repository.
 

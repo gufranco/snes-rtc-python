@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** 个时钟，**329,630** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**920** 个测试，**100%** 语句与分支覆盖率，无依赖
+**2** 个时钟，**329,586** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**951** 个测试，**100%** 语句与分支覆盖率，无依赖
 
 ```python
 from snesrtc import Chip, Store
@@ -192,7 +192,7 @@ SPC7110 把该部件的三线串行接口变成三个卡带地址。程序以会
 | `CE` | 14 | t1 | t0 | INT/STND | MASK | |
 | `CF` | 15 | TEST | 24/12 | STOP | RESET | |
 
-`snesrtc.epson` 按索引命名每个寄存器，从 `S1` 到 `CF`，并按掩码命名每个控制位：CD 中的 `HOLD`、`CAL_HW`、`IRQ_F` 和 `ADJUST`，CF 中的 `RESET`、`STOP`、`HOURS_24` 和 `TEST`。它还包含 `ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`PM`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`NOON`、`YEAR_PIVOT` 和 `STAMP_LIMIT`，以及五个 `state` 值 `INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING` 和 `WRITING`。
+`snesrtc.epson` 按索引命名每个寄存器，从 `S1` 到 `CF`，并按掩码命名每个控制位：CD 中的 `HOLD`、`CAL_HW`、`IRQ_F` 和 `ADJUST`，CF 中的 `RESET`、`STOP`、`HOURS_24` 和 `TEST`，以及 CE 中的 `MASK` 和 `INT_STND`。它还包含 `ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`CALENDAR_READ_FLAG_AT`、`PM`、`H20`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`HOUR`、`WHOLE_SECONDS_PER_PERIOD`、`PERIOD_SHIFT`、`PERIOD_BITS`、`NOON`、`YEAR_PIVOT` 和 `STAMP_LIMIT`，以及五个 `state` 值 `INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING` 和 `WRITING`。
 
 ```python
 from snesrtc import Chip, Store, epson
@@ -338,7 +338,7 @@ False True 29 0
 
 **HOLD 不会停止时钟。** 手册写道 "The clock continues to run"，并说 HOLD 置位期间错过的第一次递增 "is compensated for when the hold condition is released (+1 second)." 释放 HOLD 会加一秒，手册中设置时钟的步骤也警告写入必须在一秒内完成。
 
-**没有哪个控制位会加一秒。** CD bit 1 是 CAL/HW。清除时，它关闭日期计数器，让这些寄存器作为 RAM 使用。唯一有文档记载的软件调整是 CD bit 3 上的 30ADJ.。
+**没有哪个控制位会加一秒。** CD bit 1 是 CAL/HW。清除时，它关闭日期计数器，让这些寄存器作为 RAM 使用。D10 和 MO10 中的读取标志也一样：CAL/HW 清除期间，时间前进或取消选中芯片都不会改动它们。唯一有文档记载的软件调整是 CD bit 3 上的 30ADJ.。
 
 **十二小时制是上电状态。** 手册写道："At power-on, all registers and the STD.P output are undefined." 上电后全为零的寄存器组中 24/12 是清除的，即十二小时制；CAL/HW 也是清除的，即日期停止。
 
@@ -369,7 +369,9 @@ print(clock.moment())
 
 在 11:59:59 PM 经过一秒。小时变为 12 且 PM 清除，即午夜。星期计数器从 0 变为 1，日期保持为 1，因为 CAL/HW 是清除的。
 
-**IRQ-F 不能写入。** 手册写道："A write instruction for the IRQ-F bit is not executed." 由部件置位，读取 CD 时清除。
+**IRQ-F 不能写入。** 手册写道："A write instruction for the IRQ-F bit is not executed." CE 的 INT/STND 置位时，t1 和 t0 所选数位的进位会置位它，读取 CD 时清除。MASK 置位期间它读出 0，置位 MASK 也会清除已经置位的标志。固定周期模式下标志只保持 7.8 ms，短于模型计数的一秒，所以在该模式下不会置位。
+
+**每种时制都把 H10 的一个位固定为 0。** 十二小时制："The h20 bit cannot be written and is fixed to "0"." 二十四小时制："A write attempt to the PM/AM bit is disregarded, and the bit will always read "0"." 写入时该位被丢弃，读取时无论寄存器内容如何都读出 0。
 
 **芯片被取消选中时 TEST 清除**，在 RESET 置位的情况下写入 CF 也会清除它。
 
@@ -447,7 +449,7 @@ False
 
 每一项都是 [`conformance/divergences.json`](conformance/divergences.json) 中的一个条目，附有原因以及什么会改变它。
 
-**没有中断。** CE 从四个周期中选择一个：1/64 秒、1 秒、1 分钟或 1 小时，并驱动 STD.P 引脚。没有文档说明 SPC7110 把该引脚连到超级任天堂程序可以读取的任何地方，因此 CE 只被存储，不驱动任何东西。
+**没有中断。** CE 从四个周期中选择一个：1/64 秒、1 秒、1 分钟或 1 小时，并驱动 STD.P 引脚。没有文档说明 SPC7110 把该引脚连到超级任天堂程序可以读取的任何地方，因此 CE 不驱动任何引脚，也没有中断到达主机。它对 IRQ-F 的作用已经建模，程序可以在 CD 中读到 IRQ-F。
 
 **没有晶振漂移。** 手册给出 25 摄氏度时为 0 正负 25 ppm，二次温度系数为每摄氏度平方 -0.035 ppm，以及 "At 11.574 ppm, the daily clock error is about one second per day." 这些数值已记录在案。它们界定的是一批模块在某个温度下的范围，而模型无法知道该温度，因此不做模拟。
 
@@ -463,7 +465,7 @@ python3 -m conformance.reference
 ```
 
 ```
-epson: 200 scripts, 6130 operations compared, 9772 not compared, 0 disagreed
+epson: 200 scripts, 6086 operations compared, 9816 not compared, 0 disagreed
   not compared past epson-digit-fields-narrower-than-registers, reached by 195 scripts
   not compared past epson-oscillation-flag-cannot-be-originated, reached by 134 scripts
   ...
@@ -475,7 +477,7 @@ sharp: 200 scripts, 323500 operations compared, 155 not compared, 0 disagreed
 
 Sharp 部件几乎从头到尾都被比较，因为录制结果是它唯一的依据。唯一的排除项与录制程序有关：它用主机 `time_t` 的最大值检查时间戳，因此 64 位构建和 32 位构建在超过 2^31 秒的任何间隔上结果不同。
 
-Epson 脚本的上限为 200 个操作。比较平均在大约 30 个操作后停止，200 个脚本共 6130 个，所以该部件的覆盖率随脚本数量增长，而不是随脚本长度增长。
+Epson 脚本的上限为 200 个操作。比较平均在大约 30 个操作后停止，200 个脚本共 6086 个，所以该部件的覆盖率随脚本数量增长，而不是随脚本长度增长。
 
 两个时钟由各自的脚本驱动。在测试框架和录制结果中，它们共用一个 20 字节的存储区，而没有哪个卡带是这样的，因为没有卡带同时搭载这两个部件。时间也由脚本给出，因为参考实现读取的是挂钟时间。参考源码在构建时获取，从不纳入仓库。只有 [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) 中的驱动程序属于本仓库。
 
