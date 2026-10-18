@@ -98,10 +98,6 @@ enable_error_code = [
 ]
 files = ["snesrtc", "conformance"]
 
-[[tool.mypy.overrides]]
-module = ["setuptools.*"]
-follow_imports = "skip"
-ignore_missing_imports = true
 
 [tool.coverage.run]
 source = ["."]
