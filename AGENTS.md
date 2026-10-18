@@ -179,6 +179,12 @@ The coverage exclusions carry none either:
   gate mean something different on each runtime.
 - `^\s*\.\.\.$` and `: \.\.\.$`: a protocol method's ellipsis is a contract the
   type checker reads and the runtime never runs.
+- `@unittest\.skipUnless\(CLOCKED,` in the coverage exclusions: this member is
+  not a clocked part, so the family tests that drive a clock are skipped here
+  and their bodies never run.
+- `@unittest\.skipUnless\(SOLD_AS_A_COMPONENT,`, `^def machine_mentions\(` and
+  `^def listing\(` in the coverage exclusions: this part only existed inside one
+  machine, so the family sweep for machine names is skipped here.
 
 ## Layout
 

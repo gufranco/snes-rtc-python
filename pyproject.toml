@@ -90,4 +90,8 @@ exclude_also = [
   'if TYPE_CHECKING:',
   '^\s*\.\.\.$',
   ': \.\.\.$',
+  '@unittest\.skipUnless\(CLOCKED,',
+  '@unittest\.skipUnless\(SOLD_AS_A_COMPONENT,',
+  '^def machine_mentions\(',
+  '^def listing\(',
 ]
