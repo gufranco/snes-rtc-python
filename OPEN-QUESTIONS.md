@@ -33,9 +33,10 @@ and is still findable. Most entries below name a capture of a few operations.
 
 Two need something else. The Sharp part needs a Sharp data book entry, a
 decapsulation, or a capture of the one cartridge that carries it. And three of
-the Epson entries need a decision rather than a measurement: they turn on this
-package having no sub-second time base, and giving it one would change the public
-interface.
+the Epson entries are modelling choices. A chip built with
+`rate=epson.CRYSTAL_HZ` counts cycles of the part's crystal, which settles two of
+them for that chip; the whole-second chip the recording is compared in keeps
+them, and they are listed so nobody mistakes its seams for the part's.
 
 ## Where the manual and the recording contradict each other
 
@@ -136,9 +137,10 @@ and while MASK is set it cannot be 1. In fixed-period mode it falls again after
 **What the recording does.** Stores all four bits of a write to register 13,
 IRQ-F included, never raises the bit itself, and treats MASK as plain storage.
 
-**What this project follows.** The document, raising the flag in interrupt cycle
-mode only. In fixed-period mode the flag is up for less than the whole second
-this package counts in, so it is never raised there.
+**What this project follows.** The document. In interrupt cycle mode the flag
+holds until CD is read. In fixed-period mode a chip counting crystal cycles holds
+it for 256 cycles, 7.8 ms, after each increment; a chip counting whole seconds
+cannot hold it that briefly and never raises it there.
 
 **What would settle or reopen it.** A capture writing register 13 with bit 2 set
 and reading it straight back, and one reading CD before and after a second ticks
@@ -178,7 +180,11 @@ interruption and is how a program detects a flat battery.
 **What the recording does.** Models neither. Those bits are whatever the digit
 write left behind.
 
-**What this project follows.** The document.
+**What this project follows.** The document. The read flag rises when a second
+increments while CE is high and clears when CE falls. The oscillator flag rises
+when the caller interrupts the oscillation with `interrupt_oscillation()`, and
+the time until `restore_oscillation()` is lost. What supply voltage interrupts a
+real oscillator is not printed, and the model has no supply.
 
 **What would settle or reopen it.** A capture holding CE high across a second
 boundary and reading the tens-of-minutes register.
@@ -283,22 +289,28 @@ when the chip is disabled rather than when it is enabled. A program that opens
 the chip and reads immediately therefore gets the second the previous session
 left.
 
-**What would settle or reopen it.** Giving the model a continuous time base
-driven by the caller, at which point the seam disappears rather than moving.
+**What a crystal-rate chip does.** Built with `rate=epson.CRYSTAL_HZ` and a time
+source counting crystal cycles, the chip catches up at every access, so it shows
+the current second whenever it is read and the seam is gone. The whole-second
+chip keeps the recording's placement because that is the shape the recording is
+compared in.
+
+**What would settle or reopen it.** Nothing more for the crystal-rate chip. The
+whole-second placement is a property of the comparison, not of the part.
 
 ### The 125 microsecond lockout after a thirty-second adjustment.
 
 **The document says.** For 125 microseconds the adjust bit reads back as 1 and
 the clock registers cannot be written, after which the bit clears itself.
 
-**What this project follows.** The document for the part that is observable
-without a sub-second time base: the bit clears itself. The window during which
-the registers cannot be written is not modelled.
+**What this project follows.** The document. A chip counting crystal cycles holds
+the bit at 1 and refuses writes to S1 through W for 4 cycles after the write,
+lands the adjustment when the window ends, and cancels it if RESET comes first.
+125 microseconds is 4.096 cycles, and the model rounds to 4. A chip counting
+whole seconds has no window: the bit clears and the adjustment lands at once.
 
-**What would settle or reopen it.** A decision to give the model a sub-second
-time base, at which point the window is directly implementable from the quoted
-figure. It is a choice about this package's interface rather than a question
-about the part.
+**What would settle or reopen it.** A capture timing how many crystal cycles the
+bit reads 1, which says whether the silicon rounds to 4 or to 5.
 
 ### A stamp width that belongs to the recorder rather than to either part.
 
@@ -348,11 +360,11 @@ Absent rather than unknown, and absent on purpose:
 - **A clock in the family's sense.** These parts tick and are still not driven by
   a budget of cycles. There is no instruction to step through, so none of the
   clocked interface appears here rather than appearing as a stub.
-- **The interrupt output.** Control register E selects one of four periods and
-  drives a pin. No document says the SPC7110 routes that pin anywhere a program
-  can observe, so the register drives no pin. Modelling an interrupt that
-  reaches nothing would be inventing a wire. What CE does to IRQ-F, which a
-  program reads in CD, is modelled.
+- **The interrupt reaching the console.** Control register E selects one of four
+  periods and drives the STD.P pin, and the model drives it: `std_p` reads low or
+  open. No document says the SPC7110 routes that pin anywhere a program can
+  observe, so nothing outside the model reads it. Connecting it to the console
+  would be inventing a wire.
 - **Crystal drift.** The manual gives the figures, and they are recorded. They
   are not simulated, because a tolerance bounds a population of modules rather
   than describing the one in a cartridge, and it depends on a temperature the

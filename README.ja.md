@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-時計**2**種、リファレンスと比較した操作**329,630**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**1,055**件、命令と分岐のカバレッジ**100%**、依存関係なし
+時計**2**種、リファレンスと比較した操作**329,630**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**1,075**件、命令と分岐のカバレッジ**100%**、依存関係なし
 
 ```python
 from snesrtc import Chip, Store
@@ -58,7 +58,7 @@ python3 snesrtc/doctor.py
 
 ## インターフェース
 
-`snesrtc.Chip(model, store=None, now=..., open_bus=0x00)`は時計を1つ作ります。`model`は必須です。`store`は`Store`で、省略すると時計がシード付きのストアを作ります。`now`は整数の秒を返す呼び出し可能オブジェクトで、時計はその下位32ビットを保持します。デフォルトは`time.time()`を読みます。`open_bus`はシャープのチップだけが受け付け、自分が担当しないアドレスで返す値です。エプソンのチップはそこで`0x00`を返します。
+`snesrtc.Chip(model, store=None, now=..., open_bus=0x00, rate=1)`は時計を1つ作ります。`model`は必須です。`store`は`Store`で、省略すると時計がシード付きのストアを作ります。`now`は整数の秒を返す呼び出し可能オブジェクトで、時計はその下位32ビットを保持します。デフォルトは`time.time()`を読みます。`open_bus`はシャープのチップだけが受け付け、自分が担当しないアドレスで返す値です。エプソンのチップはそこで`0x00`を返します。`rate`はエプソンのチップだけが受け付け、`now`の何カウントが1秒かを表します。デフォルトの1は整数の秒を数え、チップの選択が解除されたときに時刻を進めます。これは記録と比較する形です。`rate=epson.CRYSTAL_HZ`で、`now`が部品の32,768 Hz水晶の周期を数える場合、部品はマニュアルの説明どおりに数えます。アクセスのたびに時刻を進め、1/64秒の周期でIRQ-Fを立て、固定周期モードではIRQ-FとSTD.Pを256周期、7.8 msの間Lowに保ち、30ADJ.を4周期、つまり125マイクロ秒を整数周期に丸めた間保持します。
 
 | モデル     | 別名                                                    | アドレス                                            | 年                              | 時間                         |
 | :--------- | :------------------------------------------------------ | :-------------------------------------------------- | :------------------------------ | :--------------------------- |
@@ -107,18 +107,19 @@ s-dsp is not a clock this package covers; it has rtc-4513, s-rtc
 
 ### モジュールの内容
 
-| 名前                                                       | 内容                                                                                                                        |
-| :--------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
-| `snesrtc.MODELS`                                           | 2つの`Model`レコード。正規名がキーです                                                                                      |
-| `snesrtc.Model`                                            | `name`、`summary`、`addresses`、`protocol`、`aliases`と、`Chip`が呼ぶ`build(store=None, **options)`を持つレコード           |
-| `snesrtc.models.lookup(name)`                              | どの綴りに対しても`Model`を返します。`UnknownModelError`を送出します                                                        |
-| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | カートリッジがバッテリーで保持する20バイト。[最初からクリアされているものはない](#nothing-starts-cleared)を参照してください |
-| `snesrtc.Built`                                            | `Chip`が返す型。`epson.Chip`または`sharp.Chip`                                                                              |
-| `snesrtc.UnknownModelError`                                | パッケージが送出する唯一のエラーで、モデル名がない場合や未知の場合に使います。`snesrtc.errors`にあります                    |
-| `snesrtc.__version__`                                      | インストール済みのバージョン                                                                                                |
-| `snesrtc.sharp`, `snesrtc.epson`                           | 各チップの`Chip`クラス、アドレス、コマンドコード、レジスタ定数                                                              |
-| `snesrtc.store`                                            | `Store`とその定数`SIZE`、`STAMP_AT`、`STAMP_BYTES`、`UNSET_SEED`                                                            |
-| `snesrtc.calendar`                                         | 両方のチップが共有する暦の計算                                                                                              |
+| 名前                                                       | 内容                                                                                                                                                                                               |
+| :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `snesrtc.MODELS`                                           | 2つの`Model`レコード。正規名がキーです                                                                                                                                                             |
+| `snesrtc.Model`                                            | `name`、`summary`、`addresses`、`protocol`、`aliases`と、`Chip`が呼ぶ`build(store=None, **options)`を持つレコード                                                                                  |
+| `snesrtc.models.lookup(name)`                              | どの綴りに対しても`Model`を返します。`UnknownModelError`を送出します                                                                                                                               |
+| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | カートリッジがバッテリーで保持する20バイト。[最初からクリアされているものはない](#nothing-starts-cleared)を参照してください                                                                        |
+| `snesrtc.Built`                                            | `Chip`が返す型。`epson.Chip`または`sharp.Chip`                                                                                                                                                     |
+| `snesrtc.UnknownModelError`                                | パッケージが送出する唯一のエラーで、モデル名がない場合や未知の場合に使います。`snesrtc.errors`にあります                                                                                           |
+| `snesrtc.__version__`                                      | インストール済みのバージョン                                                                                                                                                                       |
+| `snesrtc.sharp`, `snesrtc.epson`                           | 各チップの`Chip`クラス、アドレス、コマンドコード、レジスタ定数                                                                                                                                     |
+| `snesrtc.store`                                            | `Store`とその定数`SIZE`、`STAMP_AT`、`STAMP_BYTES`、`UNSET_SEED`                                                                                                                                   |
+| `snesrtc.calendar`                                         | 両方のチップが共有する暦の計算                                                                                                                                                                     |
+| `snesrtc.crystal`                                          | `CRYSTAL_HZ`、ピンのレベル`LOW`と`OPEN`、印刷された`LOW_SECONDS`と`LOCKOUT_SECONDS`、`FAST_HZ`、`whole_ticks(rate, seconds)`、水晶の周期で数えるエプソンのチップが持つ1秒未満の状態`Crystal(rate)` |
 
 ### シャープS-RTC
 
@@ -192,7 +193,7 @@ SPC7110は、このチップの3線式シリアルインターフェースを3�
 | `CE`     | 14   | t1     | t0        | INT/STND  | MASK  |              |
 | `CF`     | 15   | TEST   | 24/12     | STOP      | RESET |              |
 
-`snesrtc.epson`は各レジスタを番号で`S1`から`CF`まで名付け、各制御ビットをマスクで名付けています。CDには`HOLD`、`CAL_HW`、`IRQ_F`、`ADJUST`、CFには`RESET`、`STOP`、`HOURS_24`、`TEST`、CEには`MASK`、`INT_STND`があります。ほかに`ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`CALENDAR_READ_FLAG_AT`、`PM`、`H20`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`HOUR`、`WHOLE_SECONDS_PER_PERIOD`、`PERIOD_SHIFT`、`PERIOD_BITS`、`NOON`、`YEAR_PIVOT`、`STAMP_LIMIT`と、`state`の5つの値`INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING`、`WRITING`があります。
+`snesrtc.epson`は各レジスタを番号で`S1`から`CF`まで名付け、各制御ビットをマスクで名付けています。CDには`HOLD`、`CAL_HW`、`IRQ_F`、`ADJUST`、CFには`RESET`、`STOP`、`HOURS_24`、`TEST`、CEには`MASK`、`INT_STND`があります。ほかに`ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`CALENDAR_READ_FLAG_AT`、`PM`、`H20`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`HOUR`、`WHOLE_SECONDS_PER_PERIOD`、`PERIOD_SHIFT`、`PERIOD_BITS`、`NOON`、`YEAR_PIVOT`、`STAMP_LIMIT`、`STAMP_MASK`、`CLOCK_REGISTERS`、`FAST_PERIOD`、`CRYSTAL_HZ`と、`state`の5つの値`INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING`、`WRITING`があります。
 
 ```python
 from snesrtc import Chip, Store, epson
@@ -231,22 +232,26 @@ print(session(epson.READ_MODE))
 
 各行はW、Y10からS1までの順です。曜日5、99-12-31、23:59:50です。15秒後の最初の読み出しはまだ古い時刻を示します。チップが追いつくのは選択解除されたときだからです。その次の読み出しは曜日6、00-01-01、00:00:05を示します。
 
-| 属性または呼び出し                                                          | 意味                                                                                                               |
-| :-------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------- |
-| `state`                                                                     | `"inactive"`、`"mode"`、`"index"`、`"read"`、`"write"`のいずれか                                                   |
-| `mode`                                                                      | `0x03`または`0x0C`。最後に選んだモード                                                                             |
-| `index`                                                                     | 次のデータアクセスが届くレジスタ                                                                                   |
-| `enable`, `status`                                                          | 最後に`$4840`に書き込んだ値と、ステータスバイト                                                                    |
-| `moment()`, `store_moment(moment)`                                          | S1からWまでのレジスタを`calendar.Moment`として取得し、また書き戻します。日付はCAL/HWが立っている間だけ保存されます |
-| `hour()`, `store_hour(hour)`                                                | 0から23の時。CFが選ぶ表記で読み書きします                                                                          |
-| `digit(index)`, `put_digit(index, value)`                                   | レジスタの桁ビットだけを扱い、フラグビットには触れません                                                           |
-| `twenty_four_hour()`, `dated()`, `stopped()`                                | 24/12が立っているか、CAL/HWが立っているか、RESETまたはSTOPが立っているか                                           |
-| `elapsed(current)`                                                          | スタンプから`current`までの秒数。2^31を超える差は0と読みます                                                       |
-| `update(offset=0)`                                                          | HOLDが立っていなければカウンタを`now() - offset`まで進め、1秒でも経過していれば読み出しフラグを立てます            |
-| `set_read_flag()`, `clear_read_flag()`                                      | frを持つ5つのレジスタでfrを立てる、またはクリアします                                                              |
-| `read_data()`, `write_enable(value)`, `write_data(value)`                   | `$4841`の読み出し、`$4840`への書き込み、`$4841`への書き込みが行うこと                                              |
-| `write_register(value)`, `write_control_d(value)`, `write_control_f(value)` | 現在のレジスタへのデータ書き込みと、書き込まれたときに動作する2つの制御レジスタ                                    |
-| `release_hold()`, `adjust_to_nearest_minute()`                              | HOLDのクリアと30ADJ.の設定が行うこと                                                                               |
+| 属性または呼び出し                                                          | 意味                                                                                                                                                               |
+| :-------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `state`                                                                     | `"inactive"`、`"mode"`、`"index"`、`"read"`、`"write"`のいずれか                                                                                                   |
+| `mode`                                                                      | `0x03`または`0x0C`。最後に選んだモード                                                                                                                             |
+| `index`                                                                     | 次のデータアクセスが届くレジスタ                                                                                                                                   |
+| `enable`, `status`                                                          | 最後に`$4840`に書き込んだ値と、ステータスバイト                                                                                                                    |
+| `moment()`, `store_moment(moment)`                                          | S1からWまでのレジスタを`calendar.Moment`として取得し、また書き戻します。日付はCAL/HWが立っている間だけ保存されます                                                 |
+| `hour()`, `store_hour(hour)`                                                | 0から23の時。CFが選ぶ表記で読み書きします                                                                                                                          |
+| `digit(index)`, `put_digit(index, value)`                                   | レジスタの桁ビットだけを扱い、フラグビットには触れません                                                                                                           |
+| `twenty_four_hour()`, `dated()`, `stopped()`                                | 24/12が立っているか、CAL/HWが立っているか、RESETまたはSTOPが立っているか                                                                                           |
+| `elapsed(current)`                                                          | スタンプから`current`までの秒数。2^31を超える差は0と読みます                                                                                                       |
+| `update(offset=0)`                                                          | HOLDが立っていなければカウンタを`now() - offset`まで進め、1秒でも経過していれば読み出しフラグを立てます                                                            |
+| `set_read_flag()`, `clear_read_flag()`                                      | frを持つ5つのレジスタでfrを立てる、またはクリアします                                                                                                              |
+| `read_data()`, `write_enable(value)`, `write_data(value)`                   | `$4841`の読み出し、`$4840`への書き込み、`$4841`への書き込みが行うこと                                                                                              |
+| `write_register(value)`, `write_control_d(value)`, `write_control_f(value)` | 現在のレジスタへのデータ書き込みと、書き込まれたときに動作する2つの制御レジスタ                                                                                    |
+| `release_hold()`, `adjust_to_nearest_minute()`                              | HOLDのクリアと30ADJ.の設定が行うこと                                                                                                                               |
+| `std_p`                                                                     | STD.Pピン。`crystal.LOW`または`crystal.OPEN`。割り込み周期モードではIRQ-Fが立っている間、固定周期モードでは繰り上がりから7.8 msの間Lowで、MASKの下ではオープンです |
+| `interrupt_oscillation()`, `restore_oscillation()`                          | 発振を止めてfoを立て、再び動かします。その間の時間は失われます                                                                                                     |
+| `rate`, `crystal`, `oscillating`                                            | 1秒あたりの`now`のカウント数、1秒未満の状態を保持する`crystal.Crystal`、発振しているかどうか                                                                       |
+| `seconds()`, `keep_time()`                                                  | 整数の秒で表した`now()`と、水晶の周期で数えるチップがアクセスのたびに行う時刻の追いつき                                                                            |
 
 ```python
 from snesrtc import Chip, Store, epson
@@ -369,7 +374,7 @@ print(clock.moment())
 
 午後11:59:59から1秒経過します。時は12になりPMがクリアされ、これは午前0時です。曜日カウンタは0から1に進み、CAL/HWがクリアされているので日は1のままです。
 
-**IRQ-Fには書き込めません。**マニュアルには"A write instruction for the IRQ-F bit is not executed."とあります。CEのINT/STNDが立っていれば、t1とt0が選ぶ桁の繰り上がりでこのビットが立ち、CDを読むとクリアされます。MASKが立っている間は0と読め、MASKを立てるとすでに立っているフラグも下がります。固定周期モードではフラグが立つのは7.8 msだけで、モデルが数える1秒より短いため、そこでは立てません。
+**IRQ-Fには書き込めません。**マニュアルには"A write instruction for the IRQ-F bit is not executed."とあります。CEのINT/STNDが立っていれば、t1とt0が選ぶ桁の繰り上がりでこのビットが立ち、CDを読むとクリアされます。MASKが立っている間は0と読め、MASKを立てるとすでに立っているフラグも下がります。固定周期モードではフラグが立つのは7.8 msだけです。水晶の周期を数えるチップはそれを256周期の間保持し、整数の秒を数えるチップは保持できないため、そこでは立てません。
 
 **表記ごとにH10の1ビットが0に固定されます。**12時間表記では"The h20 bit cannot be written and is fixed to "0"."、24時間表記では"A write attempt to the PM/AM bit is disregarded, and the bit will always read "0"."とあります。書き込みはそのビットを捨て、読み出しはレジスタの中身にかかわらず0を返します。
 
@@ -468,7 +473,7 @@ python3 -m conformance.reference
 epson: 200 scripts, 6129 operations compared whole, 1 compared except excused fields, 9772 not compared, 0 disagreed
   fields excused under epson-irqf-not-writable on 1 operations
   not compared past epson-digit-fields-narrower-than-registers, reached by 195 scripts
-  not compared past epson-oscillation-flag-cannot-be-originated, reached by 134 scripts
+  not compared past epson-read-and-oscillation-flags, reached by 134 scripts
   ...
 sharp: 200 scripts, 323500 operations compared whole, 0 compared except excused fields, 155 not compared, 0 disagreed
   not compared past stamp-width-platform-dependent, reached by 2 scripts

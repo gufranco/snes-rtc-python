@@ -389,7 +389,7 @@ class ReadWitnessTest(unittest.TestCase):
         found = reference.witness(cartridge, ("w", DATA, reference.CONFIGURED_CF))
 
         # Assert
-        self.assertIn("epson-oscillation-flag-cannot-be-originated", found)
+        self.assertIn("epson-read-and-oscillation-flags", found)
 
 
 class ExcusalTest(unittest.TestCase):

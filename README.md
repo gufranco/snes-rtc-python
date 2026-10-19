@@ -8,7 +8,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **1,055** tests, **100%** statement and branch coverage, no dependencies
+**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **1,075** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from snesrtc import Chip, Store
@@ -58,7 +58,7 @@ Releases follow [Semantic Versioning](https://semver.org/) and are cut from the 
 
 ## The interface
 
-`snesrtc.Chip(model, store=None, now=..., open_bus=0x00)` builds one clock. `model` is required. `store` is a `Store`, and the clock builds a seeded one when it is left out. `now` is a callable returning whole seconds, and the clock keeps its low 32 bits; the default reads `time.time()`. `open_bus` is accepted by the Sharp part only and is what it answers at an address it does not own. The Epson part answers `0x00` there.
+`snesrtc.Chip(model, store=None, now=..., open_bus=0x00, rate=1)` builds one clock. `model` is required. `store` is a `Store`, and the clock builds a seeded one when it is left out. `now` is a callable returning whole seconds, and the clock keeps its low 32 bits; the default reads `time.time()`. `open_bus` is accepted by the Sharp part only and is what it answers at an address it does not own. The Epson part answers `0x00` there. `rate` is accepted by the Epson part only: how many counts of `now` make one second. The default, 1, counts whole seconds and catches up when the chip is deselected, the shape the recording is compared in. With `rate=epson.CRYSTAL_HZ` and a `now` counting cycles of the part's 32,768 Hz crystal, the part counts the way the manual describes: it catches up at every access, raises IRQ-F on the 1/64 s period, holds IRQ-F and STD.P low for 256 cycles, 7.8 ms, in fixed-period mode, and holds 30ADJ. for 4 cycles, 125 microseconds rounded to whole cycles.
 
 | Model      | Aliases                                                 | Addresses                                    | Year                                    | Hours                             |
 | :--------- | :------------------------------------------------------ | :------------------------------------------- | :-------------------------------------- | :-------------------------------- |
@@ -107,18 +107,19 @@ s-dsp is not a clock this package covers; it has rtc-4513, s-rtc
 
 ### Module contents
 
-| Name                                                       | Content                                                                                                                        |
-| :--------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
-| `snesrtc.MODELS`                                           | The two `Model` records, keyed by canonical name                                                                               |
-| `snesrtc.Model`                                            | A record with `name`, `summary`, `addresses`, `protocol` and `aliases`, and `build(store=None, **options)`, which `Chip` calls |
-| `snesrtc.models.lookup(name)`                              | The `Model` for any spelling. Raises `UnknownModelError`                                                                       |
-| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | The 20 bytes the cartridge keeps on a battery. See [Nothing starts cleared](#nothing-starts-cleared)                           |
-| `snesrtc.Built`                                            | The type `Chip` returns, `epson.Chip` or `sharp.Chip`                                                                          |
-| `snesrtc.UnknownModelError`                                | The one error the package raises, for a missing or unknown model name. It lives in `snesrtc.errors`                            |
-| `snesrtc.__version__`                                      | The installed version                                                                                                          |
-| `snesrtc.sharp`, `snesrtc.epson`                           | Each part's `Chip` class, addresses, command codes and register constants                                                      |
-| `snesrtc.store`                                            | `Store` and its constants `SIZE`, `STAMP_AT`, `STAMP_BYTES` and `UNSET_SEED`                                                   |
-| `snesrtc.calendar`                                         | The calendar arithmetic both parts share                                                                                       |
+| Name                                                       | Content                                                                                                                                                                                                           |
+| :--------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `snesrtc.MODELS`                                           | The two `Model` records, keyed by canonical name                                                                                                                                                                  |
+| `snesrtc.Model`                                            | A record with `name`, `summary`, `addresses`, `protocol` and `aliases`, and `build(store=None, **options)`, which `Chip` calls                                                                                    |
+| `snesrtc.models.lookup(name)`                              | The `Model` for any spelling. Raises `UnknownModelError`                                                                                                                                                          |
+| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | The 20 bytes the cartridge keeps on a battery. See [Nothing starts cleared](#nothing-starts-cleared)                                                                                                              |
+| `snesrtc.Built`                                            | The type `Chip` returns, `epson.Chip` or `sharp.Chip`                                                                                                                                                             |
+| `snesrtc.UnknownModelError`                                | The one error the package raises, for a missing or unknown model name. It lives in `snesrtc.errors`                                                                                                               |
+| `snesrtc.__version__`                                      | The installed version                                                                                                                                                                                             |
+| `snesrtc.sharp`, `snesrtc.epson`                           | Each part's `Chip` class, addresses, command codes and register constants                                                                                                                                         |
+| `snesrtc.store`                                            | `Store` and its constants `SIZE`, `STAMP_AT`, `STAMP_BYTES` and `UNSET_SEED`                                                                                                                                      |
+| `snesrtc.calendar`                                         | The calendar arithmetic both parts share                                                                                                                                                                          |
+| `snesrtc.crystal`                                          | `CRYSTAL_HZ`, the pin levels `LOW` and `OPEN`, the printed `LOW_SECONDS` and `LOCKOUT_SECONDS`, `FAST_HZ`, `whole_ticks(rate, seconds)` and `Crystal(rate)`, the sub-second state a crystal-rate Epson chip keeps |
 
 ### The Sharp S-RTC
 
@@ -192,7 +193,7 @@ Reading `$4840` returns the last value written there. Reading CD clears IRQ-F.
 | `CE`     | 14    | t1     | t0       | INT/STND | MASK  |             |
 | `CF`     | 15    | TEST   | 24/12    | STOP     | RESET |             |
 
-`snesrtc.epson` names each register by its index, `S1` through `CF`, and each control bit by its mask: `HOLD`, `CAL_HW`, `IRQ_F` and `ADJUST` in CD, `RESET`, `STOP`, `HOURS_24` and `TEST` in CF, and `MASK` and `INT_STND` in CE. It also carries `ENABLE`, `DATA`, `STATUS`, `WRITE_MODE`, `READ_MODE`, `READY`, `REGISTERS`, `DIGIT_MASK`, `OSC_FLAG`, `READ_FLAG`, `READ_FLAG_AT`, `CALENDAR_READ_FLAG_AT`, `PM`, `H20`, `STOPPED`, `NIBBLE`, `HALF_MINUTE`, `MINUTE`, `HOUR`, `WHOLE_SECONDS_PER_PERIOD`, `PERIOD_SHIFT`, `PERIOD_BITS`, `NOON`, `YEAR_PIVOT` and `STAMP_LIMIT`, and the five `state` values as `INACTIVE`, `MODE_SELECT`, `INDEX_SELECT`, `READING` and `WRITING`.
+`snesrtc.epson` names each register by its index, `S1` through `CF`, and each control bit by its mask: `HOLD`, `CAL_HW`, `IRQ_F` and `ADJUST` in CD, `RESET`, `STOP`, `HOURS_24` and `TEST` in CF, and `MASK` and `INT_STND` in CE. It also carries `ENABLE`, `DATA`, `STATUS`, `WRITE_MODE`, `READ_MODE`, `READY`, `REGISTERS`, `DIGIT_MASK`, `OSC_FLAG`, `READ_FLAG`, `READ_FLAG_AT`, `CALENDAR_READ_FLAG_AT`, `PM`, `H20`, `STOPPED`, `NIBBLE`, `HALF_MINUTE`, `MINUTE`, `HOUR`, `WHOLE_SECONDS_PER_PERIOD`, `PERIOD_SHIFT`, `PERIOD_BITS`, `NOON`, `YEAR_PIVOT`, `STAMP_LIMIT`, `STAMP_MASK`, `CLOCK_REGISTERS`, `FAST_PERIOD` and `CRYSTAL_HZ`, and the five `state` values as `INACTIVE`, `MODE_SELECT`, `INDEX_SELECT`, `READING` and `WRITING`.
 
 ```python
 from snesrtc import Chip, Store, epson
@@ -231,22 +232,26 @@ print(session(epson.READ_MODE))
 
 Each line is W, Y10 down to S1: weekday 5, 99-12-31, 23:59:50. Fifteen seconds later the first read still shows the old time, because the part catches up when it is deselected. The read after that shows weekday 6, 00-01-01, 00:00:05.
 
-| Attribute or call                                                           | Meaning                                                                                                   |
-| :-------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------- |
-| `state`                                                                     | `"inactive"`, `"mode"`, `"index"`, `"read"` or `"write"`                                                  |
-| `mode`                                                                      | `0x03` or `0x0C`, the last mode chosen                                                                    |
-| `index`                                                                     | The register the next data access reaches                                                                 |
-| `enable`, `status`                                                          | The last value written to `$4840`, and the status byte                                                    |
-| `moment()`, `store_moment(moment)`                                          | Registers S1 through W as a `calendar.Moment`, and back. The date is stored only while CAL/HW is set      |
-| `hour()`, `store_hour(hour)`                                                | The hour from 0 to 23, read or written in the notation CF selects                                         |
-| `digit(index)`, `put_digit(index, value)`                                   | A register's digit bits alone, leaving its flag bits alone                                                |
-| `twenty_four_hour()`, `dated()`, `stopped()`                                | Whether 24/12 is set, CAL/HW is set, and RESET or STOP is set                                             |
-| `elapsed(current)`                                                          | Seconds from the stamp to `current`. A gap over 2^31 reads as 0                                           |
-| `update(offset=0)`                                                          | Advance the counters to `now() - offset`, unless HOLD is set, and set the read flags if any second passed |
-| `set_read_flag()`, `clear_read_flag()`                                      | Set or clear fr in the five registers that carry it                                                       |
-| `read_data()`, `write_enable(value)`, `write_data(value)`                   | What a read of `$4841`, a write of `$4840` and a write of `$4841` do                                      |
-| `write_register(value)`, `write_control_d(value)`, `write_control_f(value)` | A data write to the current register, and the two control registers that act when written                 |
-| `release_hold()`, `adjust_to_nearest_minute()`                              | What clearing HOLD and setting 30ADJ. do                                                                  |
+| Attribute or call                                                           | Meaning                                                                                                                                                            |
+| :-------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `state`                                                                     | `"inactive"`, `"mode"`, `"index"`, `"read"` or `"write"`                                                                                                           |
+| `mode`                                                                      | `0x03` or `0x0C`, the last mode chosen                                                                                                                             |
+| `index`                                                                     | The register the next data access reaches                                                                                                                          |
+| `enable`, `status`                                                          | The last value written to `$4840`, and the status byte                                                                                                             |
+| `moment()`, `store_moment(moment)`                                          | Registers S1 through W as a `calendar.Moment`, and back. The date is stored only while CAL/HW is set                                                               |
+| `hour()`, `store_hour(hour)`                                                | The hour from 0 to 23, read or written in the notation CF selects                                                                                                  |
+| `digit(index)`, `put_digit(index, value)`                                   | A register's digit bits alone, leaving its flag bits alone                                                                                                         |
+| `twenty_four_hour()`, `dated()`, `stopped()`                                | Whether 24/12 is set, CAL/HW is set, and RESET or STOP is set                                                                                                      |
+| `elapsed(current)`                                                          | Seconds from the stamp to `current`. A gap over 2^31 reads as 0                                                                                                    |
+| `update(offset=0)`                                                          | Advance the counters to `now() - offset`, unless HOLD is set, and set the read flags if any second passed                                                          |
+| `set_read_flag()`, `clear_read_flag()`                                      | Set or clear fr in the five registers that carry it                                                                                                                |
+| `read_data()`, `write_enable(value)`, `write_data(value)`                   | What a read of `$4841`, a write of `$4840` and a write of `$4841` do                                                                                               |
+| `write_register(value)`, `write_control_d(value)`, `write_control_f(value)` | A data write to the current register, and the two control registers that act when written                                                                          |
+| `release_hold()`, `adjust_to_nearest_minute()`                              | What clearing HOLD and setting 30ADJ. do                                                                                                                           |
+| `std_p`                                                                     | The STD.P pin: `crystal.LOW` or `crystal.OPEN`. Low while IRQ-F is up in interrupt cycle mode, for 7.8 ms after an increment in fixed-period mode, open under MASK |
+| `interrupt_oscillation()`, `restore_oscillation()`                          | Stop the oscillator, which sets fo, and start it again. The time between the two is lost                                                                           |
+| `rate`, `crystal`, `oscillating`                                            | Counts of `now` per second, the `crystal.Crystal` that holds the sub-second state, and whether the oscillator runs                                                 |
+| `seconds()`, `keep_time()`                                                  | `now()` in whole seconds, and the catch-up a crystal-rate chip makes at every access                                                                               |
 
 ```python
 from snesrtc import Chip, Store, epson
@@ -369,7 +374,7 @@ print(clock.moment())
 
 At 11:59:59 PM one second passes. The hour becomes 12 with PM clear, which is midnight. The weekday counter moves from 0 to 1, and the day stays at 1 because CAL/HW is clear.
 
-**IRQ-F cannot be written.** The manual: "A write instruction for the IRQ-F bit is not executed." With INT/STND set in CE, the increment that t1 and t0 select raises it, and reading CD clears it. While MASK is set it reads 0, and setting MASK puts down a flag already raised. In fixed-period mode the flag stays up for 7.8 ms, under the whole second the model counts in, so it is not raised there.
+**IRQ-F cannot be written.** The manual: "A write instruction for the IRQ-F bit is not executed." With INT/STND set in CE, the increment that t1 and t0 select raises it, and reading CD clears it. While MASK is set it reads 0, and setting MASK puts down a flag already raised. In fixed-period mode the flag stays up for 7.8 ms. A chip counting crystal cycles holds it for 256 of them; a chip counting whole seconds cannot, and does not raise it there.
 
 **Each notation fixes one bit of H10 at 0.** In twelve-hour notation "The h20 bit cannot be written and is fixed to "0"." In twenty-four hour notation "A write attempt to the PM/AM bit is disregarded, and the bit will always read "0"." A write drops that bit, and a read shows 0 whatever the register holds.
 
@@ -466,7 +471,7 @@ python3 -m conformance.reference
 epson: 200 scripts, 6129 operations compared whole, 1 compared except excused fields, 9772 not compared, 0 disagreed
   fields excused under epson-irqf-not-writable on 1 operations
   not compared past epson-digit-fields-narrower-than-registers, reached by 195 scripts
-  not compared past epson-oscillation-flag-cannot-be-originated, reached by 134 scripts
+  not compared past epson-read-and-oscillation-flags, reached by 134 scripts
   ...
 sharp: 200 scripts, 323500 operations compared whole, 0 compared except excused fields, 155 not compared, 0 disagreed
   not compared past stamp-width-platform-dependent, reached by 2 scripts

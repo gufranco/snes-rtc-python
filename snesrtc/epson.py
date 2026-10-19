@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import override
 
-from . import calendar
+from . import calendar, crystal
 from .store import Store
 
 ENABLE = 0x4840
@@ -103,6 +103,14 @@ YEAR_PIVOT = 90
 
 STAMP_LIMIT = 0x1_0000_0000
 
+STAMP_MASK = STAMP_LIMIT - 1
+
+CLOCK_REGISTERS = W + 1
+
+FAST_PERIOD = 0
+
+CRYSTAL_HZ = crystal.CRYSTAL_HZ
+
 
 def _now() -> int:
     import time
@@ -111,13 +119,26 @@ def _now() -> int:
 
 
 class Chip:
-    __slots__ = ("enable", "index", "mode", "model", "now", "state", "status", "store")
+    __slots__ = (
+        "crystal",
+        "enable",
+        "index",
+        "mode",
+        "model",
+        "now",
+        "oscillating",
+        "state",
+        "status",
+        "store",
+    )
 
     model: str
 
-    def __init__(self, store: Store, now: Callable[[], int] = _now) -> None:
+    def __init__(self, store: Store, now: Callable[[], int] = _now, rate: int = 1) -> None:
         self.store = store
         self.now = now
+        self.crystal = crystal.Crystal(rate)
+        self.oscillating = True
         self.state = INACTIVE
         self.mode = WRITE_MODE
         self.index = 0
@@ -132,7 +153,41 @@ class Chip:
         self.status = 0x00
         return self
 
+    def seconds(self) -> int:
+        return self.crystal.seconds(self.now()) & STAMP_MASK
+
+    def keep_time(self) -> None:
+        if not self.crystal.continuous:
+            return
+        at = self.now()
+        if self.crystal.settling(at):
+            self.settle_adjust()
+        self.update()
+        self.fast_tick(at)
+        self.expire(at)
+        self.crystal.last = at
+
+    @property
+    def std_p(self) -> int:
+        self.keep_time()
+        if self.masked():
+            return crystal.OPEN
+        if self.store.read(CE) & INT_STND:
+            return crystal.LOW if self.store.read(CD) & IRQ_F else crystal.OPEN
+        return crystal.LOW if self.crystal.pulsing(self.now()) else crystal.OPEN
+
+    def interrupt_oscillation(self) -> None:
+        self.update()
+        self.store.write(S10, self.store.read(S10) | OSC_FLAG)
+        self.oscillating = False
+
+    def restore_oscillation(self) -> None:
+        self.oscillating = True
+        self.store.stamp = self.seconds()
+        self.crystal.last = self.now()
+
     def read(self, address: int) -> int:
+        self.keep_time()
         if address == ENABLE:
             return self.enable
         if address == DATA:
@@ -154,6 +209,7 @@ class Chip:
         return value
 
     def write(self, address: int, value: int) -> None:
+        self.keep_time()
         if address == ENABLE:
             self.write_enable(value)
         elif address == DATA:
@@ -203,6 +259,8 @@ class Chip:
             self.write_control_e(value)
         elif self.index == CF:
             self.write_control_f(value)
+        elif self.index < CLOCK_REGISTERS and self.crystal.locked(self.now()):
+            return
         elif self.index == H10:
             self.store.write(H10, value & ~self.fixed_hour_bit() & NIBBLE)
         else:
@@ -216,13 +274,28 @@ class Chip:
     def write_control_d(self, value: int) -> None:
         held = self.store.read(CD) & NIBBLE
         settled = (value & ~IRQ_F & ~ADJUST & NIBBLE) | (held & IRQ_F)
+        if self.crystal.adjust_at is not None:
+            settled |= ADJUST
         if settled & HOLD and not held & HOLD:
             self.update()
         self.store.write(CD, settled)
         if value & ADJUST:
-            self.adjust_to_nearest_minute()
+            self.begin_adjust()
         if held & HOLD and not settled & HOLD:
             self.release_hold()
+
+    def begin_adjust(self) -> None:
+        lockout = self.crystal.lockout_ticks()
+        if not lockout:
+            self.adjust_to_nearest_minute()
+            return
+        self.crystal.adjust_at = self.now() + lockout
+        self.store.write(CD, self.store.read(CD) | ADJUST)
+
+    def settle_adjust(self) -> None:
+        self.crystal.adjust_at = None
+        self.store.write(CD, self.store.read(CD) & ~ADJUST & NIBBLE)
+        self.adjust_to_nearest_minute()
 
     def write_control_f(self, value: int) -> None:
         held = self.store.read(CF) & NIBBLE
@@ -234,12 +307,13 @@ class Chip:
         if value & RESET and not held & RESET:
             self.put_digit(S1, 0)
             self.put_digit(S10, 0)
+            self.crystal.adjust_at = None
             self.store.write(CD, self.store.read(CD) & ~ADJUST & NIBBLE)
 
     def release_hold(self) -> None:
-        if self.elapsed(self.now() & 0xFFFFFFFF) > 0:
+        if self.elapsed(self.seconds()) > 0:
             self.advance(1)
-        self.store.stamp = self.now() & 0xFFFFFFFF
+        self.store.stamp = self.seconds()
 
     def adjust_to_nearest_minute(self) -> None:
         self.update()
@@ -282,17 +356,51 @@ class Chip:
     def interrupting(self) -> bool:
         return bool(self.store.read(CE) & INT_STND) and not self.masked()
 
+    def selection(self) -> int:
+        return (self.store.read(CE) >> PERIOD_SHIFT) & PERIOD_BITS
+
     def period(self) -> int:
-        return WHOLE_SECONDS_PER_PERIOD[(self.store.read(CE) >> PERIOD_SHIFT) & PERIOD_BITS]
+        return WHOLE_SECONDS_PER_PERIOD[self.selection()]
+
+    def counted_in_seconds(self) -> bool:
+        return not (self.crystal.continuous and self.selection() == FAST_PERIOD)
+
+    def increment_at(self, before: calendar.Moment, gap: int) -> int | None:
+        if not self.counted_in_seconds():
+            return None
+        into = (before.minute * MINUTE + before.second) % self.period()
+        if into + gap < self.period():
+            return None
+        return gap - (into + gap) % self.period()
 
     def advance(self, gap: int) -> None:
         before = self.moment()
         self.store_moment(calendar.advance(before, gap))
-        if not self.interrupting():
-            return
-        into = (before.minute * MINUTE + before.second) % self.period()
-        if into + gap >= self.period():
+        step = self.increment_at(before, gap)
+        if step is not None:
+            self.raise_at(self.crystal.second_edge(self.now(), gap, step))
+
+    def raise_at(self, edge: int) -> None:
+        if self.interrupting():
             self.store.write(CD, self.store.read(CD) | IRQ_F)
+            return
+        if not self.crystal.continuous or self.masked():
+            return
+        self.crystal.edge = edge
+        if self.crystal.pulsing(self.now()):
+            self.store.write(CD, self.store.read(CD) | IRQ_F)
+
+    def fast_tick(self, at: int) -> None:
+        if self.counted_in_seconds() or self.stopped() or not self.oscillating:
+            return
+        edge = self.crystal.fast_edge(at)
+        if edge is not None:
+            self.raise_at(edge)
+
+    def expire(self, at: int) -> None:
+        if self.store.read(CE) & INT_STND or self.crystal.pulsing(at):
+            return
+        self.store.write(CD, self.store.read(CD) & ~IRQ_F & NIBBLE)
 
     def dated(self) -> bool:
         return bool(self.store.read(CD) & CAL_HW)
@@ -306,13 +414,17 @@ class Chip:
         return 0 if gap > STAMP_LIMIT // 2 else gap
 
     def update(self, offset: int = 0) -> None:
+        current = (self.seconds() - offset) & STAMP_MASK
+        if not self.oscillating:
+            self.store.stamp = current
+            return
         if self.store.read(CD) & HOLD:
             return
-        current = (self.now() - offset) & 0xFFFFFFFF
         gap = 0 if self.stopped() else self.elapsed(current)
         if gap > 0:
             self.advance(gap)
-            self.set_read_flag()
+            if self.enable & 1:
+                self.set_read_flag()
         self.store.stamp = current
 
     def hour(self) -> int:

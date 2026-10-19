@@ -98,7 +98,7 @@
         "source": "pinned.json"
       },
       "packageFollows": "document",
-      "consequence": "Writing register 13 leaves bit 2 holding whatever the increment logic last put there rather than what the program wrote. In interrupt cycle mode the increment t1,t0 selects raises the bit, a read of CD clears it, and setting MASK puts it down and holds it there. In fixed-period mode the flag is up for 7.8 ms, below the whole second this package counts in, so it is never raised there.",
+      "consequence": "Writing register 13 leaves bit 2 holding whatever the increment logic last put there rather than what the program wrote. In interrupt cycle mode the increment t1,t0 selects raises the bit, a read of CD clears it, and setting MASK puts it down and holds it there. In fixed-period mode a chip counting crystal cycles raises it at the increment and drops it 256 cycles later, 7.8 ms, or at a read of CD if that comes first; a chip counting whole seconds cannot hold a flag for 7.8 ms and never raises it there. The 1/64 s period is counted in crystal cycles too; counting whole seconds it falls back to a second.",
       "wouldSettleIt": [
         "A logic capture writing register 13 with bit 2 set and reading it straight back.",
         "A logic capture with CE set to interrupt cycle mode and a one-second period, reading CD before and after a second ticks, then again with MASK set."
@@ -132,10 +132,10 @@
       "parts": ["Epson RTC-4513"]
     },
     {
-      "id": "epson-oscillation-flag-cannot-be-originated",
+      "id": "epson-read-and-oscillation-flags",
       "severity": "low",
-      "status": "notModelled",
-      "topic": "The fo oscillator flag, which only a power event can set.",
+      "status": "narrowed",
+      "topic": "The fr read flag and the fo oscillator flag, which no recording models.",
       "documentSays": {
         "rung": 1,
         "claim": "fr is cleared when CE falls and set when the 1-second digit increments while CE is high, so a program can tell whether the reading it just took straddled a tick. fo records an oscillation interruption and is used to detect a flat battery.",
@@ -148,10 +148,10 @@
         "source": "pinned.json"
       },
       "packageFollows": "document",
-      "consequence": "The fr read flag is modelled: it clears when the enable register is written low and sets when a catch-up crosses a second boundary during an open session, which is what lets a program tell that its reading straddled a tick. fo is not, and cannot be: an oscillation interruption is a battery event, and a clock driven by an injected reading never has one. It stays readable and writable and is never set by the model.",
-      "openQuestion": "fo can only be set by a real power event. A model driven by an injected clock never has one, so the flag is readable and writable here and never set by the model itself. That is a limit of the modelling, not a claim about the part.",
+      "consequence": "The fr read flag is modelled: it clears when the enable register is written low and sets when a second increments while the enable is high, which is what lets a program tell that its reading straddled a tick. A chip counting crystal cycles catches up at every access, so a second that ends inside a session raises fr there and then. fo is set by an oscillation interruption, which a caller injects with interrupt_oscillation() and ends with restore_oscillation(); the time between the two is lost, as it is when an oscillator stops.",
+      "openQuestion": "What supply voltage interrupts the oscillator is not modelled. The manual prints a data retention range of 2.0 to 5.5 V and no voltage at which oscillation stops, and the model has no supply, so the interruption is an event the caller supplies rather than a level the model crosses.",
       "wouldSettleIt": [
-        "A logic capture holding CE high across a second boundary and reading MI10 bit 3."
+        "A logic capture holding CE high across a second boundary and reading MI10 bit 3, and one lowering the supply until fo sets."
       ],
       "why": "The flag is reachable through the SPC7110 mapping and the manual's own reading procedure tells a program to poll it.",
       "parts": ["Epson RTC-4513"]
@@ -159,7 +159,7 @@
     {
       "id": "epson-thirty-second-adjust-lockout",
       "severity": "low",
-      "status": "notModelled",
+      "status": "narrowed",
       "topic": "The 125 microsecond window after a 30-second adjust.",
       "documentSays": {
         "rung": 1,
@@ -173,11 +173,10 @@
         "source": "pinned.json"
       },
       "packageFollows": "document",
-      "consequence": "The adjustment itself is modelled and so is the bit: it clears rather than latching, so the manual's polling loop terminates, and the rounding either side of the half minute is tested. The 125 microsecond lockout is not modelled and cannot be here, because this clock is driven by a wall-clock reading in whole seconds and a microsecond window has no unit to be measured in.",
-      "openQuestion": "Modelling the lockout needs a time base this package does not have. The clock is driven by an injected wall-clock reading in whole seconds, not by a cycle counter, so a 125 microsecond window has no unit to be measured in here. Closing this needs the caller to supply sub-second time, which would change the package's interface.",
+      "consequence": "A chip built with rate=epson.CRYSTAL_HZ models the window: for 4 crystal cycles after the write the bit reads 1 and S1 through W refuse writes, the adjustment lands when the window ends, and a RESET inside it cancels the adjustment and clears the bit. 125 microseconds is 4.096 cycles, and the model rounds to 4. A chip counting whole seconds has no window to model, so there the adjustment lands at once and the bit clears at once.",
+      "openQuestion": "The printed window is not a whole number of crystal cycles. Whether the silicon holds the bit for 4 cycles or 5 is not printed.",
       "wouldSettleIt": [
-        "A decision to give the model a sub-second time base, at which point the window is directly implementable from the quoted figure.",
-        "Evidence from the shipped cartridge program that it polls the bit rather than waiting a fixed interval, which would say how much the lockout matters."
+        "A logic capture timing how long the bit reads 1 after it is written, in crystal cycles."
       ],
       "why": "The self-clearing half of the rule is observable with the time base that exists. The lockout half is not, and saying so is better than pretending either way.",
       "parts": ["Epson RTC-4513"]
@@ -246,8 +245,8 @@
         "source": "Seiko Epson, Application Manual RTC-4513, manual pages 8 and 9"
       },
       "packageFollows": "neither",
-      "consequence": "Control register E is stored and read back and drives no pin, and no interrupt reaches the console. What it does to IRQ-F, which a program reads in CD, is modelled and recorded under epson-irqf-not-writable.",
-      "why": "STD.P is a pin on the module. No document describes the SPC7110 routing it anywhere a Super Nintendo program can observe, and modelling an interrupt that reaches nothing would be inventing a wire. Closed rather than open because the missing evidence is about the cartridge board, not about the part.",
+      "consequence": "The model drives STD.P: chip.std_p reads LOW or OPEN. In interrupt cycle mode it is low while IRQ-F is up, in fixed-period mode it is low for 7.8 ms after each increment whether or not CD is read, and under MASK it is open. Nothing outside the model reads it, because no document routes the pin to the console, and no interrupt reaches the console.",
+      "why": "STD.P is a pin on the module, and the manual prints what drives it, so the model drives it. No document describes the SPC7110 routing it anywhere a Super Nintendo program can observe, and connecting it to the console would be inventing a wire. Closed rather than open because the missing evidence is about the cartridge board, not about the part.",
       "wouldReopenIt": "A cartridge board trace, or a shipped program that polls something explicable only as an RTC interrupt.",
       "parts": ["Epson RTC-4513"]
     },
@@ -271,7 +270,7 @@
     {
       "id": "epson-catch-up-placement",
       "severity": "unstated",
-      "status": "open",
+      "status": "narrowed",
       "topic": "When the model discovers that time has passed.",
       "documentSays": {
         "rung": 1,
@@ -283,9 +282,9 @@
         "source": "pinned.json"
       },
       "packageFollows": "reference",
-      "consequence": "An artefact of modelling a continuously running counter from a wall-clock reading taken at intervals. Any placement is an approximation; this one is the reference's and is kept because nothing better is available and a shipped title was written against hardware that had no such seam at all.",
+      "consequence": "A chip built with rate=epson.CRYSTAL_HZ has no seam: it counts crystal cycles and catches up at every access, as a part counting off its own crystal shows the current second whenever it is read. A chip counting whole seconds, the default and the shape the recording is compared in, keeps the recording's placement and recomputes the time when the chip is disabled.",
       "wouldSettleIt": [
-        "Giving the model a continuous time base driven by the caller, at which point the seam disappears rather than moving."
+        "Nothing more for a chip counting crystal cycles. The whole-second placement stays because the recording is compared in it, and it is named so a reader does not mistake it for the part."
       ],
       "why": "Recorded so that a reader does not mistake the placement for a hardware behaviour. It is a modelling choice with no rung above 3 behind it.",
       "parts": ["Epson RTC-4513"]

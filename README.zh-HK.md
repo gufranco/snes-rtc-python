@@ -8,7 +8,7 @@ Sharp S-RTC 與 Epson RTC-4513，即 Super Nintendo 卡帶可搭載的兩款實�
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** 個時鐘，**329,630** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**1,055** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
+**2** 個時鐘，**329,630** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**1,075** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
 
 ```python
 from snesrtc import Chip, Store
@@ -58,7 +58,7 @@ python3 snesrtc/doctor.py
 
 ## 介面
 
-`snesrtc.Chip(model, store=None, now=..., open_bus=0x00)` 建立一個時鐘。`model` 為必填。`store` 是一個 `Store`，若省略，時鐘會建立一個帶種子的儲存區。`now` 是返回整數秒的可呼叫物件，時鐘保留其低 32 位元；預設讀取 `time.time()`。`open_bus` 只有 Sharp 部件接受，是它在不屬於自己的位址上返回的值。Epson 部件在該處返回 `0x00`。
+`snesrtc.Chip(model, store=None, now=..., open_bus=0x00, rate=1)` 建立一個時鐘。`model` 為必填。`store` 是一個 `Store`，若省略，時鐘會建立一個帶種子的儲存區。`now` 是返回整數秒的可呼叫物件，時鐘保留其低 32 位元；預設讀取 `time.time()`。`open_bus` 只有 Sharp 部件接受，是它在不屬於自己的位址上返回的值。Epson 部件在該處返回 `0x00`。`rate` 只有 Epson 部件接受，表示 `now` 多少個計數為一秒。預設值 1 以整數秒計算，並在晶片取消選取時追上時間，這是與記錄比較時的形式。以 `rate=epson.CRYSTAL_HZ` 及一個計算部件 32,768 Hz 晶體週期的 `now`，部件便按手冊所述計數：每次存取都追上時間，在 1/64 秒週期設定 IRQ-F，在固定週期模式下把 IRQ-F 和 STD.P 保持低電平 256 個週期，即 7.8 ms，並把 30ADJ. 保持 4 個週期，即 125 微秒取整為完整週期。
 
 | 型號       | 別名                                                    | 位址                                     | 年份                             | 小時制                       |
 | :--------- | :------------------------------------------------------ | :--------------------------------------- | :------------------------------- | :--------------------------- |
@@ -107,18 +107,19 @@ s-dsp is not a clock this package covers; it has rtc-4513, s-rtc
 
 ### 模組內容
 
-| 名稱                                                       | 內容                                                                                                                         |
-| :--------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
-| `snesrtc.MODELS`                                           | 兩個 `Model` 記錄，以正式名稱為鍵                                                                                            |
-| `snesrtc.Model`                                            | 一個包含 `name`、`summary`、`addresses`、`protocol` 和 `aliases` 的記錄，以及 `Chip` 所呼叫的 `build(store=None, **options)` |
-| `snesrtc.models.lookup(name)`                              | 任何拼寫所對應的 `Model`。可拋出 `UnknownModelError`                                                                         |
-| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | 卡帶以電池保存的 20 個位元組。見[初始狀態並非清零](#nothing-starts-cleared)                                                  |
-| `snesrtc.Built`                                            | `Chip` 返回的類型，即 `epson.Chip` 或 `sharp.Chip`                                                                           |
-| `snesrtc.UnknownModelError`                                | 套件唯一會拋出的錯誤，用於缺少或未知的型號名稱。定義於 `snesrtc.errors`                                                      |
-| `snesrtc.__version__`                                      | 已安裝的版本                                                                                                                 |
-| `snesrtc.sharp`、`snesrtc.epson`                           | 各部件的 `Chip` 類別、位址、命令代碼及暫存器常數                                                                             |
-| `snesrtc.store`                                            | `Store` 及其常數 `SIZE`、`STAMP_AT`、`STAMP_BYTES` 和 `UNSET_SEED`                                                           |
-| `snesrtc.calendar`                                         | 兩個部件共用的日曆運算                                                                                                       |
+| 名稱                                                       | 內容                                                                                                                                                                                        |
+| :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `snesrtc.MODELS`                                           | 兩個 `Model` 記錄，以正式名稱為鍵                                                                                                                                                           |
+| `snesrtc.Model`                                            | 一個包含 `name`、`summary`、`addresses`、`protocol` 和 `aliases` 的記錄，以及 `Chip` 所呼叫的 `build(store=None, **options)`                                                                |
+| `snesrtc.models.lookup(name)`                              | 任何拼寫所對應的 `Model`。可拋出 `UnknownModelError`                                                                                                                                        |
+| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | 卡帶以電池保存的 20 個位元組。見[初始狀態並非清零](#nothing-starts-cleared)                                                                                                                 |
+| `snesrtc.Built`                                            | `Chip` 返回的類型，即 `epson.Chip` 或 `sharp.Chip`                                                                                                                                          |
+| `snesrtc.UnknownModelError`                                | 套件唯一會拋出的錯誤，用於缺少或未知的型號名稱。定義於 `snesrtc.errors`                                                                                                                     |
+| `snesrtc.__version__`                                      | 已安裝的版本                                                                                                                                                                                |
+| `snesrtc.sharp`、`snesrtc.epson`                           | 各部件的 `Chip` 類別、位址、命令代碼及暫存器常數                                                                                                                                            |
+| `snesrtc.store`                                            | `Store` 及其常數 `SIZE`、`STAMP_AT`、`STAMP_BYTES` 和 `UNSET_SEED`                                                                                                                          |
+| `snesrtc.calendar`                                         | 兩個部件共用的日曆運算                                                                                                                                                                      |
+| `snesrtc.crystal`                                          | `CRYSTAL_HZ`、腳位電平 `LOW` 和 `OPEN`、印出的 `LOW_SECONDS` 和 `LOCKOUT_SECONDS`、`FAST_HZ`、`whole_ticks(rate, seconds)`，以及計算晶體週期的 Epson 晶片所保存的秒以下狀態 `Crystal(rate)` |
 
 ### Sharp S-RTC
 
@@ -192,7 +193,7 @@ SPC7110 把該部件的三線串列介面轉為三個卡帶位址。程式以會
 | `CE`   | 14   | t1     | t0       | INT/STND | MASK  |          |
 | `CF`   | 15   | TEST   | 24/12    | STOP     | RESET |          |
 
-`snesrtc.epson` 以索引命名每個暫存器，由 `S1` 至 `CF`，並以遮罩命名每個控制位元：CD 中的 `HOLD`、`CAL_HW`、`IRQ_F` 和 `ADJUST`，CF 中的 `RESET`、`STOP`、`HOURS_24` 和 `TEST`，以及 CE 中的 `MASK` 和 `INT_STND`。它還包含 `ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`CALENDAR_READ_FLAG_AT`、`PM`、`H20`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`HOUR`、`WHOLE_SECONDS_PER_PERIOD`、`PERIOD_SHIFT`、`PERIOD_BITS`、`NOON`、`YEAR_PIVOT` 和 `STAMP_LIMIT`，以及五個 `state` 值 `INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING` 和 `WRITING`。
+`snesrtc.epson` 以索引命名每個暫存器，由 `S1` 至 `CF`，並以遮罩命名每個控制位元：CD 中的 `HOLD`、`CAL_HW`、`IRQ_F` 和 `ADJUST`，CF 中的 `RESET`、`STOP`、`HOURS_24` 和 `TEST`，以及 CE 中的 `MASK` 和 `INT_STND`。它還包含 `ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`CALENDAR_READ_FLAG_AT`、`PM`、`H20`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`HOUR`、`WHOLE_SECONDS_PER_PERIOD`、`PERIOD_SHIFT`、`PERIOD_BITS`、`NOON`、`YEAR_PIVOT`、`STAMP_LIMIT`、`STAMP_MASK`、`CLOCK_REGISTERS`、`FAST_PERIOD` 和 `CRYSTAL_HZ`，以及五個 `state` 值 `INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING` 和 `WRITING`。
 
 ```python
 from snesrtc import Chip, Store, epson
@@ -231,22 +232,26 @@ print(session(epson.READ_MODE))
 
 每行依次為 W、Y10 至 S1：星期 5，99-12-31，23:59:50。十五秒後，第一次讀取仍顯示舊時間，因為部件在取消選取時才追上時間。再下一次讀取顯示星期 6，00-01-01，00:00:05。
 
-| 屬性或呼叫                                                                  | 含義                                                                                        |
-| :-------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------ |
-| `state`                                                                     | `"inactive"`、`"mode"`、`"index"`、`"read"` 或 `"write"`                                    |
-| `mode`                                                                      | `0x03` 或 `0x0C`，即最後選擇的模式                                                          |
-| `index`                                                                     | 下一次數據存取所到達的暫存器                                                                |
-| `enable`、`status`                                                          | 最後寫入 `$4840` 的值，以及狀態位元組                                                       |
-| `moment()`、`store_moment(moment)`                                          | 以 `calendar.Moment` 表示的暫存器 S1 至 W，以及反向轉換。只有在 CAL/HW 已設定時才會儲存日期 |
-| `hour()`、`store_hour(hour)`                                                | 0 至 23 的小時，以 CF 所選的記法讀取或寫入                                                  |
-| `digit(index)`、`put_digit(index, value)`                                   | 只處理暫存器的數字位元，不改動其旗標位元                                                    |
-| `twenty_four_hour()`、`dated()`、`stopped()`                                | 24/12 是否已設定、CAL/HW 是否已設定，以及 RESET 或 STOP 是否已設定                          |
-| `elapsed(current)`                                                          | 由時間戳記至 `current` 的秒數。超過 2^31 的差距讀作 0                                       |
-| `update(offset=0)`                                                          | 除非 HOLD 已設定，否則將計數器推進至 `now() - offset`，若已過去至少一秒則設定讀取旗標       |
-| `set_read_flag()`、`clear_read_flag()`                                      | 在帶有 fr 的五個暫存器中設定或清除 fr                                                       |
-| `read_data()`、`write_enable(value)`、`write_data(value)`                   | 讀取 `$4841`、寫入 `$4840` 及寫入 `$4841` 時的行為                                          |
-| `write_register(value)`、`write_control_d(value)`、`write_control_f(value)` | 對當前暫存器的數據寫入，以及兩個在寫入時生效的控制暫存器                                    |
-| `release_hold()`、`adjust_to_nearest_minute()`                              | 清除 HOLD 及設定 30ADJ. 時的行為                                                            |
+| 屬性或呼叫                                                                  | 含義                                                                                                                            |
+| :-------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------ |
+| `state`                                                                     | `"inactive"`、`"mode"`、`"index"`、`"read"` 或 `"write"`                                                                        |
+| `mode`                                                                      | `0x03` 或 `0x0C`，即最後選擇的模式                                                                                              |
+| `index`                                                                     | 下一次數據存取所到達的暫存器                                                                                                    |
+| `enable`、`status`                                                          | 最後寫入 `$4840` 的值，以及狀態位元組                                                                                           |
+| `moment()`、`store_moment(moment)`                                          | 以 `calendar.Moment` 表示的暫存器 S1 至 W，以及反向轉換。只有在 CAL/HW 已設定時才會儲存日期                                     |
+| `hour()`、`store_hour(hour)`                                                | 0 至 23 的小時，以 CF 所選的記法讀取或寫入                                                                                      |
+| `digit(index)`、`put_digit(index, value)`                                   | 只處理暫存器的數字位元，不改動其旗標位元                                                                                        |
+| `twenty_four_hour()`、`dated()`、`stopped()`                                | 24/12 是否已設定、CAL/HW 是否已設定，以及 RESET 或 STOP 是否已設定                                                              |
+| `elapsed(current)`                                                          | 由時間戳記至 `current` 的秒數。超過 2^31 的差距讀作 0                                                                           |
+| `update(offset=0)`                                                          | 除非 HOLD 已設定，否則將計數器推進至 `now() - offset`，若已過去至少一秒則設定讀取旗標                                           |
+| `set_read_flag()`、`clear_read_flag()`                                      | 在帶有 fr 的五個暫存器中設定或清除 fr                                                                                           |
+| `read_data()`、`write_enable(value)`、`write_data(value)`                   | 讀取 `$4841`、寫入 `$4840` 及寫入 `$4841` 時的行為                                                                              |
+| `write_register(value)`、`write_control_d(value)`、`write_control_f(value)` | 對當前暫存器的數據寫入，以及兩個在寫入時生效的控制暫存器                                                                        |
+| `release_hold()`、`adjust_to_nearest_minute()`                              | 清除 HOLD 及設定 30ADJ. 時的行為                                                                                                |
+| `std_p`                                                                     | STD.P 腳位：`crystal.LOW` 或 `crystal.OPEN`。中斷週期模式下 IRQ-F 設定期間為低，固定週期模式下進位後 7.8 ms 為低，MASK 下為開路 |
+| `interrupt_oscillation()`、`restore_oscillation()`                          | 停止振盪器並設定 fo，然後再次啟動。兩者之間的時間會失去                                                                         |
+| `rate`、`crystal`、`oscillating`                                            | 每秒 `now` 的計數、保存秒以下狀態的 `crystal.Crystal`，以及振盪器是否運行                                                       |
+| `seconds()`、`keep_time()`                                                  | 以整數秒表示的 `now()`，以及計算晶體週期的晶片每次存取時追上時間的動作                                                          |
 
 ```python
 from snesrtc import Chip, Store, epson
@@ -369,7 +374,7 @@ print(clock.moment())
 
 在 11:59:59 PM 過了一秒。小時變為 12 且 PM 清零，即午夜。星期計數器由 0 變為 1，而日仍停在 1，因為 CAL/HW 為清零。
 
-**IRQ-F 不能寫入。** 手冊：「A write instruction for the IRQ-F bit is not executed.」CE 的 INT/STND 已設定時，t1 和 t0 所選位數的進位會設定它，讀取 CD 會清除它。MASK 設定期間它讀出 0，設定 MASK 亦會清除已設定的旗標。固定週期模式下旗標只維持 7.8 ms，短於模型計算的一秒，所以在該模式下不會設定。
+**IRQ-F 不能寫入。** 手冊：「A write instruction for the IRQ-F bit is not executed.」CE 的 INT/STND 已設定時，t1 和 t0 所選位數的進位會設定它，讀取 CD 會清除它。MASK 設定期間它讀出 0，設定 MASK 亦會清除已設定的旗標。固定週期模式下旗標只維持 7.8 ms。計算晶體週期的晶片把它保持 256 個週期；以整數秒計算的晶片做不到，所以在該模式下不會設定。
 
 **每種時制都把 H10 的一個位元固定為 0。** 十二小時制：「The h20 bit cannot be written and is fixed to "0".」二十四小時制：「A write attempt to the PM/AM bit is disregarded, and the bit will always read "0".」寫入時該位元被捨棄，讀取時不論暫存器內容都讀出 0。
 
@@ -468,7 +473,7 @@ python3 -m conformance.reference
 epson: 200 scripts, 6129 operations compared whole, 1 compared except excused fields, 9772 not compared, 0 disagreed
   fields excused under epson-irqf-not-writable on 1 operations
   not compared past epson-digit-fields-narrower-than-registers, reached by 195 scripts
-  not compared past epson-oscillation-flag-cannot-be-originated, reached by 134 scripts
+  not compared past epson-read-and-oscillation-flags, reached by 134 scripts
   ...
 sharp: 200 scripts, 323500 operations compared whole, 0 compared except excused fields, 155 not compared, 0 disagreed
   not compared past stamp-width-platform-dependent, reached by 2 scripts

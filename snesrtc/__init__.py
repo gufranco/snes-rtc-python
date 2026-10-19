@@ -1,6 +1,7 @@
 from typing import Any
 
 from . import calendar as calendar
+from . import crystal as crystal
 from . import epson as epson
 from . import errors as errors
 from . import models as models

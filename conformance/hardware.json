@@ -126,7 +126,7 @@
           "document": "applicationManual",
           "filePage": 7,
           "manualPage": 5,
-          "unreachable": "The sentence relates a register bit to a voltage on a pin, and the model has registers but no pins."
+          "unreachable": "The sentence relates a register bit to a voltage on a pin. The data pin, where register bits meet a voltage, sits behind the SPC7110, which hands the model whole nibbles; the one pin the model drives, STD.P, carries no register bit."
         },
         "outOfRangeValuesNotSpecified": {
           "value": true,
@@ -405,7 +405,8 @@
           "filePage": 7,
           "manualPage": 5,
           "heldBy": [
-            "conformance/printed_flags.test.py::PrintedBehaviourTest.test_the_oscillator_flag_can_be_set_and_cleared_by_writing_it"
+            "conformance/printed_flags.test.py::PrintedBehaviourTest.test_the_oscillator_flag_can_be_set_and_cleared_by_writing_it",
+            "snesrtc/crystal.test.py::OscillationTest.test_an_interruption_raises_fo_and_loses_the_time_it_lasted"
           ]
         },
         "readFlag": {
@@ -417,7 +418,8 @@
           "manualPage": 5,
           "heldBy": [
             "conformance/printed_flags.test.py::PrintedBehaviourTest.test_a_second_ticking_while_ce_is_high_raises_every_read_flag",
-            "conformance/printed_flags.test.py::PrintedBehaviourTest.test_ce_falling_clears_every_read_flag"
+            "conformance/printed_flags.test.py::PrintedBehaviourTest.test_ce_falling_clears_every_read_flag",
+            "snesrtc/crystal.test.py::CountingTest.test_the_read_flag_rises_when_a_second_passes_inside_a_session"
           ]
         },
         "pmAmBit": {
@@ -460,7 +462,7 @@
             "hold": {
               "mask": 1,
               "quote": "This bit stops the 1-second digit incrementation. The clock continues to run, and the first incrementation after HOLD was set to \"1\" is compensated for when the hold condition is released (+1 second). The bit is cleared by writing \"0\".",
-              "why": "HOLD is not a stop. The oscillator and the internal counters keep running behind it; only the visible 1-second digit is frozen. Time spent held is therefore not lost.",
+              "why": "HOLD is not a stop. The oscillator and the counters behind the 1-second digit keep running; only the digit is frozen, and the first increment it suppressed is added back on release. Every later one is lost, which is why the manual's write procedure must finish within a second.",
               "document": "applicationManual",
               "filePage": 9,
               "manualPage": 7,
@@ -502,8 +504,10 @@
               "manualPage": 7,
               "heldBy": [
                 "conformance/hardware.test.py::ControlBitTest.test_control_register_d_bits_carry_the_manual_masks",
-                "conformance/printed_control.test.py::PrintedBehaviourTest.test_the_thirty_second_adjust_rounds_to_the_nearer_minute_and_clears"
-              ]
+                "conformance/printed_control.test.py::PrintedBehaviourTest.test_the_thirty_second_adjust_rounds_to_the_nearer_minute_and_clears",
+                "snesrtc/crystal.test.py::AdjustTest.test_the_adjust_bit_reads_one_through_the_lockout_and_clears_after_it"
+              ],
+              "inCrystalCycles": "125 microseconds is 4.096 cycles of the crystal. The model rounds to 4 whole cycles, 122 microseconds, in which the bit reads 1 and S1 through W refuse writes; the adjustment lands when the window ends, and a RESET inside it cancels the adjustment."
             }
           }
         },
@@ -518,7 +522,8 @@
               "manualPage": 9,
               "heldBy": [
                 "conformance/printed_interrupt.test.py::PrintedBehaviourTest.test_under_mask_the_period_increment_leaves_the_interrupt_flag_down",
-                "conformance/printed_interrupt.test.py::PrintedBehaviourTest.test_and_setting_mask_puts_down_a_flag_already_raised"
+                "conformance/printed_interrupt.test.py::PrintedBehaviourTest.test_and_setting_mask_puts_down_a_flag_already_raised",
+                "snesrtc/crystal.test.py::PinTest.test_under_mask_std_p_is_open"
               ]
             },
             "intStnd": {
@@ -527,9 +532,10 @@
               "document": "applicationManual",
               "filePage": 10,
               "manualPage": 8,
-              "wholeSeconds": "Besides the waveform on the STD.P pin, which the model has no pin for, the bit decides how long IRQ-F stays up, and that a program can read in CD. In interrupt cycle mode the flag holds until CD is read, and the model raises it. In fixed-period mode it falls again after 7.8 ms, below the whole second the model counts in, so the model does not raise it there.",
+              "wholeSeconds": "Besides the waveform on the STD.P pin, the bit decides how long IRQ-F stays up, which a program can read in CD. In interrupt cycle mode the flag holds until CD is read and STD.P is low for as long. In fixed-period mode both fall after 7.8 ms, which a chip counting crystal cycles models and a chip counting whole seconds cannot, so at a rate of one count a second the flag is not raised there.",
               "heldBy": [
-                "conformance/printed_interrupt.test.py::PrintedBehaviourTest.test_interrupt_cycle_mode_holds_the_flag_and_fixed_period_mode_does_not"
+                "conformance/printed_interrupt.test.py::PrintedBehaviourTest.test_interrupt_cycle_mode_holds_the_flag_and_fixed_period_mode_does_not",
+                "snesrtc/crystal.test.py::PeriodTest.test_in_fixed_period_mode_the_flag_is_up_for_the_printed_low_time"
               ]
             },
             "t0": {
@@ -579,9 +585,13 @@
             "document": "applicationManual",
             "filePage": 10,
             "manualPage": 8,
-            "unreachable": "The figure is the width of a low pulse on the STD.P pin, which the model has no pin for and no sub-second time to measure it in."
+            "heldBy": [
+              "snesrtc/crystal.test.py::PeriodTest.test_in_fixed_period_mode_the_flag_is_up_for_the_printed_low_time",
+              "snesrtc/crystal.test.py::PinTest.test_in_fixed_period_mode_std_p_is_low_for_the_printed_time_even_once_read"
+            ],
+            "inCrystalCycles": "7.8 ms is 255.6 cycles of the crystal. The model rounds to the nearest whole cycle, 256, which is 7.8125 ms. At a rate of one count a second the pulse rounds to nothing and the flag is never raised in fixed-period mode."
           },
-          "notModelledHere": "Every bit of CE drives the STD.P output pin. No documentation says the SPC7110 routes STD.P anywhere a Super Nintendo program can observe it, so this package models no pin and no interrupt reaching the console. CE also governs IRQ-F in CD, which a program can read, and that is modelled. See divergences.json entries epson-std-p-unrouted and epson-irqf-not-writable."
+          "notModelledHere": "Every bit of CE drives the STD.P output pin, and the model drives it: chip.std_p reads LOW or OPEN. No documentation says the SPC7110 routes STD.P anywhere a Super Nintendo program can observe it, so the pin reaches nothing outside the model. CE also governs IRQ-F in CD, which a program can read. See divergences.json entries epson-std-p-unrouted and epson-irqf-not-writable."
         },
         "controlRegisterF": {
           "address": 15,
@@ -639,7 +649,10 @@
           "document": "applicationManual",
           "filePage": 3,
           "manualPage": 1,
-          "unreachable": "The model takes whole seconds from an injected clock and has no oscillator whose frequency a test could observe."
+          "heldBy": [
+            "snesrtc/crystal.test.py::PeriodTest.test_the_crystal_is_the_printed_frequency"
+          ],
+          "why": "The rate of the counter chain. A chip built with rate=epson.CRYSTAL_HZ takes its time in cycles of this crystal, and every sub-second figure the manual prints is counted in them. The quote says 32 kHz; 32,768 is the frequency of the watch crystal a 1/64 s period and a 7.8 ms pulse divide down from, and it is the one figure here that rests on that rather than on the page."
         },
         "frequencyTolerancePpm": {
           "value": 25,

@@ -121,13 +121,13 @@ def witness(cartridge: Cartridge, operation: Operation) -> set[str]:
         if held.read(epson.CF) & epson.TEST:
             found.add("epson-test-bit-not-cleared")
         if any(held.read(at) & epson.READ_FLAG for at in epson.READ_FLAG_AT):
-            found.add("epson-oscillation-flag-cannot-be-originated")
+            found.add("epson-read-and-oscillation-flags")
 
     if catches_up(cartridge, operation):
         found |= _witness_state(held)
         closing = verb == "w" and first == epson.ENABLE
         if not closing and would_advance(cartridge):
-            found.add("epson-oscillation-flag-cannot-be-originated")
+            found.add("epson-read-and-oscillation-flags")
     return found
 
 
