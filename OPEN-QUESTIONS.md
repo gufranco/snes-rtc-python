@@ -210,19 +210,29 @@ avoid.
 
 ### Which century a two-digit year belongs to.
 
-**The document says.** Nothing. The year is two BCD digits, and leap-year
+**The document says.** No window. The year is two BCD digits, and leap-year
 compensation is stated for the Gregorian calendar with no range of years named.
+Its examples do place two years: the register table reads a 1-year digit of 2 as
+the 2 of 1992, and the leap-year example sets February 29, 1993. So 92 and 93
+belong to the nineteen hundreds in the manufacturer's own reading.
 
-**What this project follows.** The recording, which reads 90 and above as
-nineteen hundred and below 90 as two thousand, giving a window of 1990 to 2089.
+**What the shipped program does.** Reads 95 and above as nineteen hundred and
+below 95 as two thousand, a window of 1995 to 2094. Read out of its own code on
+2026-10-19 by [`conformance/cartridge.py`](conformance/cartridge.py): one routine
+adds 100 to a year below 95, the one beside it adds 1900, and the clock
+initialisation loads 1995-12-22. That puts 92 and 93 in the two thousands, which
+the manual's examples do not.
 
-**Why.** A two-digit year has to be resolved somehow to answer a question about
-leap years, and there is no document to resolve it from. The window is inherited
-and named as inherited.
+**What this project follows.** The recording's window, 1990 to 2089, which reads
+90 and above as nineteen hundred and agrees with both of the manual's examples.
+The program's window disagrees with the manual on 90 to 94, and the manual is
+the higher rung. Every year the two windows share gets the same leap rule, so a
+program reading the digits back sees no difference either way.
 
-**What would settle or reopen it.** A statement from Epson naming the window,
-which the manual does not make, or a read of the shipped cartridge program
-showing which century it assumes.
+**What would settle or reopen it.** For the program, nothing more: it is read.
+For the part, a capture that rolls a year 99 into 00 across February and shows
+whether the 29th follows, which is the one place a window could reach the
+silicon. The part holds two digits and no century to keep a window in.
 
 ### Everything about the Sharp part.
 

@@ -208,11 +208,11 @@
     {
       "id": "epson-century-window",
       "severity": "unstated",
-      "status": "open",
+      "status": "narrowed",
       "topic": "Which century a two-digit year means.",
       "documentSays": {
         "rung": 1,
-        "claim": "Nothing. Y1 and Y10 are two BCD digits. Leap-year compensation is stated for the Gregorian calendar and the Heisei era, with no range of years named.",
+        "claim": "No window. Y1 and Y10 are two BCD digits, and leap-year compensation is stated for the Gregorian calendar and the Heisei era with no range of years named. The examples place two years: a 1-year digit of 2 is the 2 of 1992, and the leap-year example sets February 29, 1993, so the manufacturer reads 92 and 93 as nineteen hundreds.",
         "quote": "Automatic leap year compensation is provided for the Gregorian calender and for Japanese-era years of the current era (Heisei).",
         "source": "Seiko Epson, Application Manual RTC-4513, manual page 6"
       },
@@ -222,13 +222,17 @@
         "source": "pinned.json"
       },
       "packageFollows": "reference",
-      "consequence": "The window decides only which years are leap years, since the digits themselves are what a program reads back. A part with no century has to be given one by something, and the model has to pick.",
+      "consequence": "The window decides only which years are leap years, since the digits themselves are what a program reads back. The recording's window agrees with both of the manual's examples and the program's does not, so the recording's is kept. Every year the two windows share gets the same leap rule: 1990 to 1994 and 2090 to 2094 are leap or not alike.",
       "wouldSettleIt": [
-        "A statement from Epson naming the window, which the manual does not make.",
-        "A read of the shipped cartridge program showing which century it assumes, which would settle what the cartridge does even if not what the chip does."
+        "A logic capture rolling a year of 99 into 00 across the end of February and showing whether the 29th follows, which is the one place a window can reach the part. The part holds two digits and no century to keep a window in."
       ],
-      "why": "This is a convention, not a fact, and it is recorded here so it stops looking like one. Following the reference is the right call where the manufacturer is silent and a choice must still be made.",
-      "parts": ["Epson RTC-4513"]
+      "why": "The manual names no window but its two examples place 92 and 93 in the nineteen hundreds. The shipped program's window contradicts that on 90 to 94, so it is recorded rather than followed, and the recording's window, which satisfies the manual's examples, stays.",
+      "parts": ["Epson RTC-4513"],
+      "cartridgeDoes": {
+        "rung": 2,
+        "claim": "Reads a stored year of 95 or above as nineteen hundred plus the digits and below 95 as two thousand plus the digits, giving a window of 1995 to 2094, and loads 1995-12-22 12:00:00 when it initialises the clock. That reads 92 and 93 as two thousands, against the manual's examples.",
+        "source": "conformance/cartridge.json, read out of Tengai Makyou Zero's code on 2026-10-19 by conformance/cartridge.py"
+      }
     },
     {
       "id": "epson-std-p-unrouted",
