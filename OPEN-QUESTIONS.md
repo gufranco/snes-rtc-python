@@ -288,8 +288,6 @@ the comparison and named rather than allowed to decide.
 **What would settle or reopen it.** Nothing available. There is no hardware
 answer, because there is no stamp on the hardware.
 
-## Where a citation is short of what the standard asks
-
 ## What is not in question
 
 So the boundary is visible rather than implied:

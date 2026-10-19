@@ -45,7 +45,7 @@
         "source": "pinned.json"
       },
       "packageFollows": "document",
-      "consequence": "A clock held for an hour now returns an hour later when released, rather than an hour behind. The shipped cartridge uses HOLD deliberately: its clock initialisation opens with CD = 0x01, which is HOLD alone, loads the thirteen clock registers, and closes with CD = 0x06, which releases HOLD in the same write that sets CAL/HW. That is HOLD wrapped around a register load, which is what the manual describes it for.",
+      "consequence": "Releasing HOLD now adds back the one increment the manual says is compensated, where the reference adds nothing. A HOLD kept longer than a second still loses every increment after the first, which is what the manual's own write procedure warns of when it says the seconds are lost if the procedure takes more than one second. The shipped cartridge uses HOLD deliberately: its clock initialisation opens with CD = 0x01, which is HOLD alone, loads the thirteen clock registers, and closes with CD = 0x06, which releases HOLD in the same write that sets CAL/HW. That is HOLD wrapped around a register load, which is what the manual describes it for.",
       "wouldSettleIt": [
         "A logic capture of the part with HOLD asserted across a minute boundary and then released.",
         "The shipped program's clock routine has been read and it asserts HOLD across the load and releases it after, which is the manual's usage. What it cannot show is whether the counters behind the held digit kept running."
