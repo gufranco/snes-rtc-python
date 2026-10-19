@@ -34,10 +34,10 @@ F 5 3 1 3 2 1 8 1 8 6 9 9 0 F
 
 ## 安裝
 
-| 需求 | 版本 |
-|:--|:--|
-| Python | 3.12 或更新 |
-| git | 任何版本，用於複製儲存庫 |
+| 需求                | 版本                             |
+| :------------------ | :------------------------------- |
+| Python              | 3.12 或更新                      |
+| git                 | 任何版本，用於複製儲存庫         |
 | C++17 編譯器，`g++` | 僅用於建置差分比對所用的參照實現 |
 
 ```bash
@@ -60,10 +60,10 @@ python3 snesrtc/doctor.py
 
 `snesrtc.Chip(model, store=None, now=..., open_bus=0x00)` 建立一個時鐘。`model` 為必填。`store` 是一個 `Store`，若省略，時鐘會建立一個帶種子的儲存區。`now` 是返回整數秒的可呼叫物件，時鐘保留其低 32 位元；預設讀取 `time.time()`。`open_bus` 只有 Sharp 部件接受，是它在不屬於自己的位址上返回的值。Epson 部件在該處返回 `0x00`。
 
-| 型號 | 別名 | 位址 | 年份 | 小時制 |
-|:--|:--|:--|:--|:--|
-| `s-rtc` | `srtc`、`sharp`、`sharprtc` | `$2800` 數據，`$2801` 控制 | 三位數字加 1000，即 1000 至 1999 | 24 |
-| `rtc-4513` | `rtc4513`、`epson`、`epsonrtc`、`spc7110`、`spc7110rtc` | `$4840` 啟用，`$4841` 數據，`$4842` 狀態 | 兩位數字，讀作 1990 至 2089 | 12 或 24，由一個控制位元選擇 |
+| 型號       | 別名                                                    | 位址                                     | 年份                             | 小時制                       |
+| :--------- | :------------------------------------------------------ | :--------------------------------------- | :------------------------------- | :--------------------------- |
+| `s-rtc`    | `srtc`、`sharp`、`sharprtc`                             | `$2800` 數據，`$2801` 控制               | 三位數字加 1000，即 1000 至 1999 | 24                           |
+| `rtc-4513` | `rtc4513`、`epson`、`epsonrtc`、`spc7110`、`spc7110rtc` | `$4840` 啟用，`$4841` 數據，`$4842` 狀態 | 兩位數字，讀作 1990 至 2089      | 12 或 24，由一個控制位元選擇 |
 
 名稱不分大小寫，空格、連字號和底線都會被忽略。缺少名稱或名稱未知時拋出 `UnknownModelError`，其訊息列出可接受的名稱。
 
@@ -93,68 +93,68 @@ s-dsp is not a clock this package covers; it has rtc-4513, s-rtc
 
 ### 兩個時鐘都支援的呼叫
 
-| 呼叫 | 效果 |
-|:--|:--|
-| `read(address)` | 從卡帶匯流排讀取一個位元組 |
-| `write(address, value)` | 向卡帶匯流排寫入一個位元組。無返回值 |
-| `reset()` | 主機重設時的行為。Sharp 部件回到讀取的起點，並把時間更新至當前。Epson 部件被取消選取，回到暫存器 0 的寫入模式，啟用與狀態均清零。儲存區不受影響。返回該時鐘 |
+| 呼叫                    | 效果                                                                                                                                                        |
+| :---------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `read(address)`         | 從卡帶匯流排讀取一個位元組                                                                                                                                  |
+| `write(address, value)` | 向卡帶匯流排寫入一個位元組。無返回值                                                                                                                        |
+| `reset()`               | 主機重設時的行為。Sharp 部件回到讀取的起點，並把時間更新至當前。Epson 部件被取消選取，回到暫存器 0 的寫入模式，啟用與狀態均清零。儲存區不受影響。返回該時鐘 |
 
-| 屬性 | 含義 |
-|:--|:--|
-| `model` | 正式型號名稱 |
+| 屬性    | 含義                   |
+| :------ | :--------------------- |
+| `model` | 正式型號名稱           |
 | `store` | 時鐘用來計數的 `Store` |
-| `now` | 時間來源 |
+| `now`   | 時間來源               |
 
 ### 模組內容
 
-| 名稱 | 內容 |
-|:--|:--|
-| `snesrtc.MODELS` | 兩個 `Model` 記錄，以正式名稱為鍵 |
-| `snesrtc.Model` | 一個包含 `name`、`summary`、`addresses`、`protocol` 和 `aliases` 的記錄，以及 `Chip` 所呼叫的 `build(store=None, **options)` |
-| `snesrtc.models.lookup(name)` | 任何拼寫所對應的 `Model`。可拋出 `UnknownModelError` |
-| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | 卡帶以電池保存的 20 個位元組。見[初始狀態並非清零](#nothing-starts-cleared) |
-| `snesrtc.Built` | `Chip` 返回的類型，即 `epson.Chip` 或 `sharp.Chip` |
-| `snesrtc.UnknownModelError` | 套件唯一會拋出的錯誤，用於缺少或未知的型號名稱。定義於 `snesrtc.errors` |
-| `snesrtc.__version__` | 已安裝的版本 |
-| `snesrtc.sharp`、`snesrtc.epson` | 各部件的 `Chip` 類別、位址、命令代碼及暫存器常數 |
-| `snesrtc.store` | `Store` 及其常數 `SIZE`、`STAMP_AT`、`STAMP_BYTES` 和 `UNSET_SEED` |
-| `snesrtc.calendar` | 兩個部件共用的日曆運算 |
+| 名稱                                                       | 內容                                                                                                                         |
+| :--------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| `snesrtc.MODELS`                                           | 兩個 `Model` 記錄，以正式名稱為鍵                                                                                            |
+| `snesrtc.Model`                                            | 一個包含 `name`、`summary`、`addresses`、`protocol` 和 `aliases` 的記錄，以及 `Chip` 所呼叫的 `build(store=None, **options)` |
+| `snesrtc.models.lookup(name)`                              | 任何拼寫所對應的 `Model`。可拋出 `UnknownModelError`                                                                         |
+| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | 卡帶以電池保存的 20 個位元組。見[初始狀態並非清零](#nothing-starts-cleared)                                                  |
+| `snesrtc.Built`                                            | `Chip` 返回的類型，即 `epson.Chip` 或 `sharp.Chip`                                                                           |
+| `snesrtc.UnknownModelError`                                | 套件唯一會拋出的錯誤，用於缺少或未知的型號名稱。定義於 `snesrtc.errors`                                                      |
+| `snesrtc.__version__`                                      | 已安裝的版本                                                                                                                 |
+| `snesrtc.sharp`、`snesrtc.epson`                           | 各部件的 `Chip` 類別、位址、命令代碼及暫存器常數                                                                             |
+| `snesrtc.store`                                            | `Store` 及其常數 `SIZE`、`STAMP_AT`、`STAMP_BYTES` 和 `UNSET_SEED`                                                           |
+| `snesrtc.calendar`                                         | 兩個部件共用的日曆運算                                                                                                       |
 
 ### Sharp S-RTC
 
 寫入 `$2801` 會驅動一個狀態機。只讀取值的低四位元。
 
-| 寫入 `$2801` | 效果 |
-|:--|:--|
-| `0D` | 開始讀取。下一次讀取 `$2800` 會把時間更新至當前，並返回 `0F` 標記 |
-| `0E` | 等待命令 |
-| `0E`，然後 `00` | 開始寫入。接下來的十二次寫入為各個數字，晶片計算第十三個數字，即星期 |
-| `0E`，然後 `04` | 將全部十三個數字清為 0 |
-| `0E`，然後任何其他值 | 停止。直至下一個 `0D` 或 `0E` 之前，寫入均被忽略 |
-| `0F` | 忽略 |
+| 寫入 `$2801`         | 效果                                                                 |
+| :------------------- | :------------------------------------------------------------------- |
+| `0D`                 | 開始讀取。下一次讀取 `$2800` 會把時間更新至當前，並返回 `0F` 標記    |
+| `0E`                 | 等待命令                                                             |
+| `0E`，然後 `00`      | 開始寫入。接下來的十二次寫入為各個數字，晶片計算第十三個數字，即星期 |
+| `0E`，然後 `04`      | 將全部十三個數字清為 0                                               |
+| `0E`，然後任何其他值 | 停止。直至下一個 `0D` 或 `0E` 之前，寫入均被忽略                     |
+| `0F`                 | 忽略                                                                 |
 
 讀取序列為 `0F` 標記、十三個數字，再次為標記，之後從頭開始。不在讀取狀態時，`$2800` 返回 `0x00`。
 
-| 儲存區位元組 | 數字 |
-|:--|:--|
-| 0, 1 | 秒，先個位後十位 |
-| 2, 3 | 分 |
-| 4, 5 | 時 |
-| 6, 7 | 日 |
-| 8 | 月，一個數字，取值 1 至 12 |
-| 9, 10, 11 | 年份減 1000，依次為個位、十位、百位 |
-| 12 | 星期，星期日為 0，自 1900 年 1 月 1 日星期一起計算 |
-| 16 至 19 | 儲存區上次更新至當前的時間，低位元組在前 |
+| 儲存區位元組 | 數字                                               |
+| :----------- | :------------------------------------------------- |
+| 0, 1         | 秒，先個位後十位                                   |
+| 2, 3         | 分                                                 |
+| 4, 5         | 時                                                 |
+| 6, 7         | 日                                                 |
+| 8            | 月，一個數字，取值 1 至 12                         |
+| 9, 10, 11    | 年份減 1000，依次為個位、十位、百位                |
+| 12           | 星期，星期日為 0，自 1900 年 1 月 1 日星期一起計算 |
+| 16 至 19     | 儲存區上次更新至當前的時間，低位元組在前           |
 
-| 屬性或呼叫 | 含義 |
-|:--|:--|
-| `mode` | `"read"`、`"command"`、`"write"` 或 `"ready"` |
-| `index` | 序列中的下一個數字，標記之前為 -1 |
-| `open_bus` | 不屬於該部件的位址所讀出的值 |
-| `read_moment()`、`store_moment(moment)` | 以 `calendar.Moment` 表示的十三個數字，以及反向轉換 |
-| `elapsed()` | 自位元組 16 至 19 中的時間戳記起經過的秒數。超過 2^31 的差距讀作 0 |
-| `update()` | 將數字推進 `elapsed()` 秒並重新加上時間戳記 |
-| `command(value)`、`accept(value)` | `write` 在命令位元組之後的兩個部分 |
+| 屬性或呼叫                              | 含義                                                               |
+| :-------------------------------------- | :----------------------------------------------------------------- |
+| `mode`                                  | `"read"`、`"command"`、`"write"` 或 `"ready"`                      |
+| `index`                                 | 序列中的下一個數字，標記之前為 -1                                  |
+| `open_bus`                              | 不屬於該部件的位址所讀出的值                                       |
+| `read_moment()`、`store_moment(moment)` | 以 `calendar.Moment` 表示的十三個數字，以及反向轉換                |
+| `elapsed()`                             | 自位元組 16 至 19 中的時間戳記起經過的秒數。超過 2^31 的差距讀作 0 |
+| `update()`                              | 將數字推進 `elapsed()` 秒並重新加上時間戳記                        |
+| `command(value)`、`accept(value)`       | `write` 在命令位元組之後的兩個部分                                 |
 
 `snesrtc.sharp` 包含 `DATA`、`CONTROL`、`MARKER`、`LAST_INDEX`、`COMMAND_READ`、`COMMAND_BEGIN`、`COMMAND_NOTHING`、`COMMAND_WRITE`、`COMMAND_CLEAR`、`YEAR_BASE` 和 `STAMP_LIMIT`，以及四個 `mode` 值 `READING`、`COMMAND`、`WRITING` 和 `READY`。
 
@@ -162,35 +162,35 @@ s-dsp is not a clock this package covers; it has rtc-4513, s-rtc
 
 SPC7110 把該部件的三線串列介面轉為三個卡帶位址。程式以會話方式與它通訊。
 
-| 步驟 | 匯流排存取 | 效果 |
-|:--|:--|:--|
-| 選取 | 寫入 `$4840`，位元 0 設為 1 | 狀態變為 `0x80`。部件等待模式 |
-| 模式 | 向 `$4841` 寫入 `0x03` 或 `0x0C` | 寫入模式或讀取模式。其他值均被忽略 |
-| 暫存器 | 向 `$4841` 寫入 0 至 15 | 下一次存取的起始暫存器 |
-| 數據 | 寫入或讀取 `$4841` | 一個半位元組。之後暫存器索引加一，超過 15 後回繞 |
-| 取消選取 | 寫入 `$4840`，位元 0 清零 | 把計數器更新至當前，清除讀取旗標並清除 TEST |
-| 狀態 | 讀取 `$4842` | 任何存取後為 `0x80`，之後直至下一次存取為 `0x00` |
+| 步驟     | 匯流排存取                       | 效果                                             |
+| :------- | :------------------------------- | :----------------------------------------------- |
+| 選取     | 寫入 `$4840`，位元 0 設為 1      | 狀態變為 `0x80`。部件等待模式                    |
+| 模式     | 向 `$4841` 寫入 `0x03` 或 `0x0C` | 寫入模式或讀取模式。其他值均被忽略               |
+| 暫存器   | 向 `$4841` 寫入 0 至 15          | 下一次存取的起始暫存器                           |
+| 數據     | 寫入或讀取 `$4841`               | 一個半位元組。之後暫存器索引加一，超過 15 後回繞 |
+| 取消選取 | 寫入 `$4840`，位元 0 清零        | 把計數器更新至當前，清除讀取旗標並清除 TEST      |
+| 狀態     | 讀取 `$4842`                     | 任何存取後為 `0x80`，之後直至下一次存取為 `0x00` |
 
 讀取 `$4840` 返回最後寫入該處的值。讀取 CD 會清除 IRQ-F。
 
-| 暫存器 | 索引 | D3 | D2 | D1 | D0 | 計數範圍 |
-|:--|:--|:--|:--|:--|:--|:--|
-| `S1` | 0 | s8 | s4 | s2 | s1 | 0 至 9 |
-| `S10` | 1 | fo | s40 | s20 | s10 | 0 至 5 |
-| `MI1` | 2 | mi8 | mi4 | mi2 | mi1 | 0 至 9 |
-| `MI10` | 3 | fr | mi40 | mi20 | mi10 | 0 至 5 |
-| `H1` | 4 | h8 | h4 | h2 | h1 | 0 至 9 |
-| `H10` | 5 | fr | PM/AM | h20 | h10 | 0 至 2 |
-| `D1` | 6 | d8 | d4 | d2 | d1 | 0 至 9 |
-| `D10` | 7 | fr | 空閒 RAM | d20 | d10 | 0 至 3 |
-| `MO1` | 8 | mo8 | mo4 | mo2 | mo1 | 0 至 9 |
-| `MO10` | 9 | fr | 空閒 RAM | 空閒 RAM | mo10 | 0 至 1 |
-| `Y1` | 10 | y8 | y4 | y2 | y1 | 0 至 9 |
-| `Y10` | 11 | y80 | y40 | y20 | y10 | 0 至 9 |
-| `W` | 12 | fr | w4 | w2 | w1 | 0 至 6 |
-| `CD` | 13 | 30ADJ. | IRQ-F | CAL/HW | HOLD | |
-| `CE` | 14 | t1 | t0 | INT/STND | MASK | |
-| `CF` | 15 | TEST | 24/12 | STOP | RESET | |
+| 暫存器 | 索引 | D3     | D2       | D1       | D0    | 計數範圍 |
+| :----- | :--- | :----- | :------- | :------- | :---- | :------- |
+| `S1`   | 0    | s8     | s4       | s2       | s1    | 0 至 9   |
+| `S10`  | 1    | fo     | s40      | s20      | s10   | 0 至 5   |
+| `MI1`  | 2    | mi8    | mi4      | mi2      | mi1   | 0 至 9   |
+| `MI10` | 3    | fr     | mi40     | mi20     | mi10  | 0 至 5   |
+| `H1`   | 4    | h8     | h4       | h2       | h1    | 0 至 9   |
+| `H10`  | 5    | fr     | PM/AM    | h20      | h10   | 0 至 2   |
+| `D1`   | 6    | d8     | d4       | d2       | d1    | 0 至 9   |
+| `D10`  | 7    | fr     | 空閒 RAM | d20      | d10   | 0 至 3   |
+| `MO1`  | 8    | mo8    | mo4      | mo2      | mo1   | 0 至 9   |
+| `MO10` | 9    | fr     | 空閒 RAM | 空閒 RAM | mo10  | 0 至 1   |
+| `Y1`   | 10   | y8     | y4       | y2       | y1    | 0 至 9   |
+| `Y10`  | 11   | y80    | y40      | y20      | y10   | 0 至 9   |
+| `W`    | 12   | fr     | w4       | w2       | w1    | 0 至 6   |
+| `CD`   | 13   | 30ADJ. | IRQ-F    | CAL/HW   | HOLD  |          |
+| `CE`   | 14   | t1     | t0       | INT/STND | MASK  |          |
+| `CF`   | 15   | TEST   | 24/12    | STOP     | RESET |          |
 
 `snesrtc.epson` 以索引命名每個暫存器，由 `S1` 至 `CF`，並以遮罩命名每個控制位元：CD 中的 `HOLD`、`CAL_HW`、`IRQ_F` 和 `ADJUST`，CF 中的 `RESET`、`STOP`、`HOURS_24` 和 `TEST`，以及 CE 中的 `MASK` 和 `INT_STND`。它還包含 `ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`CALENDAR_READ_FLAG_AT`、`PM`、`H20`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`HOUR`、`WHOLE_SECONDS_PER_PERIOD`、`PERIOD_SHIFT`、`PERIOD_BITS`、`NOON`、`YEAR_PIVOT` 和 `STAMP_LIMIT`，以及五個 `state` 值 `INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING` 和 `WRITING`。
 
@@ -231,22 +231,22 @@ print(session(epson.READ_MODE))
 
 每行依次為 W、Y10 至 S1：星期 5，99-12-31，23:59:50。十五秒後，第一次讀取仍顯示舊時間，因為部件在取消選取時才追上時間。再下一次讀取顯示星期 6，00-01-01，00:00:05。
 
-| 屬性或呼叫 | 含義 |
-|:--|:--|
-| `state` | `"inactive"`、`"mode"`、`"index"`、`"read"` 或 `"write"` |
-| `mode` | `0x03` 或 `0x0C`，即最後選擇的模式 |
-| `index` | 下一次數據存取所到達的暫存器 |
-| `enable`、`status` | 最後寫入 `$4840` 的值，以及狀態位元組 |
-| `moment()`、`store_moment(moment)` | 以 `calendar.Moment` 表示的暫存器 S1 至 W，以及反向轉換。只有在 CAL/HW 已設定時才會儲存日期 |
-| `hour()`、`store_hour(hour)` | 0 至 23 的小時，以 CF 所選的記法讀取或寫入 |
-| `digit(index)`、`put_digit(index, value)` | 只處理暫存器的數字位元，不改動其旗標位元 |
-| `twenty_four_hour()`、`dated()`、`stopped()` | 24/12 是否已設定、CAL/HW 是否已設定，以及 RESET 或 STOP 是否已設定 |
-| `elapsed(current)` | 由時間戳記至 `current` 的秒數。超過 2^31 的差距讀作 0 |
-| `update(offset=0)` | 除非 HOLD 已設定，否則將計數器推進至 `now() - offset`，若已過去至少一秒則設定讀取旗標 |
-| `set_read_flag()`、`clear_read_flag()` | 在帶有 fr 的五個暫存器中設定或清除 fr |
-| `read_data()`、`write_enable(value)`、`write_data(value)` | 讀取 `$4841`、寫入 `$4840` 及寫入 `$4841` 時的行為 |
-| `write_register(value)`、`write_control_d(value)`、`write_control_f(value)` | 對當前暫存器的數據寫入，以及兩個在寫入時生效的控制暫存器 |
-| `release_hold()`、`adjust_to_nearest_minute()` | 清除 HOLD 及設定 30ADJ. 時的行為 |
+| 屬性或呼叫                                                                  | 含義                                                                                        |
+| :-------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------ |
+| `state`                                                                     | `"inactive"`、`"mode"`、`"index"`、`"read"` 或 `"write"`                                    |
+| `mode`                                                                      | `0x03` 或 `0x0C`，即最後選擇的模式                                                          |
+| `index`                                                                     | 下一次數據存取所到達的暫存器                                                                |
+| `enable`、`status`                                                          | 最後寫入 `$4840` 的值，以及狀態位元組                                                       |
+| `moment()`、`store_moment(moment)`                                          | 以 `calendar.Moment` 表示的暫存器 S1 至 W，以及反向轉換。只有在 CAL/HW 已設定時才會儲存日期 |
+| `hour()`、`store_hour(hour)`                                                | 0 至 23 的小時，以 CF 所選的記法讀取或寫入                                                  |
+| `digit(index)`、`put_digit(index, value)`                                   | 只處理暫存器的數字位元，不改動其旗標位元                                                    |
+| `twenty_four_hour()`、`dated()`、`stopped()`                                | 24/12 是否已設定、CAL/HW 是否已設定，以及 RESET 或 STOP 是否已設定                          |
+| `elapsed(current)`                                                          | 由時間戳記至 `current` 的秒數。超過 2^31 的差距讀作 0                                       |
+| `update(offset=0)`                                                          | 除非 HOLD 已設定，否則將計數器推進至 `now() - offset`，若已過去至少一秒則設定讀取旗標       |
+| `set_read_flag()`、`clear_read_flag()`                                      | 在帶有 fr 的五個暫存器中設定或清除 fr                                                       |
+| `read_data()`、`write_enable(value)`、`write_data(value)`                   | 讀取 `$4841`、寫入 `$4840` 及寫入 `$4841` 時的行為                                          |
+| `write_register(value)`、`write_control_d(value)`、`write_control_f(value)` | 對當前暫存器的數據寫入，以及兩個在寫入時生效的控制暫存器                                    |
+| `release_hold()`、`adjust_to_nearest_minute()`                              | 清除 HOLD 及設定 30ADJ. 時的行為                                                            |
 
 ```python
 from snesrtc import Chip, Store, epson
@@ -284,14 +284,14 @@ CF=0x4 <2000-01-01 00:01:00 weekday=0>
 
 `snesrtc.calendar` 包含兩個部件追上時間時所執行的運算。
 
-| 名稱 | 內容 |
-|:--|:--|
-| `Moment(year, month, day, hour, minute, second, weekday)` | 時鐘的一次讀數。按值比較及計算雜湊 |
-| `advance(moment, seconds)` | `seconds` 秒後的時刻，計算方式與參照實現相同 |
-| `is_leap(year)` | 格里曆規則 |
-| `days_in(year, month)` | 28 至 31。1 至 12 以外的月份按模 12 化簡 |
-| `weekday(year, month, day)` | 星期日為 0，自 1900 年 1 月 1 日星期一起計算 |
-| `MONTHS`、`EPOCH_YEAR`、`EPOCH_WEEKDAY`、`WEEK`、`DAY`、`MASK` | 它們背後的常數 |
+| 名稱                                                           | 內容                                         |
+| :------------------------------------------------------------- | :------------------------------------------- |
+| `Moment(year, month, day, hour, minute, second, weekday)`      | 時鐘的一次讀數。按值比較及計算雜湊           |
+| `advance(moment, seconds)`                                     | `seconds` 秒後的時刻，計算方式與參照實現相同 |
+| `is_leap(year)`                                                | 格里曆規則                                   |
+| `days_in(year, month)`                                         | 28 至 31。1 至 12 以外的月份按模 12 化簡     |
+| `weekday(year, month, day)`                                    | 星期日為 0，自 1900 年 1 月 1 日星期一起計算 |
+| `MONTHS`、`EPOCH_YEAR`、`EPOCH_WEEKDAY`、`WEEK`、`DAY`、`MASK` | 它們背後的常數                               |
 
 ```python
 from snesrtc.calendar import Moment, advance, days_in, is_leap, weekday
@@ -307,10 +307,10 @@ False True 29 0
 
 ### 診斷腳本
 
-| 命令 | 退出碼 |
-|:--|:--|
+| 命令                                           | 退出碼                                         |
+| :--------------------------------------------- | :--------------------------------------------- |
 | 在儲存庫根目錄執行 `python3 snesrtc/doctor.py` | 套件的每項檢查都通過時為 0，有一項不通過時為 1 |
-| 以 pip 安裝後執行 `snesrtc-doctor` | 相同 |
+| 以 pip 安裝後執行 `snesrtc-doctor`             | 相同                                           |
 
 它不接受參數。它先報告機器：直譯器、編碼、檔案系統大小寫、行尾、路徑長度、可用空間和 git。這些行僅供參考，從不改變退出碼。然後檢查套件：Python 版本、兩個時鐘的建立與重設、給定固定時間的時鐘能否讀回該時間、`$2802` 是否讀作開路匯流排、[`conformance/pinned.json`](conformance/pinned.json) 中的固定版本，以及參照驅動程式是否已建置。拋出例外的檢查會連同例外的類型和訊息一併報告。
 
@@ -318,11 +318,11 @@ False True 29 0
 
 兩個時鐘依據的證據不同。
 
-| 層級 | 來源 | 決定 |
-|:--|:--|:--|
-| 1 | Seiko Epson，*Application Manual: Real Time Clock Module RTC-4513* | Epson 就 RTC-4513 印出的一切：暫存器寬度、計數範圍、每個控制位元的作用、會話的結構、上電後的狀態 |
-| 2 | snes9x 的一份錄製，以提交固定 | 手冊未涉及的部分：SPC7110 如何把三線串列部件轉為三個卡帶位址、計數器在文件記載範圍以外的行為，以及 Sharp 部件的全部 |
-| 3 | 別無其他 | 無 |
+| 層級 | 來源                                                               | 決定                                                                                                                |
+| :--- | :----------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------ |
+| 1    | Seiko Epson，_Application Manual: Real Time Clock Module RTC-4513_ | Epson 就 RTC-4513 印出的一切：暫存器寬度、計數範圍、每個控制位元的作用、會話的結構、上電後的狀態                    |
+| 2    | snes9x 的一份錄製，以提交固定                                      | 手冊未涉及的部分：SPC7110 如何把三線串列部件轉為三個卡帶位址、計數器在文件記載範圍以外的行為，以及 Sharp 部件的全部 |
+| 3    | 別無其他                                                           | 無                                                                                                                  |
 
 層級 1 的每個數值都記錄在 [`conformance/hardware.json`](conformance/hardware.json) 中，附有其出處的句子、文件的摘要值和閱讀日期。[`conformance/hardware.test.py`](conformance/hardware.test.py) 驅動套件，並據此檢查其行為。
 
@@ -405,17 +405,17 @@ print(advance(Moment(1996, 8, 18, 12, 100, 59, 0), 1))
 
 它們是不同製造商的部件，裝在不同發行商的卡帶上。
 
-| | Sharp S-RTC | Epson RTC-4513 |
-|:--|:--|:--|
-| 製造商文件 | 未知有任何文件 | 應用手冊，1999 年 |
-| 存取位置 | `$2800` 和 `$2801` | `$4840` 至 `$4842`，經由 SPC7110 |
-| 結構 | 包在標記中的固定序列 | 由十六個 4 位元暫存器組成、可按位址存取的暫存器組 |
-| 取得單一欄位 | 讀取整個序列並計數 | 指定其暫存器 |
-| 星期 | 寫入日期時由日期計算 | 獨立的計數器，0 至 6，不附帶任何含義 |
-| 年份 | 三位數字加 1000 | 兩位數字，任何地方都沒有印出世紀 |
-| 小時制 | 24 | 12 或 24，由一個控制位元選擇 |
-| 控制暫存器 | 無 | 三個，共十六個具名位元 |
-| 追上時間 | 讀取開始時 | 晶片被取消選取時 |
+|              | Sharp S-RTC          | Epson RTC-4513                                    |
+| :----------- | :------------------- | :------------------------------------------------ |
+| 製造商文件   | 未知有任何文件       | 應用手冊，1999 年                                 |
+| 存取位置     | `$2800` 和 `$2801`   | `$4840` 至 `$4842`，經由 SPC7110                  |
+| 結構         | 包在標記中的固定序列 | 由十六個 4 位元暫存器組成、可按位址存取的暫存器組 |
+| 取得單一欄位 | 讀取整個序列並計數   | 指定其暫存器                                      |
+| 星期         | 寫入日期時由日期計算 | 獨立的計數器，0 至 6，不附帶任何含義              |
+| 年份         | 三位數字加 1000      | 兩位數字，任何地方都沒有印出世紀                  |
+| 小時制       | 24                   | 12 或 24，由一個控制位元選擇                      |
+| 控制暫存器   | 無                   | 三個，共十六個具名位元                            |
+| 追上時間     | 讀取開始時           | 晶片被取消選取時                                  |
 
 <a id="nothing-starts-cleared"></a>
 
@@ -482,14 +482,14 @@ Epson 腳本上限為 200 個操作。比對平均在約 30 個操作後停止�
 
 兩個時鐘由不同的腳本驅動。在測試框架和錄製中，它們共用一個 20 位元組的儲存區，而實際上沒有卡帶如此，因為沒有卡帶同時搭載兩個部件。時間也由腳本設定，因為參照實現讀取的是掛鐘時間。參照原始碼在建置時取得，從不納入儲存庫。只有 [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) 中的驅動程式屬於此儲存庫。
 
-| 命令 | 參數 | 退出碼 |
-|:--|:--|:--|
-| `python3 -m conformance.build` | `--sources DIR`、`--output PATH`、`--pinned FILE`、`--driver-source FILE` | 0 已建置，1 編譯失敗，2 參數錯誤或取得失敗 |
-| `python3 -m conformance.reference` | `--runs N`，預設 200，`--from N`、`--seed N`、`--length N`，預設 4000，`--driver PATH` | 0 無不一致，1 有不一致或未聲明的分歧，2 無驅動程式或參數錯誤 |
-| `python3 -m conformance.documents` | `--check` 只驗證不下載，`--only SUBSTRING` | 0 每個摘要值都相符，1 有一個被拒絕、全部不相符或參數錯誤 |
-| `python3 -m conformance.quotes` | 無 | 記錄中的引文在其文件中找不到或引用核對不符時為 1，否則為 0，包括磁碟上沒有任何文件時 |
-| `python3 -m conformance.speed` | 無 | 讀取速度高於每秒 500,000 次的下限時為 0，否則為 1 |
-| `python3 -m conformance.cartridge CARTRIDGE OUT.json` | 一個卡帶映像檔及一個輸出路徑 | 0 已寫入，1 找不到時鐘例程，2 參數錯誤或檔案不存在 |
+| 命令                                                  | 參數                                                                                   | 退出碼                                                                               |
+| :---------------------------------------------------- | :------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- |
+| `python3 -m conformance.build`                        | `--sources DIR`、`--output PATH`、`--pinned FILE`、`--driver-source FILE`              | 0 已建置，1 編譯失敗，2 參數錯誤或取得失敗                                           |
+| `python3 -m conformance.reference`                    | `--runs N`，預設 200，`--from N`、`--seed N`、`--length N`，預設 4000，`--driver PATH` | 0 無不一致，1 有不一致或未聲明的分歧，2 無驅動程式或參數錯誤                         |
+| `python3 -m conformance.documents`                    | `--check` 只驗證不下載，`--only SUBSTRING`                                             | 0 每個摘要值都相符，1 有一個被拒絕、全部不相符或參數錯誤                             |
+| `python3 -m conformance.quotes`                       | 無                                                                                     | 記錄中的引文在其文件中找不到或引用核對不符時為 1，否則為 0，包括磁碟上沒有任何文件時 |
+| `python3 -m conformance.speed`                        | 無                                                                                     | 讀取速度高於每秒 500,000 次的下限時為 0，否則為 1                                    |
+| `python3 -m conformance.cartridge CARTRIDGE OUT.json` | 一個卡帶映像檔及一個輸出路徑                                                           | 0 已寫入，1 找不到時鐘例程，2 參數錯誤或檔案不存在                                   |
 
 失敗的腳本可從其種子重新生成。`reference.generate(seed, length, part)` 返回操作，`reference.render(script)` 返回驅動程式從標準輸入讀取的文字。
 
@@ -510,15 +510,15 @@ print(len(script), reference.render(script).splitlines()[:4])
 
 ## 參與開發
 
-| 需要 | 位置 |
-|:--|:--|
-| 所有關卡檢查及其執行順序 | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| 供程式編寫代理使用的同一份資料 | [AGENTS.md](AGENTS.md) |
-| 此儲存庫與同系列其他儲存庫共用的標準 | [FAMILY.md](FAMILY.md) |
-| 尚未定案的事項，以及什麼可以定案 | [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) |
-| 錯誤報告 | [GitHub Issues](https://github.com/gufranco/snes-rtc-python/issues) |
-| 保安報告 | [SECURITY.md](SECURITY.md) |
-| 行為準則 | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
+| 需要                                 | 位置                                                                |
+| :----------------------------------- | :------------------------------------------------------------------ |
+| 所有關卡檢查及其執行順序             | [CONTRIBUTING.md](CONTRIBUTING.md)                                  |
+| 供程式編寫代理使用的同一份資料       | [AGENTS.md](AGENTS.md)                                              |
+| 此儲存庫與同系列其他儲存庫共用的標準 | [FAMILY.md](FAMILY.md)                                              |
+| 尚未定案的事項，以及什麼可以定案     | [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)                              |
+| 錯誤報告                             | [GitHub Issues](https://github.com/gufranco/snes-rtc-python/issues) |
+| 保安報告                             | [SECURITY.md](SECURITY.md)                                          |
+| 行為準則                             | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)                            |
 
 ```bash
 uvx ruff@0.16.3 format --check .
@@ -538,8 +538,8 @@ done
 
 ## 參考資料
 
-- *Application Manual: Real Time Clock Module RTC-4513*，Seiko Epson，1999 年 12 月 1 日。18 頁，509,740 位元組，SHA-256 `409b8a5a3030fe432dd7dafbf4719944abac890cc5cbebbf96fb8313f9caca33`。這是沒有文字層的傳真文件，因此引用其中內容時以渲染頁面來核對。
-- *RTC-4513 catalogue extract*，Seiko Epson，無日期。2 頁，701,040 位元組，SHA-256 `6496eb35fddc181d4e80832b98b8a45163bf5370eadd1e58002aefc83f12edcf`。它印有同一份十六行的暫存器表。
+- _Application Manual: Real Time Clock Module RTC-4513_，Seiko Epson，1999 年 12 月 1 日。18 頁，509,740 位元組，SHA-256 `409b8a5a3030fe432dd7dafbf4719944abac890cc5cbebbf96fb8313f9caca33`。這是沒有文字層的傳真文件，因此引用其中內容時以渲染頁面來核對。
+- _RTC-4513 catalogue extract_，Seiko Epson，無日期。2 頁，701,040 位元組，SHA-256 `6496eb35fddc181d4e80832b98b8a45163bf5370eadd1e58002aefc83f12edcf`。它印有同一份十六行的暫存器表。
 - snes9x，`srtcemu.cpp` 和 `spc7110emu.cpp` 及其標頭檔，位於提交 `2971061cf07fdc6fc7d18883edf4e648eb16a6d2`，https://github.com/snes9xgit/snes9x ，固定於 [`conformance/pinned.json`](conformance/pinned.json)。兩個部件都與之比對的參照實現。於建置時取得，從不納入儲存庫。
 
 兩份 Epson 文件都不可再分發，也不在此儲存庫中。[`conformance/documents.json`](conformance/documents.json) 記載每份文件的摘要值、大小和地址，`python3 -m conformance.documents` 會把它們下載到 git 忽略的 `docs/`，並拒絕任何摘要值不相符的檔案。

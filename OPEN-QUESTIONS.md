@@ -48,7 +48,7 @@ changing the model to match the recording.
 **The document says.** It is CAL/HW, which selects how much of the counter chain
 runs. It does not add time.
 
-Source: Seiko Epson, *Application Manual: Real Time Clock Module RTC-4513*.
+Source: Seiko Epson, _Application Manual: Real Time Clock Module RTC-4513_.
 
 **What the recording does.** Treats a write of that bit as a request to add one
 second, by backdating the recorded moment so the clock gains it on the next
@@ -61,14 +61,14 @@ bounded how much the answer matters. Read out of the shipped program's own code
 on 2026-08-25, without running any of it, the routine that initialises the clock
 runs this sequence:
 
-| Write | Value | Bits |
-|:--|--:|:--|
-| CD | `0x01` | HOLD |
-| CE | `0x0f` | none named |
-| CF | `0x07` | RESET, STOP, HOURS_24 |
-| the thirteen clock registers, from a table | | |
-| CF | `0x04` | HOURS_24 |
-| CD | `0x06` | CAL_HW, IRQ_F |
+| Write                                      |  Value | Bits                  |
+| :----------------------------------------- | -----: | :-------------------- |
+| CD                                         | `0x01` | HOLD                  |
+| CE                                         | `0x0f` | none named            |
+| CF                                         | `0x07` | RESET, STOP, HOURS_24 |
+| the thirteen clock registers, from a table |        |                       |
+| CF                                         | `0x04` | HOURS_24              |
+| CD                                         | `0x06` | CAL_HW, IRQ_F         |
 
 So the last thing the routine does is set CAL/HW. Under the recording's reading
 that gains a second every time a clock is initialised in the one title carrying

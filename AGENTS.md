@@ -88,17 +88,17 @@ this package having no sub-second time base. Do not close one by argument.
 
 ## The two parts share almost nothing
 
-| | Sharp S-RTC | Epson RTC-4513 |
-|:--|:--|:--|
-| Manufacturer document | none known to exist | application manual, 1999 |
-| Reached at | `$2800` and `$2801` | `$4840` through `$4842`, via the SPC7110 |
-| Shape | a fixed sequence wrapped in a marker | an addressed register file of sixteen nibbles |
-| Getting at one field | read the whole sequence and count | name its address |
-| Weekday | computed from the date when the date is written | a counter of its own, with no meaning attached |
-| Year | three digits plus a thousand | two digits with no century printed anywhere |
-| Hours | twenty four | twelve or twenty four, chosen by a control bit |
-| Control registers | none | three, whose sixteen bits the manual names one by one |
-| Clock catches up | when the sequence is read | when the chip is switched **off** |
+|                       | Sharp S-RTC                                     | Epson RTC-4513                                        |
+| :-------------------- | :---------------------------------------------- | :---------------------------------------------------- |
+| Manufacturer document | none known to exist                             | application manual, 1999                              |
+| Reached at            | `$2800` and `$2801`                             | `$4840` through `$4842`, via the SPC7110              |
+| Shape                 | a fixed sequence wrapped in a marker            | an addressed register file of sixteen nibbles         |
+| Getting at one field  | read the whole sequence and count               | name its address                                      |
+| Weekday               | computed from the date when the date is written | a counter of its own, with no meaning attached        |
+| Year                  | three digits plus a thousand                    | two digits with no century printed anywhere           |
+| Hours                 | twenty four                                     | twelve or twenty four, chosen by a control bit        |
+| Control registers     | none                                            | three, whose sixteen bits the manual names one by one |
+| Clock catches up      | when the sequence is read                       | when the chip is switched **off**                     |
 
 A change that looks like it applies to both almost certainly applies to one.
 
@@ -139,20 +139,20 @@ module of the same name.
 
 ## Conventions that are not negotiable
 
-| Thing | Rule |
-|:------|:-----|
-| Language | Python only |
-| Comments | None in source, and a docstring counts as one |
-| Test layout | `<module>.test.py` beside the module it covers, split by subject into files named after what they hold once one passes 500 lines |
-| Test shape | Arrange, act, assert, each opened by its bare marker |
-| Coverage | 100% statements and branches, enforced |
-| Types | `mypy` at strict, plus every optional error class |
-| Commits | Conventional Commits, subject under 50 characters |
-| The reference | Fetched and pinned by commit, never vendored |
-| Documents | Read, quoted and pinned by digest. Never committed: the Epson manual is Seiko Epson's |
-| Undefined state | Nothing starts cleared, and the manufacturer says so in as many words |
-| Fidelity | Where the part and convenience disagree, the part wins |
-| Public API | This and the rest of the family present the same shape where the hardware allows. See [FAMILY.md](FAMILY.md) |
+| Thing           | Rule                                                                                                                             |
+| :-------------- | :------------------------------------------------------------------------------------------------------------------------------- |
+| Language        | Python only                                                                                                                      |
+| Comments        | None in source, and a docstring counts as one                                                                                    |
+| Test layout     | `<module>.test.py` beside the module it covers, split by subject into files named after what they hold once one passes 500 lines |
+| Test shape      | Arrange, act, assert, each opened by its bare marker                                                                             |
+| Coverage        | 100% statements and branches, enforced                                                                                           |
+| Types           | `mypy` at strict, plus every optional error class                                                                                |
+| Commits         | Conventional Commits, subject under 50 characters                                                                                |
+| The reference   | Fetched and pinned by commit, never vendored                                                                                     |
+| Documents       | Read, quoted and pinned by digest. Never committed: the Epson manual is Seiko Epson's                                            |
+| Undefined state | Nothing starts cleared, and the manufacturer says so in as many words                                                            |
+| Fidelity        | Where the part and convenience disagree, the part wins                                                                           |
+| Public API      | This and the rest of the family present the same shape where the hardware allows. See [FAMILY.md](FAMILY.md)                     |
 
 The linter's ignores in [`pyproject.toml`](pyproject.toml) carry no comments, so
 their reasons live here:
@@ -185,6 +185,18 @@ The coverage exclusions carry none either:
 - `@unittest\.skipUnless\(SOLD_AS_A_COMPONENT,`, `^def machine_mentions\(` and
   `^def listing\(` in the coverage exclusions: this part only existed inside one
   machine, so the family sweep for machine names is skipped here.
+
+The formatter's ignores in [`.prettierignore`](.prettierignore) carry no
+comments either, so their reasons live here:
+
+- `pnpm-lock.yaml` and `package-lock.json`: the package manager writes them, in
+  its own layout, on every install.
+- `node_modules/`, `.venv/`, `venv/`, `build/`, `dist/` and `*.egg-info/`:
+  installed or built, never written by hand.
+- `.coverage`, `coverage.json`, `htmlcov/` and the tool caches: the output of a
+  run, never committed.
+- `docs/`, `specs/`, `.work/` and `.claude/`: local working material, never
+  committed.
 
 ## Layout
 
@@ -254,7 +266,7 @@ being made in one of them and forgotten in the others, because a test in this
 repository cannot see the others, so the check is a command rather than a suite:
 
 ```sh
-shared() { sed '/^\*Everything above this line/q' "$1"; }
+shared() { sed '/^_Everything above this line/q' "$1"; }
 
 grep -o 'github\.com/[^/]*/\([a-z0-9-]*\))' FAMILY.md | sed 's|.*/||; s|)||' | sort -u |
 while read -r member; do

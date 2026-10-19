@@ -34,10 +34,10 @@ The example builds the Sharp clock over a zeroed store and hands it a time sourc
 
 ## Install
 
-| Requirement | Version |
-|:--|:--|
-| Python | 3.12 or newer |
-| git | Any, to clone |
+| Requirement             | Version                                                       |
+| :---------------------- | :------------------------------------------------------------ |
+| Python                  | 3.12 or newer                                                 |
+| git                     | Any, to clone                                                 |
 | A C++17 compiler, `g++` | Only to build the reference the differential compares against |
 
 ```bash
@@ -60,10 +60,10 @@ Releases follow [Semantic Versioning](https://semver.org/) and are cut from the 
 
 `snesrtc.Chip(model, store=None, now=..., open_bus=0x00)` builds one clock. `model` is required. `store` is a `Store`, and the clock builds a seeded one when it is left out. `now` is a callable returning whole seconds, and the clock keeps its low 32 bits; the default reads `time.time()`. `open_bus` is accepted by the Sharp part only and is what it answers at an address it does not own. The Epson part answers `0x00` there.
 
-| Model | Aliases | Addresses | Year | Hours |
-|:--|:--|:--|:--|:--|
-| `s-rtc` | `srtc`, `sharp`, `sharprtc` | `$2800` data, `$2801` control | Three digits plus 1000, so 1000 to 1999 | 24 |
-| `rtc-4513` | `rtc4513`, `epson`, `epsonrtc`, `spc7110`, `spc7110rtc` | `$4840` enable, `$4841` data, `$4842` status | Two digits, read as 1990 to 2089 | 12 or 24, chosen by a control bit |
+| Model      | Aliases                                                 | Addresses                                    | Year                                    | Hours                             |
+| :--------- | :------------------------------------------------------ | :------------------------------------------- | :-------------------------------------- | :-------------------------------- |
+| `s-rtc`    | `srtc`, `sharp`, `sharprtc`                             | `$2800` data, `$2801` control                | Three digits plus 1000, so 1000 to 1999 | 24                                |
+| `rtc-4513` | `rtc4513`, `epson`, `epsonrtc`, `spc7110`, `spc7110rtc` | `$4840` enable, `$4841` data, `$4842` status | Two digits, read as 1990 to 2089        | 12 or 24, chosen by a control bit |
 
 A name matches whatever its case, and spaces, hyphens and underscores are ignored. A missing or unknown name raises `UnknownModelError`, whose message lists the names accepted.
 
@@ -93,68 +93,68 @@ s-dsp is not a clock this package covers; it has rtc-4513, s-rtc
 
 ### Calls both clocks take
 
-| Call | Effect |
-|:--|:--|
-| `read(address)` | One byte from the cartridge bus |
-| `write(address, value)` | One byte to the cartridge bus. Returns nothing |
-| `reset()` | What the console's reset does. The Sharp part goes back to the start of a read and brings its time current. The Epson part is deselected, back in write mode at register 0, with enable and status cleared. The store is not touched. Returns the clock |
+| Call                    | Effect                                                                                                                                                                                                                                                  |
+| :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `read(address)`         | One byte from the cartridge bus                                                                                                                                                                                                                         |
+| `write(address, value)` | One byte to the cartridge bus. Returns nothing                                                                                                                                                                                                          |
+| `reset()`               | What the console's reset does. The Sharp part goes back to the start of a read and brings its time current. The Epson part is deselected, back in write mode at register 0, with enable and status cleared. The store is not touched. Returns the clock |
 
-| Attribute | Meaning |
-|:--|:--|
-| `model` | The canonical model name |
-| `store` | The `Store` the clock counts in |
-| `now` | The time source |
+| Attribute | Meaning                         |
+| :-------- | :------------------------------ |
+| `model`   | The canonical model name        |
+| `store`   | The `Store` the clock counts in |
+| `now`     | The time source                 |
 
 ### Module contents
 
-| Name | Content |
-|:--|:--|
-| `snesrtc.MODELS` | The two `Model` records, keyed by canonical name |
-| `snesrtc.Model` | A record with `name`, `summary`, `addresses`, `protocol` and `aliases`, and `build(store=None, **options)`, which `Chip` calls |
-| `snesrtc.models.lookup(name)` | The `Model` for any spelling. Raises `UnknownModelError` |
-| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | The 20 bytes the cartridge keeps on a battery. See [Nothing starts cleared](#nothing-starts-cleared) |
-| `snesrtc.Built` | The type `Chip` returns, `epson.Chip` or `sharp.Chip` |
-| `snesrtc.UnknownModelError` | The one error the package raises, for a missing or unknown model name. It lives in `snesrtc.errors` |
-| `snesrtc.__version__` | The installed version |
-| `snesrtc.sharp`, `snesrtc.epson` | Each part's `Chip` class, addresses, command codes and register constants |
-| `snesrtc.store` | `Store` and its constants `SIZE`, `STAMP_AT`, `STAMP_BYTES` and `UNSET_SEED` |
-| `snesrtc.calendar` | The calendar arithmetic both parts share |
+| Name                                                       | Content                                                                                                                        |
+| :--------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
+| `snesrtc.MODELS`                                           | The two `Model` records, keyed by canonical name                                                                               |
+| `snesrtc.Model`                                            | A record with `name`, `summary`, `addresses`, `protocol` and `aliases`, and `build(store=None, **options)`, which `Chip` calls |
+| `snesrtc.models.lookup(name)`                              | The `Model` for any spelling. Raises `UnknownModelError`                                                                       |
+| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | The 20 bytes the cartridge keeps on a battery. See [Nothing starts cleared](#nothing-starts-cleared)                           |
+| `snesrtc.Built`                                            | The type `Chip` returns, `epson.Chip` or `sharp.Chip`                                                                          |
+| `snesrtc.UnknownModelError`                                | The one error the package raises, for a missing or unknown model name. It lives in `snesrtc.errors`                            |
+| `snesrtc.__version__`                                      | The installed version                                                                                                          |
+| `snesrtc.sharp`, `snesrtc.epson`                           | Each part's `Chip` class, addresses, command codes and register constants                                                      |
+| `snesrtc.store`                                            | `Store` and its constants `SIZE`, `STAMP_AT`, `STAMP_BYTES` and `UNSET_SEED`                                                   |
+| `snesrtc.calendar`                                         | The calendar arithmetic both parts share                                                                                       |
 
 ### The Sharp S-RTC
 
 A write to `$2801` drives a state machine. Only the low four bits of a value are read.
 
-| Write to `$2801` | Effect |
-|:--|:--|
-| `0D` | Start a read. The next read of `$2800` brings the time current and answers the `0F` marker |
-| `0E` | Wait for a command |
-| `0E`, then `00` | Start a write. The next twelve writes are the digits, and the chip computes the thirteenth, the weekday |
-| `0E`, then `04` | Clear all thirteen digits to 0 |
-| `0E`, then any other value | Stop. Writes are ignored until the next `0D` or `0E` |
-| `0F` | Ignored |
+| Write to `$2801`           | Effect                                                                                                  |
+| :------------------------- | :------------------------------------------------------------------------------------------------------ |
+| `0D`                       | Start a read. The next read of `$2800` brings the time current and answers the `0F` marker              |
+| `0E`                       | Wait for a command                                                                                      |
+| `0E`, then `00`            | Start a write. The next twelve writes are the digits, and the chip computes the thirteenth, the weekday |
+| `0E`, then `04`            | Clear all thirteen digits to 0                                                                          |
+| `0E`, then any other value | Stop. Writes are ignored until the next `0D` or `0E`                                                    |
+| `0F`                       | Ignored                                                                                                 |
 
 A read sequence is the `0F` marker, thirteen digits, then the marker again, after which it starts over. Outside a read, `$2800` answers `0x00`.
 
-| Store byte | Digit |
-|:--|:--|
-| 0, 1 | Seconds, ones then tens |
-| 2, 3 | Minutes |
-| 4, 5 | Hours |
-| 6, 7 | Day |
-| 8 | Month, one digit holding 1 to 12 |
-| 9, 10, 11 | Year minus 1000, ones then tens then hundreds |
-| 12 | Weekday, 0 for Sunday, counted from Monday 1 January 1900 |
-| 16 to 19 | The time the store was last brought current, low byte first |
+| Store byte | Digit                                                       |
+| :--------- | :---------------------------------------------------------- |
+| 0, 1       | Seconds, ones then tens                                     |
+| 2, 3       | Minutes                                                     |
+| 4, 5       | Hours                                                       |
+| 6, 7       | Day                                                         |
+| 8          | Month, one digit holding 1 to 12                            |
+| 9, 10, 11  | Year minus 1000, ones then tens then hundreds               |
+| 12         | Weekday, 0 for Sunday, counted from Monday 1 January 1900   |
+| 16 to 19   | The time the store was last brought current, low byte first |
 
-| Attribute or call | Meaning |
-|:--|:--|
-| `mode` | `"read"`, `"command"`, `"write"` or `"ready"` |
-| `index` | The next digit in the sequence, -1 before the marker |
-| `open_bus` | What an address the part does not own reads as |
-| `read_moment()`, `store_moment(moment)` | The thirteen digits as a `calendar.Moment`, and back |
-| `elapsed()` | Seconds since the stamp in bytes 16 to 19. A gap over 2^31 reads as 0 |
-| `update()` | Advance the digits by `elapsed()` and restamp |
-| `command(value)`, `accept(value)` | The two halves of `write` after the command byte |
+| Attribute or call                       | Meaning                                                               |
+| :-------------------------------------- | :-------------------------------------------------------------------- |
+| `mode`                                  | `"read"`, `"command"`, `"write"` or `"ready"`                         |
+| `index`                                 | The next digit in the sequence, -1 before the marker                  |
+| `open_bus`                              | What an address the part does not own reads as                        |
+| `read_moment()`, `store_moment(moment)` | The thirteen digits as a `calendar.Moment`, and back                  |
+| `elapsed()`                             | Seconds since the stamp in bytes 16 to 19. A gap over 2^31 reads as 0 |
+| `update()`                              | Advance the digits by `elapsed()` and restamp                         |
+| `command(value)`, `accept(value)`       | The two halves of `write` after the command byte                      |
 
 `snesrtc.sharp` carries `DATA`, `CONTROL`, `MARKER`, `LAST_INDEX`, `COMMAND_READ`, `COMMAND_BEGIN`, `COMMAND_NOTHING`, `COMMAND_WRITE`, `COMMAND_CLEAR`, `YEAR_BASE` and `STAMP_LIMIT`, and the four `mode` values as `READING`, `COMMAND`, `WRITING` and `READY`.
 
@@ -162,35 +162,35 @@ A read sequence is the `0F` marker, thirteen digits, then the marker again, afte
 
 The SPC7110 turns the part's three-wire serial interface into three cartridge addresses. A program talks to it in sessions.
 
-| Step | Bus access | Effect |
-|:--|:--|:--|
-| Select | Write `$4840` with bit 0 set | Status becomes `0x80`. The part waits for a mode |
-| Mode | Write `$4841` with `0x03` or `0x0C` | Write mode or read mode. Any other value is ignored |
-| Register | Write `$4841` with 0 to 15 | The register the next access starts at |
-| Data | Write or read `$4841` | One nibble. The register index then moves on by one and wraps after 15 |
-| Deselect | Write `$4840` with bit 0 clear | Brings the counters current, clears the read flags and clears TEST |
-| Status | Read `$4842` | `0x80` after any access, then `0x00` until the next one |
+| Step     | Bus access                          | Effect                                                                 |
+| :------- | :---------------------------------- | :--------------------------------------------------------------------- |
+| Select   | Write `$4840` with bit 0 set        | Status becomes `0x80`. The part waits for a mode                       |
+| Mode     | Write `$4841` with `0x03` or `0x0C` | Write mode or read mode. Any other value is ignored                    |
+| Register | Write `$4841` with 0 to 15          | The register the next access starts at                                 |
+| Data     | Write or read `$4841`               | One nibble. The register index then moves on by one and wraps after 15 |
+| Deselect | Write `$4840` with bit 0 clear      | Brings the counters current, clears the read flags and clears TEST     |
+| Status   | Read `$4842`                        | `0x80` after any access, then `0x00` until the next one                |
 
 Reading `$4840` returns the last value written there. Reading CD clears IRQ-F.
 
-| Register | Index | D3 | D2 | D1 | D0 | Count range |
-|:--|:--|:--|:--|:--|:--|:--|
-| `S1` | 0 | s8 | s4 | s2 | s1 | 0 to 9 |
-| `S10` | 1 | fo | s40 | s20 | s10 | 0 to 5 |
-| `MI1` | 2 | mi8 | mi4 | mi2 | mi1 | 0 to 9 |
-| `MI10` | 3 | fr | mi40 | mi20 | mi10 | 0 to 5 |
-| `H1` | 4 | h8 | h4 | h2 | h1 | 0 to 9 |
-| `H10` | 5 | fr | PM/AM | h20 | h10 | 0 to 2 |
-| `D1` | 6 | d8 | d4 | d2 | d1 | 0 to 9 |
-| `D10` | 7 | fr | free RAM | d20 | d10 | 0 to 3 |
-| `MO1` | 8 | mo8 | mo4 | mo2 | mo1 | 0 to 9 |
-| `MO10` | 9 | fr | free RAM | free RAM | mo10 | 0 to 1 |
-| `Y1` | 10 | y8 | y4 | y2 | y1 | 0 to 9 |
-| `Y10` | 11 | y80 | y40 | y20 | y10 | 0 to 9 |
-| `W` | 12 | fr | w4 | w2 | w1 | 0 to 6 |
-| `CD` | 13 | 30ADJ. | IRQ-F | CAL/HW | HOLD | |
-| `CE` | 14 | t1 | t0 | INT/STND | MASK | |
-| `CF` | 15 | TEST | 24/12 | STOP | RESET | |
+| Register | Index | D3     | D2       | D1       | D0    | Count range |
+| :------- | :---- | :----- | :------- | :------- | :---- | :---------- |
+| `S1`     | 0     | s8     | s4       | s2       | s1    | 0 to 9      |
+| `S10`    | 1     | fo     | s40      | s20      | s10   | 0 to 5      |
+| `MI1`    | 2     | mi8    | mi4      | mi2      | mi1   | 0 to 9      |
+| `MI10`   | 3     | fr     | mi40     | mi20     | mi10  | 0 to 5      |
+| `H1`     | 4     | h8     | h4       | h2       | h1    | 0 to 9      |
+| `H10`    | 5     | fr     | PM/AM    | h20      | h10   | 0 to 2      |
+| `D1`     | 6     | d8     | d4       | d2       | d1    | 0 to 9      |
+| `D10`    | 7     | fr     | free RAM | d20      | d10   | 0 to 3      |
+| `MO1`    | 8     | mo8    | mo4      | mo2      | mo1   | 0 to 9      |
+| `MO10`   | 9     | fr     | free RAM | free RAM | mo10  | 0 to 1      |
+| `Y1`     | 10    | y8     | y4       | y2       | y1    | 0 to 9      |
+| `Y10`    | 11    | y80    | y40      | y20      | y10   | 0 to 9      |
+| `W`      | 12    | fr     | w4       | w2       | w1    | 0 to 6      |
+| `CD`     | 13    | 30ADJ. | IRQ-F    | CAL/HW   | HOLD  |             |
+| `CE`     | 14    | t1     | t0       | INT/STND | MASK  |             |
+| `CF`     | 15    | TEST   | 24/12    | STOP     | RESET |             |
 
 `snesrtc.epson` names each register by its index, `S1` through `CF`, and each control bit by its mask: `HOLD`, `CAL_HW`, `IRQ_F` and `ADJUST` in CD, `RESET`, `STOP`, `HOURS_24` and `TEST` in CF, and `MASK` and `INT_STND` in CE. It also carries `ENABLE`, `DATA`, `STATUS`, `WRITE_MODE`, `READ_MODE`, `READY`, `REGISTERS`, `DIGIT_MASK`, `OSC_FLAG`, `READ_FLAG`, `READ_FLAG_AT`, `CALENDAR_READ_FLAG_AT`, `PM`, `H20`, `STOPPED`, `NIBBLE`, `HALF_MINUTE`, `MINUTE`, `HOUR`, `WHOLE_SECONDS_PER_PERIOD`, `PERIOD_SHIFT`, `PERIOD_BITS`, `NOON`, `YEAR_PIVOT` and `STAMP_LIMIT`, and the five `state` values as `INACTIVE`, `MODE_SELECT`, `INDEX_SELECT`, `READING` and `WRITING`.
 
@@ -231,22 +231,22 @@ print(session(epson.READ_MODE))
 
 Each line is W, Y10 down to S1: weekday 5, 99-12-31, 23:59:50. Fifteen seconds later the first read still shows the old time, because the part catches up when it is deselected. The read after that shows weekday 6, 00-01-01, 00:00:05.
 
-| Attribute or call | Meaning |
-|:--|:--|
-| `state` | `"inactive"`, `"mode"`, `"index"`, `"read"` or `"write"` |
-| `mode` | `0x03` or `0x0C`, the last mode chosen |
-| `index` | The register the next data access reaches |
-| `enable`, `status` | The last value written to `$4840`, and the status byte |
-| `moment()`, `store_moment(moment)` | Registers S1 through W as a `calendar.Moment`, and back. The date is stored only while CAL/HW is set |
-| `hour()`, `store_hour(hour)` | The hour from 0 to 23, read or written in the notation CF selects |
-| `digit(index)`, `put_digit(index, value)` | A register's digit bits alone, leaving its flag bits alone |
-| `twenty_four_hour()`, `dated()`, `stopped()` | Whether 24/12 is set, CAL/HW is set, and RESET or STOP is set |
-| `elapsed(current)` | Seconds from the stamp to `current`. A gap over 2^31 reads as 0 |
-| `update(offset=0)` | Advance the counters to `now() - offset`, unless HOLD is set, and set the read flags if any second passed |
-| `set_read_flag()`, `clear_read_flag()` | Set or clear fr in the five registers that carry it |
-| `read_data()`, `write_enable(value)`, `write_data(value)` | What a read of `$4841`, a write of `$4840` and a write of `$4841` do |
-| `write_register(value)`, `write_control_d(value)`, `write_control_f(value)` | A data write to the current register, and the two control registers that act when written |
-| `release_hold()`, `adjust_to_nearest_minute()` | What clearing HOLD and setting 30ADJ. do |
+| Attribute or call                                                           | Meaning                                                                                                   |
+| :-------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------- |
+| `state`                                                                     | `"inactive"`, `"mode"`, `"index"`, `"read"` or `"write"`                                                  |
+| `mode`                                                                      | `0x03` or `0x0C`, the last mode chosen                                                                    |
+| `index`                                                                     | The register the next data access reaches                                                                 |
+| `enable`, `status`                                                          | The last value written to `$4840`, and the status byte                                                    |
+| `moment()`, `store_moment(moment)`                                          | Registers S1 through W as a `calendar.Moment`, and back. The date is stored only while CAL/HW is set      |
+| `hour()`, `store_hour(hour)`                                                | The hour from 0 to 23, read or written in the notation CF selects                                         |
+| `digit(index)`, `put_digit(index, value)`                                   | A register's digit bits alone, leaving its flag bits alone                                                |
+| `twenty_four_hour()`, `dated()`, `stopped()`                                | Whether 24/12 is set, CAL/HW is set, and RESET or STOP is set                                             |
+| `elapsed(current)`                                                          | Seconds from the stamp to `current`. A gap over 2^31 reads as 0                                           |
+| `update(offset=0)`                                                          | Advance the counters to `now() - offset`, unless HOLD is set, and set the read flags if any second passed |
+| `set_read_flag()`, `clear_read_flag()`                                      | Set or clear fr in the five registers that carry it                                                       |
+| `read_data()`, `write_enable(value)`, `write_data(value)`                   | What a read of `$4841`, a write of `$4840` and a write of `$4841` do                                      |
+| `write_register(value)`, `write_control_d(value)`, `write_control_f(value)` | A data write to the current register, and the two control registers that act when written                 |
+| `release_hold()`, `adjust_to_nearest_minute()`                              | What clearing HOLD and setting 30ADJ. do                                                                  |
 
 ```python
 from snesrtc import Chip, Store, epson
@@ -284,14 +284,14 @@ Status reads `0x80` once after the select. The write to CD sets IRQ-F and 30ADJ.
 
 `snesrtc.calendar` holds the arithmetic both parts run when they catch up.
 
-| Name | Content |
-|:--|:--|
-| `Moment(year, month, day, hour, minute, second, weekday)` | One reading of a clock. Compares and hashes by value |
-| `advance(moment, seconds)` | The moment `seconds` later, counted the way the reference counts |
-| `is_leap(year)` | The Gregorian rule |
-| `days_in(year, month)` | 28 to 31. A month outside 1 to 12 is reduced modulo 12 |
-| `weekday(year, month, day)` | 0 for Sunday, counted from Monday 1 January 1900 |
-| `MONTHS`, `EPOCH_YEAR`, `EPOCH_WEEKDAY`, `WEEK`, `DAY`, `MASK` | The constants behind them |
+| Name                                                           | Content                                                          |
+| :------------------------------------------------------------- | :--------------------------------------------------------------- |
+| `Moment(year, month, day, hour, minute, second, weekday)`      | One reading of a clock. Compares and hashes by value             |
+| `advance(moment, seconds)`                                     | The moment `seconds` later, counted the way the reference counts |
+| `is_leap(year)`                                                | The Gregorian rule                                               |
+| `days_in(year, month)`                                         | 28 to 31. A month outside 1 to 12 is reduced modulo 12           |
+| `weekday(year, month, day)`                                    | 0 for Sunday, counted from Monday 1 January 1900                 |
+| `MONTHS`, `EPOCH_YEAR`, `EPOCH_WEEKDAY`, `WEEK`, `DAY`, `MASK` | The constants behind them                                        |
 
 ```python
 from snesrtc.calendar import Moment, advance, days_in, is_leap, weekday
@@ -307,10 +307,10 @@ False True 29 0
 
 ### The doctor
 
-| Command | Exit code |
-|:--|:--|
+| Command                                              | Exit code                                                     |
+| :--------------------------------------------------- | :------------------------------------------------------------ |
 | `python3 snesrtc/doctor.py` from the repository root | 0 when every check of the package passes, 1 when one does not |
-| `snesrtc-doctor`, after a pip install | The same |
+| `snesrtc-doctor`, after a pip install                | The same                                                      |
 
 It takes no arguments. It reports the machine first: interpreter, encodings, filesystem case, line endings, path length, free space and git. Those lines advise and never change the exit code. Then it checks the package: the Python version, both clocks built and reset, a clock given a fixed time reading it back, `$2802` reading as open bus, the pin in [`conformance/pinned.json`](conformance/pinned.json), and whether the reference driver is built. A check that raises is reported with the exception's type and message.
 
@@ -318,11 +318,11 @@ It takes no arguments. It reports the machine first: interpreter, encodings, fil
 
 The two clocks rest on different evidence.
 
-| Rung | Source | Settles |
-|:--|:--|:--|
-| 1 | Seiko Epson, *Application Manual: Real Time Clock Module RTC-4513* | Anything Epson printed about the RTC-4513: register widths, count ranges, what each control bit does, how a session is framed, what power-on leaves behind |
-| 2 | A recording from snes9x, pinned by commit | What the manual does not: how the SPC7110 turns a three-wire serial part into three cartridge addresses, what the counters do outside a documented range, and the whole of the Sharp part |
-| 3 | Nothing else | Nothing |
+| Rung | Source                                                             | Settles                                                                                                                                                                                   |
+| :--- | :----------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Seiko Epson, _Application Manual: Real Time Clock Module RTC-4513_ | Anything Epson printed about the RTC-4513: register widths, count ranges, what each control bit does, how a session is framed, what power-on leaves behind                                |
+| 2    | A recording from snes9x, pinned by commit                          | What the manual does not: how the SPC7110 turns a three-wire serial part into three cartridge addresses, what the counters do outside a documented range, and the whole of the Sharp part |
+| 3    | Nothing else                                                       | Nothing                                                                                                                                                                                   |
 
 Every figure on rung 1 is in [`conformance/hardware.json`](conformance/hardware.json) with the sentence it was read from, the document's digest and the date it was read. [`conformance/hardware.test.py`](conformance/hardware.test.py) drives the package and checks what it does against it.
 
@@ -405,17 +405,17 @@ print(advance(Moment(1996, 8, 18, 12, 100, 59, 0), 1))
 
 They are parts from different makers, on cartridges from different publishers.
 
-| | Sharp S-RTC | Epson RTC-4513 |
-|:--|:--|:--|
-| Manufacturer document | None known | Application manual, 1999 |
-| Reached at | `$2800` and `$2801` | `$4840` through `$4842`, through the SPC7110 |
-| Shape | A fixed sequence wrapped in a marker | An addressed file of sixteen 4-bit registers |
-| Getting at one field | Read the whole sequence and count | Name its register |
-| Weekday | Computed from the date when the date is written | A counter of its own, 0 to 6, with no meaning attached |
-| Year | Three digits plus 1000 | Two digits, no century printed anywhere |
-| Hours | 24 | 12 or 24, chosen by a control bit |
-| Control registers | None | Three, with sixteen named bits |
-| Catches up | When a read starts | When the chip is deselected |
+|                       | Sharp S-RTC                                     | Epson RTC-4513                                         |
+| :-------------------- | :---------------------------------------------- | :----------------------------------------------------- |
+| Manufacturer document | None known                                      | Application manual, 1999                               |
+| Reached at            | `$2800` and `$2801`                             | `$4840` through `$4842`, through the SPC7110           |
+| Shape                 | A fixed sequence wrapped in a marker            | An addressed file of sixteen 4-bit registers           |
+| Getting at one field  | Read the whole sequence and count               | Name its register                                      |
+| Weekday               | Computed from the date when the date is written | A counter of its own, 0 to 6, with no meaning attached |
+| Year                  | Three digits plus 1000                          | Two digits, no century printed anywhere                |
+| Hours                 | 24                                              | 12 or 24, chosen by a control bit                      |
+| Control registers     | None                                            | Three, with sixteen named bits                         |
+| Catches up            | When a read starts                              | When the chip is deselected                            |
 
 ## Nothing starts cleared
 
@@ -480,14 +480,14 @@ Epson scripts are capped at 200 operations. Comparison stops after about 30 on a
 
 The two clocks are driven by separate scripts. In the harness and in the recording they share one 20-byte store, which no cartridge did, since none carried both parts. Time is scripted too, because the reference reads the wall clock. The reference sources are fetched at build time and never vendored. Only the driver in [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) belongs to this repository.
 
-| Command | Arguments | Exit code |
-|:--|:--|:--|
-| `python3 -m conformance.build` | `--sources DIR`, `--output PATH`, `--pinned FILE`, `--driver-source FILE` | 0 built, 1 compile failed, 2 bad arguments or fetch failed |
-| `python3 -m conformance.reference` | `--runs N`, default 200, `--from N`, `--seed N`, `--length N`, default 4000, `--driver PATH` | 0 no disagreement, 1 a disagreement or an undeclared divergence, 2 no driver or bad arguments |
-| `python3 -m conformance.documents` | `--check` to verify without fetching, `--only SUBSTRING` | 0 every digest matched; 1 a document was refused, none matched, or the arguments were bad |
-| `python3 -m conformance.quotes` | None | 1 when a quote in the record is not found in its document or a citation does not check out, 0 otherwise, including when no document is on disk |
-| `python3 -m conformance.speed` | None | 0 when reads beat the floor of 500,000 per second, 1 when they do not |
-| `python3 -m conformance.cartridge CARTRIDGE OUT.json` | A cartridge image and an output path | 0 written, 1 no clock routine found, 2 bad arguments or no such file |
+| Command                                               | Arguments                                                                                    | Exit code                                                                                                                                      |
+| :---------------------------------------------------- | :------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| `python3 -m conformance.build`                        | `--sources DIR`, `--output PATH`, `--pinned FILE`, `--driver-source FILE`                    | 0 built, 1 compile failed, 2 bad arguments or fetch failed                                                                                     |
+| `python3 -m conformance.reference`                    | `--runs N`, default 200, `--from N`, `--seed N`, `--length N`, default 4000, `--driver PATH` | 0 no disagreement, 1 a disagreement or an undeclared divergence, 2 no driver or bad arguments                                                  |
+| `python3 -m conformance.documents`                    | `--check` to verify without fetching, `--only SUBSTRING`                                     | 0 every digest matched; 1 a document was refused, none matched, or the arguments were bad                                                      |
+| `python3 -m conformance.quotes`                       | None                                                                                         | 1 when a quote in the record is not found in its document or a citation does not check out, 0 otherwise, including when no document is on disk |
+| `python3 -m conformance.speed`                        | None                                                                                         | 0 when reads beat the floor of 500,000 per second, 1 when they do not                                                                          |
+| `python3 -m conformance.cartridge CARTRIDGE OUT.json` | A cartridge image and an output path                                                         | 0 written, 1 no clock routine found, 2 bad arguments or no such file                                                                           |
 
 A failing script is regenerated from its seed. `reference.generate(seed, length, part)` returns the operations and `reference.render(script)` the text the driver reads on standard input.
 
@@ -508,15 +508,15 @@ The script opens by setting the time and configuring the Epson control registers
 
 ## Working on it
 
-| Need | Where |
-|:--|:--|
-| Every gate and the order to run them | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| The same material for a coding agent | [AGENTS.md](AGENTS.md) |
-| The standard this repository shares with the rest of the family | [FAMILY.md](FAMILY.md) |
-| What is not settled, and what would settle it | [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) |
-| Bug reports | [GitHub Issues](https://github.com/gufranco/snes-rtc-python/issues) |
-| Security reports | [SECURITY.md](SECURITY.md) |
-| Conduct | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
+| Need                                                            | Where                                                               |
+| :-------------------------------------------------------------- | :------------------------------------------------------------------ |
+| Every gate and the order to run them                            | [CONTRIBUTING.md](CONTRIBUTING.md)                                  |
+| The same material for a coding agent                            | [AGENTS.md](AGENTS.md)                                              |
+| The standard this repository shares with the rest of the family | [FAMILY.md](FAMILY.md)                                              |
+| What is not settled, and what would settle it                   | [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)                              |
+| Bug reports                                                     | [GitHub Issues](https://github.com/gufranco/snes-rtc-python/issues) |
+| Security reports                                                | [SECURITY.md](SECURITY.md)                                          |
+| Conduct                                                         | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)                            |
 
 ```bash
 uvx ruff@0.16.3 format --check .
@@ -536,8 +536,8 @@ Do not resolve a divergence by changing the model to match the recording. If the
 
 ## References
 
-- *Application Manual: Real Time Clock Module RTC-4513*, Seiko Epson, 1 December 1999. 18 pages, 509,740 bytes, SHA-256 `409b8a5a3030fe432dd7dafbf4719944abac890cc5cbebbf96fb8313f9caca33`. A fax with no text layer, so a citation into it is checked by rendering the page.
-- *RTC-4513 catalogue extract*, Seiko Epson, undated. 2 pages, 701,040 bytes, SHA-256 `6496eb35fddc181d4e80832b98b8a45163bf5370eadd1e58002aefc83f12edcf`. It prints the same sixteen-row register table.
+- _Application Manual: Real Time Clock Module RTC-4513_, Seiko Epson, 1 December 1999. 18 pages, 509,740 bytes, SHA-256 `409b8a5a3030fe432dd7dafbf4719944abac890cc5cbebbf96fb8313f9caca33`. A fax with no text layer, so a citation into it is checked by rendering the page.
+- _RTC-4513 catalogue extract_, Seiko Epson, undated. 2 pages, 701,040 bytes, SHA-256 `6496eb35fddc181d4e80832b98b8a45163bf5370eadd1e58002aefc83f12edcf`. It prints the same sixteen-row register table.
 - snes9x, `srtcemu.cpp` and `spc7110emu.cpp` with their headers, at commit `2971061cf07fdc6fc7d18883edf4e648eb16a6d2`, https://github.com/snes9xgit/snes9x, pinned in [`conformance/pinned.json`](conformance/pinned.json). The reference both parts are compared against. Fetched at build time and never vendored.
 
 Neither Epson document is redistributable or in this repository. [`conformance/documents.json`](conformance/documents.json) carries the digest, size and address of each, and `python3 -m conformance.documents` fetches them into `docs/`, which git ignores, and refuses any file whose digest does not match.
