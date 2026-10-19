@@ -305,7 +305,8 @@ the clock registers cannot be written, after which the bit clears itself.
 
 **What this project follows.** The document. A chip counting crystal cycles holds
 the bit at 1 and refuses writes to S1 through W for 4 cycles after the write,
-lands the adjustment when the window ends, and cancels it if RESET comes first.
+lands the adjustment at the second the window ends in, and cancels it if RESET
+comes first.
 125 microseconds is 4.096 cycles, and the model rounds to 4. A chip counting
 whole seconds has no window: the bit clears and the adjustment lands at once.
 

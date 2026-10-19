@@ -173,7 +173,7 @@
         "source": "pinned.json"
       },
       "packageFollows": "document",
-      "consequence": "A chip built with rate=epson.CRYSTAL_HZ models the window: for 4 crystal cycles after the write the bit reads 1 and S1 through W refuse writes, the adjustment lands when the window ends, and a RESET inside it cancels the adjustment and clears the bit. 125 microseconds is 4.096 cycles, and the model rounds to 4. A chip counting whole seconds has no window to model, so there the adjustment lands at once and the bit clears at once.",
+      "consequence": "A chip built with rate=epson.CRYSTAL_HZ models the window: for 4 crystal cycles after the write the bit reads 1 and S1 through W refuse writes, the adjustment lands at the second the window ends in, however late the next access comes, and a RESET inside it cancels the adjustment and clears the bit. 125 microseconds is 4.096 cycles, and the model rounds to 4. A chip counting whole seconds has no window to model, so there the adjustment lands at once and the bit clears at once.",
       "openQuestion": "The printed window is not a whole number of crystal cycles. Whether the silicon holds the bit for 4 cycles or 5 is not printed.",
       "wouldSettleIt": [
         "A logic capture timing how long the bit reads 1 after it is written, in crystal cycles."

@@ -8,7 +8,7 @@ Sharp S-RTC 與 Epson RTC-4513，即 Super Nintendo 卡帶可搭載的兩款實�
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** 個時鐘，**329,630** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**1,075** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
+**2** 個時鐘，**329,630** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**1,076** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
 
 ```python
 from snesrtc import Chip, Store
@@ -247,7 +247,7 @@ print(session(epson.READ_MODE))
 | `set_read_flag()`、`clear_read_flag()`                                      | 在帶有 fr 的五個暫存器中設定或清除 fr                                                                                           |
 | `read_data()`、`write_enable(value)`、`write_data(value)`                   | 讀取 `$4841`、寫入 `$4840` 及寫入 `$4841` 時的行為                                                                              |
 | `write_register(value)`、`write_control_d(value)`、`write_control_f(value)` | 對當前暫存器的數據寫入，以及兩個在寫入時生效的控制暫存器                                                                        |
-| `release_hold()`、`adjust_to_nearest_minute()`                              | 清除 HOLD 及設定 30ADJ. 時的行為                                                                                                |
+| `release_hold()`、`adjust_to_nearest_minute(behind=0)`                      | 清除 HOLD 及設定 30ADJ. 時的行為。`behind` 是調整在多少秒之前生效                                                               |
 | `std_p`                                                                     | STD.P 腳位：`crystal.LOW` 或 `crystal.OPEN`。中斷週期模式下 IRQ-F 設定期間為低，固定週期模式下進位後 7.8 ms 為低，MASK 下為開路 |
 | `interrupt_oscillation()`、`restore_oscillation()`                          | 停止振盪器並設定 fo，然後再次啟動。兩者之間的時間會失去                                                                         |
 | `rate`、`crystal`、`oscillating`                                            | 每秒 `now` 的計數、保存秒以下狀態的 `crystal.Crystal`，以及振盪器是否運行                                                       |

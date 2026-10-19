@@ -293,9 +293,10 @@ class Chip:
         self.store.write(CD, self.store.read(CD) | ADJUST)
 
     def settle_adjust(self) -> None:
+        landed = self.crystal.seconds(self.crystal.adjust_at or 0)
         self.crystal.adjust_at = None
         self.store.write(CD, self.store.read(CD) & ~ADJUST & NIBBLE)
-        self.adjust_to_nearest_minute()
+        self.adjust_to_nearest_minute((self.seconds() - landed) & STAMP_MASK)
 
     def write_control_f(self, value: int) -> None:
         held = self.store.read(CF) & NIBBLE
@@ -315,13 +316,13 @@ class Chip:
             self.advance(1)
         self.store.stamp = self.seconds()
 
-    def adjust_to_nearest_minute(self) -> None:
-        self.update()
+    def adjust_to_nearest_minute(self, behind: int = 0) -> None:
+        self.update(behind)
         second = self.digit(S1) + self.digit(S10) * 10
         self.put_digit(S1, 0)
         self.put_digit(S10, 0)
         if second >= HALF_MINUTE:
-            self.update(MINUTE)
+            self.update(behind + MINUTE)
 
     def digit(self, index: int) -> int:
         return self.store.read(index) & DIGIT_MASK[index]

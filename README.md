@@ -8,7 +8,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **1,075** tests, **100%** statement and branch coverage, no dependencies
+**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **1,076** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from snesrtc import Chip, Store
@@ -247,7 +247,7 @@ Each line is W, Y10 down to S1: weekday 5, 99-12-31, 23:59:50. Fifteen seconds l
 | `set_read_flag()`, `clear_read_flag()`                                      | Set or clear fr in the five registers that carry it                                                                                                                |
 | `read_data()`, `write_enable(value)`, `write_data(value)`                   | What a read of `$4841`, a write of `$4840` and a write of `$4841` do                                                                                               |
 | `write_register(value)`, `write_control_d(value)`, `write_control_f(value)` | A data write to the current register, and the two control registers that act when written                                                                          |
-| `release_hold()`, `adjust_to_nearest_minute()`                              | What clearing HOLD and setting 30ADJ. do                                                                                                                           |
+| `release_hold()`, `adjust_to_nearest_minute(behind=0)`                      | What clearing HOLD and setting 30ADJ. do. `behind` is how many seconds ago the adjustment landed                                                                   |
 | `std_p`                                                                     | The STD.P pin: `crystal.LOW` or `crystal.OPEN`. Low while IRQ-F is up in interrupt cycle mode, for 7.8 ms after an increment in fixed-period mode, open under MASK |
 | `interrupt_oscillation()`, `restore_oscillation()`                          | Stop the oscillator, which sets fo, and start it again. The time between the two is lost                                                                           |
 | `rate`, `crystal`, `oscillating`                                            | Counts of `now` per second, the `crystal.Crystal` that holds the sub-second state, and whether the oscillator runs                                                 |

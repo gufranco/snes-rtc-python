@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-時計**2**種、リファレンスと比較した操作**329,630**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**1,075**件、命令と分岐のカバレッジ**100%**、依存関係なし
+時計**2**種、リファレンスと比較した操作**329,630**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**1,076**件、命令と分岐のカバレッジ**100%**、依存関係なし
 
 ```python
 from snesrtc import Chip, Store
@@ -247,7 +247,7 @@ print(session(epson.READ_MODE))
 | `set_read_flag()`, `clear_read_flag()`                                      | frを持つ5つのレジスタでfrを立てる、またはクリアします                                                                                                              |
 | `read_data()`, `write_enable(value)`, `write_data(value)`                   | `$4841`の読み出し、`$4840`への書き込み、`$4841`への書き込みが行うこと                                                                                              |
 | `write_register(value)`, `write_control_d(value)`, `write_control_f(value)` | 現在のレジスタへのデータ書き込みと、書き込まれたときに動作する2つの制御レジスタ                                                                                    |
-| `release_hold()`, `adjust_to_nearest_minute()`                              | HOLDのクリアと30ADJ.の設定が行うこと                                                                                                                               |
+| `release_hold()`, `adjust_to_nearest_minute(behind=0)`                      | HOLDのクリアと30ADJ.の設定が行うこと。`behind`は調整が何秒前に行われたか                                                                                           |
 | `std_p`                                                                     | STD.Pピン。`crystal.LOW`または`crystal.OPEN`。割り込み周期モードではIRQ-Fが立っている間、固定周期モードでは繰り上がりから7.8 msの間Lowで、MASKの下ではオープンです |
 | `interrupt_oscillation()`, `restore_oscillation()`                          | 発振を止めてfoを立て、再び動かします。その間の時間は失われます                                                                                                     |
 | `rate`, `crystal`, `oscillating`                                            | 1秒あたりの`now`のカウント数、1秒未満の状態を保持する`crystal.Crystal`、発振しているかどうか                                                                       |

@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** 个时钟，**329,630** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**1,075** 个测试，**100%** 语句与分支覆盖率，无依赖
+**2** 个时钟，**329,630** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**1,076** 个测试，**100%** 语句与分支覆盖率，无依赖
 
 ```python
 from snesrtc import Chip, Store
@@ -247,7 +247,7 @@ print(session(epson.READ_MODE))
 | `set_read_flag()`, `clear_read_flag()`                                      | 在带有 fr 的五个寄存器中置位或清除 fr                                                                                           |
 | `read_data()`, `write_enable(value)`, `write_data(value)`                   | 读取 `$4841`、写入 `$4840` 和写入 `$4841` 时执行的操作                                                                          |
 | `write_register(value)`, `write_control_d(value)`, `write_control_f(value)` | 对当前寄存器的数据写入，以及写入时会起作用的两个控制寄存器                                                                      |
-| `release_hold()`, `adjust_to_nearest_minute()`                              | 清除 HOLD 和设置 30ADJ. 时执行的操作                                                                                            |
+| `release_hold()`, `adjust_to_nearest_minute(behind=0)`                      | 清除 HOLD 和设置 30ADJ. 时执行的操作。`behind` 是调整在多少秒之前生效                                                           |
 | `std_p`                                                                     | STD.P 引脚：`crystal.LOW` 或 `crystal.OPEN`。中断周期模式下 IRQ-F 置位期间为低，固定周期模式下进位后 7.8 ms 为低，MASK 下为开路 |
 | `interrupt_oscillation()`, `restore_oscillation()`                          | 停止振荡器并置位 fo，然后再次启动。两者之间的时间会丢失                                                                         |
 | `rate`, `crystal`, `oscillating`                                            | 每秒 `now` 的计数、保存秒以下状态的 `crystal.Crystal`，以及振荡器是否运行                                                       |

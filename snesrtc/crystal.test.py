@@ -288,6 +288,21 @@ class AdjustTest(unittest.TestCase):
         # Assert
         self.assertEqual(held, (3, 0))
 
+    def test_the_adjustment_lands_when_the_window_ends_not_at_the_next_access(self) -> None:
+        # Arrange
+        hand = [START]
+        chip = a_crystal_clock(hand)
+        written(chip, S1, 0, 1)
+        written(chip, CD, CAL_HW | ADJUST)
+        chip.write(ENABLE, 0x00)
+        hand[0] += 25 * RATE
+
+        # Act
+        held = (read_back(chip, S1), read_back(chip, S10), read_back(chip, MI1))
+
+        # Assert
+        self.assertEqual(held, (5, 2, 0))
+
 
 class OscillationTest(unittest.TestCase):
     def test_an_interruption_raises_fo_and_loses_the_time_it_lasted(self) -> None:
