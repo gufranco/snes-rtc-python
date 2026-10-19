@@ -111,11 +111,7 @@ FAST_PERIOD = 0
 
 CRYSTAL_HZ = crystal.CRYSTAL_HZ
 
-
-def _now() -> int:
-    import time
-
-    return int(time.time())
+WHOLE_SECONDS = crystal.WHOLE_SECONDS
 
 
 class Chip:
@@ -134,9 +130,11 @@ class Chip:
 
     model: str
 
-    def __init__(self, store: Store, now: Callable[[], int] = _now, rate: int = 1) -> None:
+    def __init__(
+        self, store: Store, now: Callable[[], int] | None = None, rate: int = CRYSTAL_HZ
+    ) -> None:
         self.store = store
-        self.now = now
+        self.now = crystal.machine_clock(rate) if now is None else now
         self.crystal = crystal.Crystal(rate)
         self.oscillating = True
         self.state = INACTIVE

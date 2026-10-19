@@ -77,7 +77,7 @@ class Cartridge:
         self.store = store.Store(cleared=True)
         self.at = START
         self.sharp = sharp.Chip(self.store, now=lambda: self.at)
-        self.epson = epson.Chip(self.store, now=lambda: self.at)
+        self.epson = epson.Chip(self.store, now=lambda: self.at, rate=epson.WHOLE_SECONDS)
 
     def chip_for(self, address: int) -> sharp.Chip | epson.Chip:
         return self.epson if address in EPSON_ADDRESSES else self.sharp

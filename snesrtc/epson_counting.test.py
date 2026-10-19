@@ -8,7 +8,9 @@ from conformance.driving import (
     ADJUST,
     CAL_HW,
     CD,
+    CE,
     CF,
+    CRYSTAL,
     D1,
     D10,
     DATA,
@@ -19,11 +21,13 @@ from conformance.driving import (
     H1,
     HOLD,
     HOURS_24,
+    INT_STND,
     IRQ_F,
     MI1,
     MI10,
     MO1,
     MO10,
+    PAST_THE_LOCKOUT,
     READ_FLAG,
     READ_FLAG_AT,
     READ_MODE,
@@ -35,6 +39,8 @@ from conformance.driving import (
     WRITE_MODE,
     W,
     a_clock,
+    a_crystal_clock,
+    a_whole_second_clock,
     opened,
     written,
 )
@@ -99,6 +105,7 @@ class ControlRegisterDTest(unittest.TestCase):
     def test_a_held_interrupt_flag_survives_a_write(self) -> None:
         # Arrange
         chip = a_clock([FROZEN], control_d=CAL_HW | IRQ_F)
+        chip.store.write(CE, INT_STND)
         opened(chip, WRITE_MODE, CD)
 
         # Act
@@ -118,9 +125,9 @@ class ControlRegisterDTest(unittest.TestCase):
         # Assert
         self.assertEqual(chip.store.read(CD) & IRQ_F, 0)
 
-    def test_the_adjustment_bit_does_not_latch(self) -> None:
+    def test_a_whole_second_chip_clears_the_adjustment_bit_at_once(self) -> None:
         # Arrange
-        chip = a_clock([FROZEN])
+        chip = a_whole_second_clock([FROZEN])
         written(chip, S1, *DIGITS)
         opened(chip, WRITE_MODE, CD)
 
@@ -132,22 +139,25 @@ class ControlRegisterDTest(unittest.TestCase):
 
     def test_adjusting_below_the_half_minute_drops_the_seconds(self) -> None:
         # Arrange
-        chip = a_clock([FROZEN])
+        hand = [FROZEN * CRYSTAL]
+        chip = a_crystal_clock(hand)
         written(chip, S1, DIGITS[0], 2, *DIGITS[2:])
-        opened(chip, WRITE_MODE, CD)
+        written(chip, CD, CAL_HW | ADJUST)
+        hand[0] += PAST_THE_LOCKOUT
 
         # Act
-        chip.write(DATA, CAL_HW | ADJUST)
+        chip.write(ENABLE, 0x00)
 
         # Assert
         self.assertEqual((chip.store.read(S1), chip.store.read(S10)), (0, 0))
 
     def test_adjusting_from_past_it_carries_into_the_next_minute(self) -> None:
         # Arrange
-        chip = a_clock([FROZEN])
+        hand = [FROZEN * CRYSTAL]
+        chip = a_crystal_clock(hand)
         written(chip, S1, 0, 4, *DIGITS[2:])
-        opened(chip, WRITE_MODE, CD)
-        chip.write(DATA, CAL_HW | ADJUST)
+        written(chip, CD, CAL_HW | ADJUST)
+        hand[0] += PAST_THE_LOCKOUT
 
         # Act
         chip.write(ENABLE, 0x00)
@@ -339,9 +349,8 @@ class ReadFlagTest(unittest.TestCase):
         hand = [FROZEN]
         chip = a_clock(hand)
         written(chip, S1, *DIGITS)
-        chip.write(ENABLE, 0x00)
-        hand[0] = FROZEN + 5
         opened(chip, WRITE_MODE, CF)
+        hand[0] = FROZEN + 5
 
         # Act
         chip.write(DATA, HOURS_24 | RESET)
@@ -364,10 +373,24 @@ class TimeTest(unittest.TestCase):
         # Assert
         self.assertEqual((chip.store.read(MI1), chip.store.read(S1)), (1, 5))
 
-    def test_opening_a_session_shows_the_time_as_the_last_one_left_it(self) -> None:
+    def test_opening_a_session_shows_the_time_it_is_now(self) -> None:
         # Arrange
         hand = [FROZEN]
         chip = a_clock(hand)
+        written(chip, S1, *DIGITS)
+        chip.write(ENABLE, 0x00)
+        hand[0] = FROZEN + 65
+
+        # Act
+        opened(chip, WRITE_MODE, S1)
+
+        # Assert
+        self.assertEqual((chip.store.read(MI1), chip.store.read(S1)), (1, 5))
+
+    def test_a_whole_second_chip_opens_a_session_on_the_time_the_last_one_left(self) -> None:
+        # Arrange
+        hand = [FROZEN]
+        chip = a_whole_second_clock(hand)
         written(chip, S1, *DIGITS)
         hand[0] = FROZEN + 65
 

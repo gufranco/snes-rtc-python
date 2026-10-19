@@ -27,6 +27,8 @@ from conformance.driving import (
     RESET,
     S1,
     S10,
+    a_crystal_clock,
+    a_whole_second_clock,
     located,
     opened,
     read_back,
@@ -41,14 +43,6 @@ START = FROZEN * RATE
 EVERY_SECOND = FACTS["controlRegisterE"]["bits"]["t0"]["mask"]
 
 FAST = 64
-
-
-def a_crystal_clock(hand: list[int], rate: int = RATE) -> Any:
-    held = Store(cleared=True)
-    held.stamp = hand[0] // rate
-    held.write(CF, HOURS_24)
-    held.write(CD, CAL_HW)
-    return Chip("rtc-4513", held, now=lambda: hand[0], rate=rate)
 
 
 def lockout_ticks() -> int:
@@ -118,6 +112,26 @@ class CountingTest(unittest.TestCase):
 
         # Assert
         self.assertEqual(flag, 0)
+
+
+class DefaultTest(unittest.TestCase):
+    def test_a_part_built_without_a_rate_counts_the_crystal(self) -> None:
+        # Arrange
+        hand = [START]
+        held = Store(cleared=True)
+        held.stamp = FROZEN
+        held.write(CF, HOURS_24)
+        held.write(CD, CAL_HW)
+        held.write(CE, INT_STND)
+        chip: Any = Chip("rtc-4513", held, now=lambda: hand[0])
+        chip.read(epson.STATUS)
+        hand[0] += 32_768 // 64
+
+        # Act
+        flag = read_back(chip, CD) & IRQ_F
+
+        # Assert
+        self.assertEqual((chip.crystal.rate, flag), (32_768, IRQ_F))
 
 
 class PeriodTest(unittest.TestCase):
@@ -211,7 +225,7 @@ class PinTest(unittest.TestCase):
     def test_whole_seconds_have_no_pulse_to_show(self) -> None:
         # Arrange
         hand = [FROZEN]
-        chip = a_crystal_clock(hand, rate=1)
+        chip = a_whole_second_clock(hand)
         written(chip, CE, EVERY_SECOND)
         chip.write(ENABLE, 0x00)
         hand[0] += 1

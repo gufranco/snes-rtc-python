@@ -8,7 +8,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **1,076** tests, **100%** statement and branch coverage, no dependencies
+**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **1,082** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from snesrtc import Chip, Store
@@ -58,7 +58,7 @@ Releases follow [Semantic Versioning](https://semver.org/) and are cut from the 
 
 ## The interface
 
-`snesrtc.Chip(model, store=None, now=..., open_bus=0x00, rate=1)` builds one clock. `model` is required. `store` is a `Store`, and the clock builds a seeded one when it is left out. `now` is a callable returning whole seconds, and the clock keeps its low 32 bits; the default reads `time.time()`. `open_bus` is accepted by the Sharp part only and is what it answers at an address it does not own. The Epson part answers `0x00` there. `rate` is accepted by the Epson part only: how many counts of `now` make one second. The default, 1, counts whole seconds and catches up when the chip is deselected, the shape the recording is compared in. With `rate=epson.CRYSTAL_HZ` and a `now` counting cycles of the part's 32,768 Hz crystal, the part counts the way the manual describes: it catches up at every access, raises IRQ-F on the 1/64 s period, holds IRQ-F and STD.P low for 256 cycles, 7.8 ms, in fixed-period mode, and holds 30ADJ. for 4 cycles, 125 microseconds rounded to whole cycles.
+`snesrtc.Chip(model, store=None, now=..., open_bus=0x00, rate=epson.CRYSTAL_HZ)` builds one clock. `model` is required. `store` is a `Store`, and the clock builds a seeded one when it is left out. `now` is a callable returning the time, and the clock keeps the low 32 bits of the whole seconds in it. The Sharp part reads `now` as whole seconds, and its default reads `time.time()`. `open_bus` is accepted by the Sharp part only and is what it answers at an address it does not own. The Epson part answers `0x00` there. `rate` is accepted by the Epson part only: how many counts of `now` make one second, and its default `now` reads the machine's clock in those counts. The default, `epson.CRYSTAL_HZ`, counts cycles of the part's 32,768 Hz crystal the way the manual describes: the part catches up at every access, raises IRQ-F on the 1/64 s period, holds IRQ-F and STD.P low for 256 cycles, 7.8 ms, in fixed-period mode, and holds 30ADJ. for 4 cycles, 125 microseconds rounded to whole cycles. `rate=epson.WHOLE_SECONDS` counts whole seconds and catches up when the chip is deselected, the shape the recording is compared in; it has no 1/64 s period, no fixed-period pulse and no lockout.
 
 | Model      | Aliases                                                 | Addresses                                    | Year                                    | Hours                             |
 | :--------- | :------------------------------------------------------ | :------------------------------------------- | :-------------------------------------- | :-------------------------------- |
@@ -107,19 +107,19 @@ s-dsp is not a clock this package covers; it has rtc-4513, s-rtc
 
 ### Module contents
 
-| Name                                                       | Content                                                                                                                                                                                                           |
-| :--------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `snesrtc.MODELS`                                           | The two `Model` records, keyed by canonical name                                                                                                                                                                  |
-| `snesrtc.Model`                                            | A record with `name`, `summary`, `addresses`, `protocol` and `aliases`, and `build(store=None, **options)`, which `Chip` calls                                                                                    |
-| `snesrtc.models.lookup(name)`                              | The `Model` for any spelling. Raises `UnknownModelError`                                                                                                                                                          |
-| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | The 20 bytes the cartridge keeps on a battery. See [Nothing starts cleared](#nothing-starts-cleared)                                                                                                              |
-| `snesrtc.Built`                                            | The type `Chip` returns, `epson.Chip` or `sharp.Chip`                                                                                                                                                             |
-| `snesrtc.UnknownModelError`                                | The one error the package raises, for a missing or unknown model name. It lives in `snesrtc.errors`                                                                                                               |
-| `snesrtc.__version__`                                      | The installed version                                                                                                                                                                                             |
-| `snesrtc.sharp`, `snesrtc.epson`                           | Each part's `Chip` class, addresses, command codes and register constants                                                                                                                                         |
-| `snesrtc.store`                                            | `Store` and its constants `SIZE`, `STAMP_AT`, `STAMP_BYTES` and `UNSET_SEED`                                                                                                                                      |
-| `snesrtc.calendar`                                         | The calendar arithmetic both parts share                                                                                                                                                                          |
-| `snesrtc.crystal`                                          | `CRYSTAL_HZ`, the pin levels `LOW` and `OPEN`, the printed `LOW_SECONDS` and `LOCKOUT_SECONDS`, `FAST_HZ`, `whole_ticks(rate, seconds)` and `Crystal(rate)`, the sub-second state a crystal-rate Epson chip keeps |
+| Name                                                       | Content                                                                                                                                                                                                                                                                                               |
+| :--------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `snesrtc.MODELS`                                           | The two `Model` records, keyed by canonical name                                                                                                                                                                                                                                                      |
+| `snesrtc.Model`                                            | A record with `name`, `summary`, `addresses`, `protocol` and `aliases`, and `build(store=None, **options)`, which `Chip` calls                                                                                                                                                                        |
+| `snesrtc.models.lookup(name)`                              | The `Model` for any spelling. Raises `UnknownModelError`                                                                                                                                                                                                                                              |
+| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | The 20 bytes the cartridge keeps on a battery. See [Nothing starts cleared](#nothing-starts-cleared)                                                                                                                                                                                                  |
+| `snesrtc.Built`                                            | The type `Chip` returns, `epson.Chip` or `sharp.Chip`                                                                                                                                                                                                                                                 |
+| `snesrtc.UnknownModelError`                                | The one error the package raises, for a missing or unknown model name. It lives in `snesrtc.errors`                                                                                                                                                                                                   |
+| `snesrtc.__version__`                                      | The installed version                                                                                                                                                                                                                                                                                 |
+| `snesrtc.sharp`, `snesrtc.epson`                           | Each part's `Chip` class, addresses, command codes and register constants                                                                                                                                                                                                                             |
+| `snesrtc.store`                                            | `Store` and its constants `SIZE`, `STAMP_AT`, `STAMP_BYTES` and `UNSET_SEED`                                                                                                                                                                                                                          |
+| `snesrtc.calendar`                                         | The calendar arithmetic both parts share                                                                                                                                                                                                                                                              |
+| `snesrtc.crystal`                                          | `CRYSTAL_HZ`, the pin levels `LOW` and `OPEN`, the printed `LOW_SECONDS` and `LOCKOUT_SECONDS`, `FAST_HZ`, `WHOLE_SECONDS`, `NANOSECONDS`, `whole_ticks(rate, seconds)`, `machine_clock(rate)`, the machine's time in counts of `rate`, and `Crystal(rate)`, the sub-second state an Epson chip keeps |
 
 ### The Sharp S-RTC
 
@@ -193,17 +193,17 @@ Reading `$4840` returns the last value written there. Reading CD clears IRQ-F.
 | `CE`     | 14    | t1     | t0       | INT/STND | MASK  |             |
 | `CF`     | 15    | TEST   | 24/12    | STOP     | RESET |             |
 
-`snesrtc.epson` names each register by its index, `S1` through `CF`, and each control bit by its mask: `HOLD`, `CAL_HW`, `IRQ_F` and `ADJUST` in CD, `RESET`, `STOP`, `HOURS_24` and `TEST` in CF, and `MASK` and `INT_STND` in CE. It also carries `ENABLE`, `DATA`, `STATUS`, `WRITE_MODE`, `READ_MODE`, `READY`, `REGISTERS`, `DIGIT_MASK`, `OSC_FLAG`, `READ_FLAG`, `READ_FLAG_AT`, `CALENDAR_READ_FLAG_AT`, `PM`, `H20`, `STOPPED`, `NIBBLE`, `HALF_MINUTE`, `MINUTE`, `HOUR`, `WHOLE_SECONDS_PER_PERIOD`, `PERIOD_SHIFT`, `PERIOD_BITS`, `NOON`, `YEAR_PIVOT`, `STAMP_LIMIT`, `STAMP_MASK`, `CLOCK_REGISTERS`, `FAST_PERIOD` and `CRYSTAL_HZ`, and the five `state` values as `INACTIVE`, `MODE_SELECT`, `INDEX_SELECT`, `READING` and `WRITING`.
+`snesrtc.epson` names each register by its index, `S1` through `CF`, and each control bit by its mask: `HOLD`, `CAL_HW`, `IRQ_F` and `ADJUST` in CD, `RESET`, `STOP`, `HOURS_24` and `TEST` in CF, and `MASK` and `INT_STND` in CE. It also carries `ENABLE`, `DATA`, `STATUS`, `WRITE_MODE`, `READ_MODE`, `READY`, `REGISTERS`, `DIGIT_MASK`, `OSC_FLAG`, `READ_FLAG`, `READ_FLAG_AT`, `CALENDAR_READ_FLAG_AT`, `PM`, `H20`, `STOPPED`, `NIBBLE`, `HALF_MINUTE`, `MINUTE`, `HOUR`, `WHOLE_SECONDS_PER_PERIOD`, `PERIOD_SHIFT`, `PERIOD_BITS`, `NOON`, `YEAR_PIVOT`, `STAMP_LIMIT`, `STAMP_MASK`, `CLOCK_REGISTERS`, `FAST_PERIOD`, `CRYSTAL_HZ` and `WHOLE_SECONDS`, and the five `state` values as `INACTIVE`, `MODE_SELECT`, `INDEX_SELECT`, `READING` and `WRITING`.
 
 ```python
 from snesrtc import Chip, Store, epson
 
-seconds = [1_000_000_000]
+cycles = [1_000_000_000 * epson.CRYSTAL_HZ]
 held = Store(cleared=True)
 held.write(epson.CF, epson.HOURS_24)
 held.write(epson.CD, epson.CAL_HW)
-held.stamp = seconds[0]
-clock = Chip("rtc-4513", held, now=lambda: seconds[0])
+held.stamp = 1_000_000_000
+clock = Chip("rtc-4513", held, now=lambda: cycles[0])
 
 
 def session(mode, values=()):
@@ -219,18 +219,16 @@ def session(mode, values=()):
 
 session(epson.WRITE_MODE, (0, 5, 9, 5, 3, 2, 1, 3, 2, 1, 9, 9, 5))
 print(session(epson.READ_MODE))
-seconds[0] += 15
-print(session(epson.READ_MODE))
+cycles[0] += 15 * epson.CRYSTAL_HZ
 print(session(epson.READ_MODE))
 ```
 
 ```
-5991231235950
 5991231235950
 6000101000005
 ```
 
-Each line is W, Y10 down to S1: weekday 5, 99-12-31, 23:59:50. Fifteen seconds later the first read still shows the old time, because the part catches up when it is deselected. The read after that shows weekday 6, 00-01-01, 00:00:05.
+Each line is W, Y10 down to S1: weekday 5, 99-12-31, 23:59:50. Fifteen seconds later the read shows weekday 6, 00-01-01, 00:00:05, because the part counts its crystal and is current whenever it is read. A chip built with `rate=epson.WHOLE_SECONDS` would show the old time on that read and the new one only after it had been deselected once.
 
 | Attribute or call                                                           | Meaning                                                                                                                                                            |
 | :-------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -263,7 +261,8 @@ held.write(epson.D1, 1)
 held.write(epson.MO1, 1)
 held.write(epson.S10, 4)
 held.stamp = 1_000_000_000
-clock = Chip("rtc-4513", held, now=lambda: 1_000_000_000)
+cycles = [1_000_000_000 * epson.CRYSTAL_HZ]
+clock = Chip("rtc-4513", held, now=lambda: cycles[0])
 
 clock.write(epson.ENABLE, 0x01)
 print(f"{clock.read(epson.STATUS):#04x} {clock.read(epson.STATUS):#04x}")
@@ -273,17 +272,18 @@ clock.write(epson.DATA, epson.CAL_HW | epson.IRQ_F | epson.ADJUST)
 clock.write(epson.DATA, 0x0F)
 clock.write(epson.DATA, epson.HOURS_24 | epson.TEST)
 print(f"CD={held.read(epson.CD):#x} CF={held.read(epson.CF):#x}")
+cycles[0] += 5
 clock.write(epson.ENABLE, 0x00)
-print(f"CF={held.read(epson.CF):#x}", clock.moment())
+print(f"CD={held.read(epson.CD):#x} CF={held.read(epson.CF):#x}", clock.moment())
 ```
 
 ```
 0x80 0x00
-CD=0x2 CF=0xc
-CF=0x4 <2000-01-01 00:01:00 weekday=0>
+CD=0xa CF=0xc
+CD=0x2 CF=0x4 <2000-01-01 00:01:00 weekday=0>
 ```
 
-Status reads `0x80` once after the select. The write to CD sets IRQ-F and 30ADJ. as well as CAL/HW. IRQ-F is not stored, and 30ADJ. rounds 40 seconds up to the next minute and clears itself. TEST is set by the write to CF and cleared by the deselect.
+Status reads `0x80` once after the select. The write to CD sets IRQ-F and 30ADJ. as well as CAL/HW. IRQ-F is not stored. 30ADJ. reads 1 for the 125 microsecond lockout, 4 crystal cycles, then rounds 40 seconds up to the next minute and clears itself. TEST is set by the write to CF and cleared by the deselect.
 
 ### Calendar
 
@@ -350,16 +350,16 @@ Where the manual and the recording disagree, the package follows the manual. Eac
 ```python
 from snesrtc import Chip, Store, epson
 
-seconds = [1_000_000_000]
+cycles = [1_000_000_000 * epson.CRYSTAL_HZ]
 held = Store(cleared=True)
-held.stamp = seconds[0]
+held.stamp = 1_000_000_000
 written = {epson.S1: 9, epson.S10: 5, epson.MI1: 9, epson.MI10: 5, epson.H1: 1, epson.D1: 1}
 for index, digit in written.items():
     held.write(index, digit)
 held.write(epson.H10, 1 | epson.PM)
-clock = Chip("rtc-4513", held, now=lambda: seconds[0])
+clock = Chip("rtc-4513", held, now=lambda: cycles[0])
 
-seconds[0] += 1
+cycles[0] += epson.CRYSTAL_HZ
 clock.write(epson.ENABLE, 0x01)
 clock.write(epson.ENABLE, 0x00)
 
@@ -402,7 +402,7 @@ print(advance(Moment(1996, 8, 18, 12, 100, 59, 0), 1))
 <1996-08-18 13:00:00 weekday=0>
 ```
 
-**The Epson clock catches up when it is deselected**, not when it is selected. A session reads the time as the previous session left it, as the session example above shows. A real part counts continuously and has no such seam.
+**An Epson clock counting whole seconds catches up when it is deselected**, not when it is selected. Built with `rate=epson.WHOLE_SECONDS`, a session reads the time as the previous session left it. The default chip counts its crystal and catches up at every access, as the session example above shows, so it has no such seam, and neither does a real part. The whole-second placement stays because the recording is compared in it.
 
 **The mode code is compared as a whole byte.** The serial part only ever sees four bits, so this is a property of the SPC7110 wrapper, which no document describes.
 
@@ -410,17 +410,17 @@ print(advance(Moment(1996, 8, 18, 12, 100, 59, 0), 1))
 
 They are parts from different makers, on cartridges from different publishers.
 
-|                       | Sharp S-RTC                                     | Epson RTC-4513                                         |
-| :-------------------- | :---------------------------------------------- | :----------------------------------------------------- |
-| Manufacturer document | None known                                      | Application manual, 1999                               |
-| Reached at            | `$2800` and `$2801`                             | `$4840` through `$4842`, through the SPC7110           |
-| Shape                 | A fixed sequence wrapped in a marker            | An addressed file of sixteen 4-bit registers           |
-| Getting at one field  | Read the whole sequence and count               | Name its register                                      |
-| Weekday               | Computed from the date when the date is written | A counter of its own, 0 to 6, with no meaning attached |
-| Year                  | Three digits plus 1000                          | Two digits, no century printed anywhere                |
-| Hours                 | 24                                              | 12 or 24, chosen by a control bit                      |
-| Control registers     | None                                            | Three, with sixteen named bits                         |
-| Catches up            | When a read starts                              | When the chip is deselected                            |
+|                       | Sharp S-RTC                                     | Epson RTC-4513                                                    |
+| :-------------------- | :---------------------------------------------- | :---------------------------------------------------------------- |
+| Manufacturer document | None known                                      | Application manual, 1999                                          |
+| Reached at            | `$2800` and `$2801`                             | `$4840` through `$4842`, through the SPC7110                      |
+| Shape                 | A fixed sequence wrapped in a marker            | An addressed file of sixteen 4-bit registers                      |
+| Getting at one field  | Read the whole sequence and count               | Name its register                                                 |
+| Weekday               | Computed from the date when the date is written | A counter of its own, 0 to 6, with no meaning attached            |
+| Year                  | Three digits plus 1000                          | Two digits, no century printed anywhere                           |
+| Hours                 | 24                                              | 12 or 24, chosen by a control bit                                 |
+| Control registers     | None                                            | Three, with sixteen named bits                                    |
+| Catches up            | When a read starts                              | At every access, or when deselected at `rate=epson.WHOLE_SECONDS` |
 
 ## Nothing starts cleared
 

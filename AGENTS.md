@@ -30,11 +30,12 @@ The model is chosen at construction, because the two parts are different parts.
 - `clock.read(address)` and `clock.write(address, value)` at the addresses that
   part answers: `$2800` and `$2801` for the Sharp part, `$4840` through `$4842`
   for the Epson one through the SPC7110.
-- `Chip("rtc-4513", ..., rate=epson.CRYSTAL_HZ)` counts cycles of the part's
-  crystal instead of whole seconds: `now` then returns crystal cycles, the chip
-  catches up at every access, and the 1/64 s period, the 7.8 ms fixed-period
-  pulse, STD.P as `std_p` and the 125 microsecond 30ADJ. lockout all exist. The
-  default, a rate of 1, is the whole-second chip the recording is compared in.
+- `Chip("rtc-4513", ...)` counts cycles of the part's crystal by default,
+  `rate=epson.CRYSTAL_HZ`: `now` returns crystal cycles, the chip catches up at
+  every access, and the 1/64 s period, the 7.8 ms fixed-period pulse, STD.P as
+  `std_p` and the 125 microsecond 30ADJ. lockout all exist.
+  `rate=epson.WHOLE_SECONDS` builds the whole-second chip the recording is
+  compared in, and the differential asks for it by name.
 - `interrupt_oscillation()` and `restore_oscillation()` stop and restart the
   Epson oscillator, which is what sets fo.
 - `Store(seed=..., cleared=..., held=...)` is the twenty bytes a cartridge keeps
@@ -91,23 +92,23 @@ counted apart and named rather than counted as agreements or dropped in silence.
 **Not settled: 13 things**, each in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) with
 what would close it. Eight are places the manual contradicts the recording, two
 are places nobody wrote it down, and three are modelling choices: two are
-settled for a chip counting crystal cycles and kept for the whole-second chip
-the recording is compared in, and one is the recorder's own stamp. Do not close
-one by argument.
+settled for the default chip, which counts crystal cycles, and kept for the
+whole-second chip the recording is compared in, and one is the recorder's own
+stamp. Do not close one by argument.
 
 ## The two parts share almost nothing
 
-|                       | Sharp S-RTC                                     | Epson RTC-4513                                            |
-| :-------------------- | :---------------------------------------------- | :-------------------------------------------------------- |
-| Manufacturer document | none known to exist                             | application manual, 1999                                  |
-| Reached at            | `$2800` and `$2801`                             | `$4840` through `$4842`, via the SPC7110                  |
-| Shape                 | a fixed sequence wrapped in a marker            | an addressed register file of sixteen nibbles             |
-| Getting at one field  | read the whole sequence and count               | name its address                                          |
-| Weekday               | computed from the date when the date is written | a counter of its own, with no meaning attached            |
-| Year                  | three digits plus a thousand                    | two digits with no century printed anywhere               |
-| Hours                 | twenty four                                     | twelve or twenty four, chosen by a control bit            |
-| Control registers     | none                                            | three, whose sixteen bits the manual names one by one     |
-| Clock catches up      | when the sequence is read                       | when switched **off**, or at every access at `CRYSTAL_HZ` |
+|                       | Sharp S-RTC                                     | Epson RTC-4513                                               |
+| :-------------------- | :---------------------------------------------- | :----------------------------------------------------------- |
+| Manufacturer document | none known to exist                             | application manual, 1999                                     |
+| Reached at            | `$2800` and `$2801`                             | `$4840` through `$4842`, via the SPC7110                     |
+| Shape                 | a fixed sequence wrapped in a marker            | an addressed register file of sixteen nibbles                |
+| Getting at one field  | read the whole sequence and count               | name its address                                             |
+| Weekday               | computed from the date when the date is written | a counter of its own, with no meaning attached               |
+| Year                  | three digits plus a thousand                    | two digits with no century printed anywhere                  |
+| Hours                 | twenty four                                     | twelve or twenty four, chosen by a control bit               |
+| Control registers     | none                                            | three, whose sixteen bits the manual names one by one        |
+| Clock catches up      | when the sequence is read                       | at every access, or when switched **off** at `WHOLE_SECONDS` |
 
 A change that looks like it applies to both almost certainly applies to one.
 
@@ -215,7 +216,7 @@ snesrtc/
   store.py       the twenty bytes the cartridge keeps on a battery
   sharp.py       the Sharp protocol and its state machine
   epson.py       the Epson register file, its named control bits, its two notations
-  crystal.py     the sub-second state an Epson chip counting crystal cycles keeps
+  crystal.py     the crystal an Epson chip counts by default, and the sub-second state it keeps
   models.py      which clocks this covers and how to build one
   errors.py      the one refusal this package makes, importing nothing from it
   doctor.py      what is actually on this machine, for an issue report

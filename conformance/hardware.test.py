@@ -9,7 +9,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from conformance.driving import (
     CAL_HW,
     CD,
+    CE,
     CF,
+    CRYSTAL,
     DATA,
     DAY,
     ENABLE,
@@ -18,12 +20,14 @@ from conformance.driving import (
     H10,
     HOLD,
     HOURS_24,
+    INT_STND,
     IRQ_F,
     MASK,
     MI1,
     MO10,
     NIBBLE,
     OSC_FLAG,
+    PAST_THE_LOCKOUT,
     READ_FLAG,
     READ_MODE,
     ROWS,
@@ -31,6 +35,7 @@ from conformance.driving import (
     S10,
     W,
     a_clock,
+    a_crystal_clock,
     opened,
     read_back,
     written,
@@ -91,14 +96,17 @@ def starts_the_date(bit: int) -> bool:
 
 def clears_when_read(bit: int) -> bool:
     chip = a_clock([FROZEN], control_d=CAL_HW | bit)
+    chip.store.write(CE, INT_STND)
     answered = read_back(chip, CD)
     return bool(answered & bit and not chip.store.read(CD) & bit)
 
 
 def rounds_to_the_minute(bit: int) -> bool:
-    chip = a_clock([FROZEN])
+    hand = [FROZEN * CRYSTAL]
+    chip = a_crystal_clock(hand)
     chip.store.write(S10, 4)
     written(chip, CD, CAL_HW | bit)
+    hand[0] += PAST_THE_LOCKOUT
     chip.write(ENABLE, 0x00)
     return (chip.digit(S1), chip.digit(S10), chip.digit(MI1)) == (0, 0, 1)
 

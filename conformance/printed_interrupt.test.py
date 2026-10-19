@@ -9,14 +9,17 @@ from conformance.driving import (
     CAL_HW,
     CD,
     CE,
+    CRYSTAL,
     DIGITS,
     ENABLE,
     FACTS,
     FROZEN,
     INT_STND,
     IRQ_F,
+    PAST_THE_PULSE,
     S1,
     a_clock,
+    a_crystal_clock,
     read_back,
     written,
 )
@@ -40,12 +43,12 @@ def period_in_seconds(period: str) -> Fraction:
 
 
 def flag_after_a_second(control_e: int, start: tuple[int, ...]) -> int:
-    hand = [FROZEN]
-    chip = a_clock(hand)
+    hand = [FROZEN * CRYSTAL]
+    chip = a_crystal_clock(hand)
     written(chip, S1, *start, *DIGITS[6:])
     written(chip, CE, control_e)
     chip.write(ENABLE, 0x00)
-    hand[0] += 1
+    hand[0] += CRYSTAL + PAST_THE_PULSE
     chip.write(ENABLE, 0x00)
     return read_back(chip, CD) & IRQ_F
 

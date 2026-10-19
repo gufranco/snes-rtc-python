@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** 个时钟，**329,630** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**1,076** 个测试，**100%** 语句与分支覆盖率，无依赖
+**2** 个时钟，**329,630** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**1,082** 个测试，**100%** 语句与分支覆盖率，无依赖
 
 ```python
 from snesrtc import Chip, Store
@@ -58,7 +58,7 @@ python3 snesrtc/doctor.py
 
 ## 接口
 
-`snesrtc.Chip(model, store=None, now=..., open_bus=0x00, rate=1)` 构建一个时钟。`model` 是必需的。`store` 是一个 `Store`，省略时时钟会构建一个带种子的存储区。`now` 是一个返回整秒数的可调用对象，时钟保留其低 32 位；默认读取 `time.time()`。`open_bus` 只有 Sharp 部件接受，是它在不属于自己的地址上返回的值。Epson 部件在那里返回 `0x00`。`rate` 只有 Epson 部件接受，表示 `now` 多少个计数为一秒。默认值 1 按整秒计数，并在芯片取消选中时追上时间，这是与记录比较时的形式。使用 `rate=epson.CRYSTAL_HZ` 和一个计数部件 32,768 Hz 晶体周期的 `now`，部件就按手册所述计数：每次访问都追上时间，在 1/64 秒周期置位 IRQ-F，在固定周期模式下把 IRQ-F 和 STD.P 保持低电平 256 个周期，即 7.8 ms，并把 30ADJ. 保持 4 个周期，即 125 微秒取整为完整周期。
+`snesrtc.Chip(model, store=None, now=..., open_bus=0x00, rate=epson.CRYSTAL_HZ)` 构建一个时钟。`model` 是必需的。`store` 是一个 `Store`，省略时时钟会构建一个带种子的存储区。`now` 是一个返回时间的可调用对象，时钟保留由它得出的整秒数的低 32 位。Sharp 部件把 `now` 读作整秒，默认读取 `time.time()`。`open_bus` 只有 Sharp 部件接受，是它在不属于自己的地址上返回的值。Epson 部件在那里返回 `0x00`。`rate` 只有 Epson 部件接受，表示 `now` 多少个计数为一秒，其默认的 `now` 以这个计数读取机器的时钟。默认值 `epson.CRYSTAL_HZ` 按手册所述计数部件 32,768 Hz 晶体的周期：部件每次访问都追上时间，在 1/64 秒周期置位 IRQ-F，在固定周期模式下把 IRQ-F 和 STD.P 保持低电平 256 个周期，即 7.8 ms，并把 30ADJ. 保持 4 个周期，即 125 微秒取整为完整周期。`rate=epson.WHOLE_SECONDS` 按整秒计数，并在芯片取消选中时追上时间，这是与记录比较时的形式；它没有 1/64 秒周期、没有固定周期脉冲，也没有锁定时间。
 
 | 型号       | 别名                                                    | 地址                                     | 年份                             | 小时制                     |
 | :--------- | :------------------------------------------------------ | :--------------------------------------- | :------------------------------- | :------------------------- |
@@ -107,19 +107,19 @@ s-dsp is not a clock this package covers; it has rtc-4513, s-rtc
 
 ### 模块内容
 
-| 名称                                                       | 内容                                                                                                                                                                                        |
-| :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `snesrtc.MODELS`                                           | 两条 `Model` 记录，以规范名称为键                                                                                                                                                           |
-| `snesrtc.Model`                                            | 一条记录，含 `name`、`summary`、`addresses`、`protocol` 和 `aliases`，以及 `Chip` 调用的 `build(store=None, **options)`                                                                     |
-| `snesrtc.models.lookup(name)`                              | 任意写法对应的 `Model`。抛出 `UnknownModelError`                                                                                                                                            |
-| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | 卡带靠电池保存的 20 个字节。参见[没有什么从清零开始](#nothing-starts-cleared)                                                                                                               |
-| `snesrtc.Built`                                            | `Chip` 返回的类型，即 `epson.Chip` 或 `sharp.Chip`                                                                                                                                          |
-| `snesrtc.UnknownModelError`                                | 该包唯一会抛出的错误，用于缺少或未知的型号名。它位于 `snesrtc.errors`                                                                                                                       |
-| `snesrtc.__version__`                                      | 已安装的版本                                                                                                                                                                                |
-| `snesrtc.sharp`, `snesrtc.epson`                           | 各部件的 `Chip` 类、地址、命令码和寄存器常量                                                                                                                                                |
-| `snesrtc.store`                                            | `Store` 及其常量 `SIZE`、`STAMP_AT`、`STAMP_BYTES` 和 `UNSET_SEED`                                                                                                                          |
-| `snesrtc.calendar`                                         | 两个部件共用的日历运算                                                                                                                                                                      |
-| `snesrtc.crystal`                                          | `CRYSTAL_HZ`、引脚电平 `LOW` 和 `OPEN`、印出的 `LOW_SECONDS` 和 `LOCKOUT_SECONDS`、`FAST_HZ`、`whole_ticks(rate, seconds)`，以及计数晶体周期的 Epson 芯片所保存的秒以下状态 `Crystal(rate)` |
+| 名称                                                       | 内容                                                                                                                                                                                                                                                                |
+| :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `snesrtc.MODELS`                                           | 两条 `Model` 记录，以规范名称为键                                                                                                                                                                                                                                   |
+| `snesrtc.Model`                                            | 一条记录，含 `name`、`summary`、`addresses`、`protocol` 和 `aliases`，以及 `Chip` 调用的 `build(store=None, **options)`                                                                                                                                             |
+| `snesrtc.models.lookup(name)`                              | 任意写法对应的 `Model`。抛出 `UnknownModelError`                                                                                                                                                                                                                    |
+| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | 卡带靠电池保存的 20 个字节。参见[没有什么从清零开始](#nothing-starts-cleared)                                                                                                                                                                                       |
+| `snesrtc.Built`                                            | `Chip` 返回的类型，即 `epson.Chip` 或 `sharp.Chip`                                                                                                                                                                                                                  |
+| `snesrtc.UnknownModelError`                                | 该包唯一会抛出的错误，用于缺少或未知的型号名。它位于 `snesrtc.errors`                                                                                                                                                                                               |
+| `snesrtc.__version__`                                      | 已安装的版本                                                                                                                                                                                                                                                        |
+| `snesrtc.sharp`, `snesrtc.epson`                           | 各部件的 `Chip` 类、地址、命令码和寄存器常量                                                                                                                                                                                                                        |
+| `snesrtc.store`                                            | `Store` 及其常量 `SIZE`、`STAMP_AT`、`STAMP_BYTES` 和 `UNSET_SEED`                                                                                                                                                                                                  |
+| `snesrtc.calendar`                                         | 两个部件共用的日历运算                                                                                                                                                                                                                                              |
+| `snesrtc.crystal`                                          | `CRYSTAL_HZ`、引脚电平 `LOW` 和 `OPEN`、印出的 `LOW_SECONDS` 和 `LOCKOUT_SECONDS`、`FAST_HZ`、`WHOLE_SECONDS`、`NANOSECONDS`、`whole_ticks(rate, seconds)`、以 `rate` 的计数返回机器时间的 `machine_clock(rate)`，以及 Epson 芯片所保存的秒以下状态 `Crystal(rate)` |
 
 ### Sharp S-RTC
 
@@ -193,17 +193,17 @@ SPC7110 把该部件的三线串行接口变成三个卡带地址。程序以会
 | `CE`   | 14   | t1     | t0       | INT/STND | MASK  |          |
 | `CF`   | 15   | TEST   | 24/12    | STOP     | RESET |          |
 
-`snesrtc.epson` 按索引命名每个寄存器，从 `S1` 到 `CF`，并按掩码命名每个控制位：CD 中的 `HOLD`、`CAL_HW`、`IRQ_F` 和 `ADJUST`，CF 中的 `RESET`、`STOP`、`HOURS_24` 和 `TEST`，以及 CE 中的 `MASK` 和 `INT_STND`。它还包含 `ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`CALENDAR_READ_FLAG_AT`、`PM`、`H20`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`HOUR`、`WHOLE_SECONDS_PER_PERIOD`、`PERIOD_SHIFT`、`PERIOD_BITS`、`NOON`、`YEAR_PIVOT`、`STAMP_LIMIT`、`STAMP_MASK`、`CLOCK_REGISTERS`、`FAST_PERIOD` 和 `CRYSTAL_HZ`，以及五个 `state` 值 `INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING` 和 `WRITING`。
+`snesrtc.epson` 按索引命名每个寄存器，从 `S1` 到 `CF`，并按掩码命名每个控制位：CD 中的 `HOLD`、`CAL_HW`、`IRQ_F` 和 `ADJUST`，CF 中的 `RESET`、`STOP`、`HOURS_24` 和 `TEST`，以及 CE 中的 `MASK` 和 `INT_STND`。它还包含 `ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`CALENDAR_READ_FLAG_AT`、`PM`、`H20`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`HOUR`、`WHOLE_SECONDS_PER_PERIOD`、`PERIOD_SHIFT`、`PERIOD_BITS`、`NOON`、`YEAR_PIVOT`、`STAMP_LIMIT`、`STAMP_MASK`、`CLOCK_REGISTERS`、`FAST_PERIOD`、`CRYSTAL_HZ` 和 `WHOLE_SECONDS`，以及五个 `state` 值 `INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING` 和 `WRITING`。
 
 ```python
 from snesrtc import Chip, Store, epson
 
-seconds = [1_000_000_000]
+cycles = [1_000_000_000 * epson.CRYSTAL_HZ]
 held = Store(cleared=True)
 held.write(epson.CF, epson.HOURS_24)
 held.write(epson.CD, epson.CAL_HW)
-held.stamp = seconds[0]
-clock = Chip("rtc-4513", held, now=lambda: seconds[0])
+held.stamp = 1_000_000_000
+clock = Chip("rtc-4513", held, now=lambda: cycles[0])
 
 
 def session(mode, values=()):
@@ -219,18 +219,16 @@ def session(mode, values=()):
 
 session(epson.WRITE_MODE, (0, 5, 9, 5, 3, 2, 1, 3, 2, 1, 9, 9, 5))
 print(session(epson.READ_MODE))
-seconds[0] += 15
-print(session(epson.READ_MODE))
+cycles[0] += 15 * epson.CRYSTAL_HZ
 print(session(epson.READ_MODE))
 ```
 
 ```
-5991231235950
 5991231235950
 6000101000005
 ```
 
-每一行依次是 W、Y10 直到 S1：星期 5，99-12-31，23:59:50。十五秒后，第一次读取仍显示旧时间，因为部件在被取消选中时才追上时间。之后的读取显示星期 6，00-01-01，00:00:05。
+每一行依次是 W、Y10 直到 S1：星期 5，99-12-31，23:59:50。十五秒后，读取显示星期 6，00-01-01，00:00:05，因为部件计数其晶体，每次被读取时都是当前时间。以 `rate=epson.WHOLE_SECONDS` 构建的芯片在那次读取仍会显示旧时间，要取消选中一次后才显示新时间。
 
 | 属性或调用                                                                  | 含义                                                                                                                            |
 | :-------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------ |
@@ -263,7 +261,8 @@ held.write(epson.D1, 1)
 held.write(epson.MO1, 1)
 held.write(epson.S10, 4)
 held.stamp = 1_000_000_000
-clock = Chip("rtc-4513", held, now=lambda: 1_000_000_000)
+cycles = [1_000_000_000 * epson.CRYSTAL_HZ]
+clock = Chip("rtc-4513", held, now=lambda: cycles[0])
 
 clock.write(epson.ENABLE, 0x01)
 print(f"{clock.read(epson.STATUS):#04x} {clock.read(epson.STATUS):#04x}")
@@ -273,17 +272,18 @@ clock.write(epson.DATA, epson.CAL_HW | epson.IRQ_F | epson.ADJUST)
 clock.write(epson.DATA, 0x0F)
 clock.write(epson.DATA, epson.HOURS_24 | epson.TEST)
 print(f"CD={held.read(epson.CD):#x} CF={held.read(epson.CF):#x}")
+cycles[0] += 5
 clock.write(epson.ENABLE, 0x00)
-print(f"CF={held.read(epson.CF):#x}", clock.moment())
+print(f"CD={held.read(epson.CD):#x} CF={held.read(epson.CF):#x}", clock.moment())
 ```
 
 ```
 0x80 0x00
-CD=0x2 CF=0xc
-CF=0x4 <2000-01-01 00:01:00 weekday=0>
+CD=0xa CF=0xc
+CD=0x2 CF=0x4 <2000-01-01 00:01:00 weekday=0>
 ```
 
-选中之后，状态只读到一次 `0x80`。对 CD 的写入除了 CAL/HW，还置位了 IRQ-F 和 30ADJ.。IRQ-F 不会被存储，30ADJ. 把 40 秒向上取整到下一分钟并自行清除。TEST 由对 CF 的写入置位，由取消选中清除。
+选中之后，状态只读到一次 `0x80`。对 CD 的写入除了 CAL/HW，还置位了 IRQ-F 和 30ADJ.。IRQ-F 不会被存储。30ADJ. 在 125 微秒的锁定时间内，即 4 个晶体周期，读出 1，之后把 40 秒向上取整到下一分钟并自行清除。TEST 由对 CF 的写入置位，由取消选中清除。
 
 ### 日历
 
@@ -350,16 +350,16 @@ False True 29 0
 ```python
 from snesrtc import Chip, Store, epson
 
-seconds = [1_000_000_000]
+cycles = [1_000_000_000 * epson.CRYSTAL_HZ]
 held = Store(cleared=True)
-held.stamp = seconds[0]
+held.stamp = 1_000_000_000
 written = {epson.S1: 9, epson.S10: 5, epson.MI1: 9, epson.MI10: 5, epson.H1: 1, epson.D1: 1}
 for index, digit in written.items():
     held.write(index, digit)
 held.write(epson.H10, 1 | epson.PM)
-clock = Chip("rtc-4513", held, now=lambda: seconds[0])
+clock = Chip("rtc-4513", held, now=lambda: cycles[0])
 
-seconds[0] += 1
+cycles[0] += epson.CRYSTAL_HZ
 clock.write(epson.ENABLE, 0x01)
 clock.write(epson.ENABLE, 0x00)
 
@@ -402,7 +402,7 @@ print(advance(Moment(1996, 8, 18, 12, 100, 59, 0), 1))
 <1996-08-18 13:00:00 weekday=0>
 ```
 
-**Epson 时钟在被取消选中时追上时间**，而不是在被选中时。一次会话读到的是上一次会话留下的时间，正如上面的会话示例所示。真实部件连续计数，没有这样的接缝。
+**按整秒计数的 Epson 时钟在被取消选中时追上时间**，而不是在被选中时。以 `rate=epson.WHOLE_SECONDS` 构建时，一次会话读到的是上一次会话留下的时间。默认的芯片计数其晶体，每次访问都追上时间，正如上面的会话示例所示，所以没有这样的接缝，真实部件也没有。保留整秒的追上方式，是因为与记录的比较以这种形式进行。
 
 **模式码按整个字节比较。** 串行部件只看到四位，所以这是 SPC7110 包装层的性质，没有任何文档描述它。
 
@@ -410,17 +410,17 @@ print(advance(Moment(1996, 8, 18, 12, 100, 59, 0), 1))
 
 它们是不同厂商的部件，装在不同发行商的卡带上。
 
-|                | Sharp S-RTC              | Epson RTC-4513                       |
-| :------------- | :----------------------- | :----------------------------------- |
-| 厂商文档       | 未知                     | 应用手册，1999 年                    |
-| 访问地址       | `$2800` 和 `$2801`       | `$4840` 至 `$4842`，经由 SPC7110     |
-| 形式           | 一个由标记包裹的固定序列 | 一组按地址访问的十六个 4 位寄存器    |
-| 获取某一字段   | 读取整个序列并计数       | 指定其寄存器                         |
-| 星期           | 写入日期时由日期计算得出 | 独立的计数器，0 至 6，不附带任何含义 |
-| 年份           | 三位数字加 1000          | 两位数字，任何地方都没有印出世纪     |
-| 小时制         | 24                       | 12 或 24，由一个控制位选择           |
-| 控制寄存器     | 无                       | 三个，共有十六个命名位               |
-| 追上时间的时机 | 开始读取时               | 芯片被取消选中时                     |
+|                | Sharp S-RTC              | Epson RTC-4513                                              |
+| :------------- | :----------------------- | :---------------------------------------------------------- |
+| 厂商文档       | 未知                     | 应用手册，1999 年                                           |
+| 访问地址       | `$2800` 和 `$2801`       | `$4840` 至 `$4842`，经由 SPC7110                            |
+| 形式           | 一个由标记包裹的固定序列 | 一组按地址访问的十六个 4 位寄存器                           |
+| 获取某一字段   | 读取整个序列并计数       | 指定其寄存器                                                |
+| 星期           | 写入日期时由日期计算得出 | 独立的计数器，0 至 6，不附带任何含义                        |
+| 年份           | 三位数字加 1000          | 两位数字，任何地方都没有印出世纪                            |
+| 小时制         | 24                       | 12 或 24，由一个控制位选择                                  |
+| 控制寄存器     | 无                       | 三个，共有十六个命名位                                      |
+| 追上时间的时机 | 开始读取时               | 每次访问时；`rate=epson.WHOLE_SECONDS` 时为芯片被取消选中时 |
 
 <a id="nothing-starts-cleared"></a>
 

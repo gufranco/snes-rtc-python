@@ -155,7 +155,46 @@ class ClockTest(unittest.TestCase):
         chip = driving.a_clock(hand)
 
         # Assert
-        self.assertEqual((chip.now(), chip.store.stamp), (driving.FROZEN, driving.FROZEN))
+        self.assertEqual(
+            (chip.now(), chip.seconds(), chip.store.stamp),
+            (driving.FROZEN * 32_768, driving.FROZEN, driving.FROZEN),
+        )
+
+    def test_a_crystal_clock_reads_its_hand_as_crystal_cycles(self) -> None:
+        # Arrange
+        hand = [driving.FROZEN * 32_768 + 5]
+
+        # Act
+        chip = driving.a_crystal_clock(hand)
+
+        # Assert
+        self.assertEqual(
+            (chip.now(), chip.seconds(), chip.store.stamp),
+            (driving.FROZEN * 32_768 + 5, driving.FROZEN, driving.FROZEN),
+        )
+
+    def test_a_whole_second_clock_reads_its_hand_as_seconds(self) -> None:
+        # Arrange
+        hand = [driving.FROZEN]
+
+        # Act
+        chip = driving.a_whole_second_clock(hand)
+
+        # Assert
+        self.assertEqual(
+            (chip.now(), chip.seconds(), chip.crystal.rate),
+            (driving.FROZEN, driving.FROZEN, 1),
+        )
+
+    def test_the_lockout_is_passed_at_the_first_whole_cycle_past_125_microseconds(self) -> None:
+        # Arrange
+        first_whole_cycle_past = 5
+
+        # Act
+        passed = driving.PAST_THE_LOCKOUT
+
+        # Assert
+        self.assertEqual(passed, first_whole_cycle_past)
 
     def test_and_starts_dated_on_a_twenty_four_hour_dial(self) -> None:
         # Arrange

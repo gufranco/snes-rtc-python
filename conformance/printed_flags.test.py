@@ -53,9 +53,8 @@ class PrintedBehaviourTest(unittest.TestCase):
         hand = [FROZEN]
         chip = a_clock(hand)
         written(chip, S1, *DIGITS)
-        chip.write(ENABLE, 0x00)
-        hand[0] += 5
         opened(chip, WRITE_MODE, CF)
+        hand[0] += 5
 
         # Act
         chip.write(DATA, HOURS_24)
@@ -105,9 +104,8 @@ class PrintedBehaviourTest(unittest.TestCase):
         hand = [FROZEN]
         chip = a_clock(hand, control_d=CAL_HW & ~dated)
         written(chip, S1, *DIGITS)
-        chip.write(ENABLE, 0x00)
-        hand[0] += 5
         opened(chip, WRITE_MODE, CF)
+        hand[0] += 5
 
         # Act
         chip.write(DATA, HOURS_24)

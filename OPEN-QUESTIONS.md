@@ -33,9 +33,9 @@ and is still findable. Most entries below name a capture of a few operations.
 
 Two need something else. The Sharp part needs a Sharp data book entry, a
 decapsulation, or a capture of the one cartridge that carries it. And three of
-the Epson entries are modelling choices. A chip built with
-`rate=epson.CRYSTAL_HZ` counts cycles of the part's crystal, which settles two of
-them for that chip; the whole-second chip the recording is compared in keeps
+the Epson entries are modelling choices. An Epson chip counts cycles of the
+part's crystal by default, which settles two of them for that chip; the chip
+built with `rate=epson.WHOLE_SECONDS`, which the recording is compared in, keeps
 them, and they are listed so nobody mistakes its seams for the part's.
 
 ## Where the manual and the recording contradict each other
@@ -138,9 +138,9 @@ and while MASK is set it cannot be 1. In fixed-period mode it falls again after
 IRQ-F included, never raises the bit itself, and treats MASK as plain storage.
 
 **What this project follows.** The document. In interrupt cycle mode the flag
-holds until CD is read. In fixed-period mode a chip counting crystal cycles holds
-it for 256 cycles, 7.8 ms, after each increment; a chip counting whole seconds
-cannot hold it that briefly and never raises it there.
+holds until CD is read. In fixed-period mode the default chip, counting crystal
+cycles, holds it for 256 cycles, 7.8 ms, after each increment; a chip counting
+whole seconds cannot hold it that briefly and never raises it there.
 
 **What would settle or reopen it.** A capture writing register 13 with bit 2 set
 and reading it straight back, and one reading CD before and after a second ticks
@@ -271,10 +271,20 @@ clock. The other six send commands the recording ignores: `0x01`, `0x02` and
 and `0x05`, `0x06` and `0x07` alone. The program's half of the protocol is now
 read rather than inferred; the part's answer to those six is not.
 
+**Its time base.** Nothing states one finer than a second. The record holds no
+crystal, prescaler or sub-second figure for this part, and the recording counts
+whole seconds of the host's clock: `SRTC::update_time` in `srtcemu.cpp`, snes9x
+at `2971061cf07fdc6fc7d18883edf4e648eb16a6d2`, reads `time(0)` and adds the
+difference in seconds. So the model counts whole seconds, and whether the part
+divides a crystal, and whether any read or command exposes the phase of that
+division, is unknown rather than modelled.
+
 **What would settle or reopen it.** A Sharp data book entry for the part, a
 decapsulation naming a catalogue number under the Nintendo marking, or a capture
 of the cartridge bus while the program sends one of the six commands the
-recording ignores.
+recording ignores. For the time base, a photograph of the cartridge board naming
+the crystal beside the part, and a capture timing when the seconds digit turns
+over against a read sequence started at a known phase.
 
 ## Where the question is a modelling choice, not a fact
 
@@ -289,13 +299,13 @@ when the chip is disabled rather than when it is enabled. A program that opens
 the chip and reads immediately therefore gets the second the previous session
 left.
 
-**What a crystal-rate chip does.** Built with `rate=epson.CRYSTAL_HZ` and a time
-source counting crystal cycles, the chip catches up at every access, so it shows
-the current second whenever it is read and the seam is gone. The whole-second
-chip keeps the recording's placement because that is the shape the recording is
-compared in.
+**What the default chip does.** It counts cycles of the part's crystal and
+catches up at every access, so it shows the current second whenever it is read
+and the seam is gone. A chip built with `rate=epson.WHOLE_SECONDS` keeps the
+recording's placement because that is the shape the recording is compared in,
+and the differential builds that chip by name.
 
-**What would settle or reopen it.** Nothing more for the crystal-rate chip. The
+**What would settle or reopen it.** Nothing more for the default chip. The
 whole-second placement is a property of the comparison, not of the part.
 
 ### The 125 microsecond lockout after a thirty-second adjustment.
@@ -303,10 +313,10 @@ whole-second placement is a property of the comparison, not of the part.
 **The document says.** For 125 microseconds the adjust bit reads back as 1 and
 the clock registers cannot be written, after which the bit clears itself.
 
-**What this project follows.** The document. A chip counting crystal cycles holds
-the bit at 1 and refuses writes to S1 through W for 4 cycles after the write,
-lands the adjustment at the second the window ends in, and cancels it if RESET
-comes first.
+**What this project follows.** The document. The default chip, counting crystal
+cycles, holds the bit at 1 and refuses writes to S1 through W for 4 cycles after
+the write, lands the adjustment at the second the window ends in, and cancels it
+if RESET comes first.
 125 microseconds is 4.096 cycles, and the model rounds to 4. A chip counting
 whole seconds has no window: the bit clears and the adjustment lands at once.
 

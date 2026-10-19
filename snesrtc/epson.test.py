@@ -456,10 +456,26 @@ class ResetTest(unittest.TestCase):
         self.assertIn("inactive", shown)
 
 
+def machine_cycles() -> int:
+    return time.time_ns() * 32_768 // 1_000_000_000
+
+
 class DefaultClockTest(unittest.TestCase):
-    def test_a_chip_given_no_clock_reads_the_one_the_machine_has(self) -> None:
+    def test_a_chip_given_no_clock_reads_the_machine_in_crystal_cycles(self) -> None:
         # Arrange
         chip = Chip("rtc-4513", Store(cleared=True))
+        before = machine_cycles()
+
+        # Act
+        reading = chip.now()
+
+        # Assert
+        self.assertGreaterEqual(reading, before)
+        self.assertLessEqual(reading, machine_cycles())
+
+    def test_a_whole_second_chip_given_no_clock_reads_the_machine_in_seconds(self) -> None:
+        # Arrange
+        chip = Chip("rtc-4513", Store(cleared=True), rate=1)
         before = int(time.time())
 
         # Act

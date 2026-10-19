@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-時計**2**種、リファレンスと比較した操作**329,630**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**1,076**件、命令と分岐のカバレッジ**100%**、依存関係なし
+時計**2**種、リファレンスと比較した操作**329,630**件、不一致**0**件、マニュアルとそのリファレンスが食い違う箇所**15**件、それぞれ記録済み、テスト**1,082**件、命令と分岐のカバレッジ**100%**、依存関係なし
 
 ```python
 from snesrtc import Chip, Store
@@ -58,7 +58,7 @@ python3 snesrtc/doctor.py
 
 ## インターフェース
 
-`snesrtc.Chip(model, store=None, now=..., open_bus=0x00, rate=1)`は時計を1つ作ります。`model`は必須です。`store`は`Store`で、省略すると時計がシード付きのストアを作ります。`now`は整数の秒を返す呼び出し可能オブジェクトで、時計はその下位32ビットを保持します。デフォルトは`time.time()`を読みます。`open_bus`はシャープのチップだけが受け付け、自分が担当しないアドレスで返す値です。エプソンのチップはそこで`0x00`を返します。`rate`はエプソンのチップだけが受け付け、`now`の何カウントが1秒かを表します。デフォルトの1は整数の秒を数え、チップの選択が解除されたときに時刻を進めます。これは記録と比較する形です。`rate=epson.CRYSTAL_HZ`で、`now`が部品の32,768 Hz水晶の周期を数える場合、部品はマニュアルの説明どおりに数えます。アクセスのたびに時刻を進め、1/64秒の周期でIRQ-Fを立て、固定周期モードではIRQ-FとSTD.Pを256周期、7.8 msの間Lowに保ち、30ADJ.を4周期、つまり125マイクロ秒を整数周期に丸めた間保持します。
+`snesrtc.Chip(model, store=None, now=..., open_bus=0x00, rate=epson.CRYSTAL_HZ)`は時計を1つ作ります。`model`は必須です。`store`は`Store`で、省略すると時計がシード付きのストアを作ります。`now`は時刻を返す呼び出し可能オブジェクトで、時計はそこから得た整数の秒の下位32ビットを保持します。シャープのチップは`now`を整数の秒として読み、デフォルトは`time.time()`を読みます。`open_bus`はシャープのチップだけが受け付け、自分が担当しないアドレスで返す値です。エプソンのチップはそこで`0x00`を返します。`rate`はエプソンのチップだけが受け付け、`now`の何カウントが1秒かを表します。デフォルトの`now`はマシンの時計をそのカウントで読みます。デフォルトの`epson.CRYSTAL_HZ`は、部品の32,768 Hz水晶の周期をマニュアルの説明どおりに数えます。部品はアクセスのたびに時刻を進め、1/64秒の周期でIRQ-Fを立て、固定周期モードではIRQ-FとSTD.Pを256周期、7.8 msの間Lowに保ち、30ADJ.を4周期、つまり125マイクロ秒を整数周期に丸めた間保持します。`rate=epson.WHOLE_SECONDS`は整数の秒を数え、チップの選択が解除されたときに時刻を進めます。これは記録と比較する形で、1/64秒の周期も固定周期のパルスもロックアウトもありません。
 
 | モデル     | 別名                                                    | アドレス                                            | 年                              | 時間                         |
 | :--------- | :------------------------------------------------------ | :-------------------------------------------------- | :------------------------------ | :--------------------------- |
@@ -107,19 +107,19 @@ s-dsp is not a clock this package covers; it has rtc-4513, s-rtc
 
 ### モジュールの内容
 
-| 名前                                                       | 内容                                                                                                                                                                                               |
-| :--------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `snesrtc.MODELS`                                           | 2つの`Model`レコード。正規名がキーです                                                                                                                                                             |
-| `snesrtc.Model`                                            | `name`、`summary`、`addresses`、`protocol`、`aliases`と、`Chip`が呼ぶ`build(store=None, **options)`を持つレコード                                                                                  |
-| `snesrtc.models.lookup(name)`                              | どの綴りに対しても`Model`を返します。`UnknownModelError`を送出します                                                                                                                               |
-| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | カートリッジがバッテリーで保持する20バイト。[最初からクリアされているものはない](#nothing-starts-cleared)を参照してください                                                                        |
-| `snesrtc.Built`                                            | `Chip`が返す型。`epson.Chip`または`sharp.Chip`                                                                                                                                                     |
-| `snesrtc.UnknownModelError`                                | パッケージが送出する唯一のエラーで、モデル名がない場合や未知の場合に使います。`snesrtc.errors`にあります                                                                                           |
-| `snesrtc.__version__`                                      | インストール済みのバージョン                                                                                                                                                                       |
-| `snesrtc.sharp`, `snesrtc.epson`                           | 各チップの`Chip`クラス、アドレス、コマンドコード、レジスタ定数                                                                                                                                     |
-| `snesrtc.store`                                            | `Store`とその定数`SIZE`、`STAMP_AT`、`STAMP_BYTES`、`UNSET_SEED`                                                                                                                                   |
-| `snesrtc.calendar`                                         | 両方のチップが共有する暦の計算                                                                                                                                                                     |
-| `snesrtc.crystal`                                          | `CRYSTAL_HZ`、ピンのレベル`LOW`と`OPEN`、印刷された`LOW_SECONDS`と`LOCKOUT_SECONDS`、`FAST_HZ`、`whole_ticks(rate, seconds)`、水晶の周期で数えるエプソンのチップが持つ1秒未満の状態`Crystal(rate)` |
+| 名前                                                       | 内容                                                                                                                                                                                                                                                                        |
+| :--------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `snesrtc.MODELS`                                           | 2つの`Model`レコード。正規名がキーです                                                                                                                                                                                                                                      |
+| `snesrtc.Model`                                            | `name`、`summary`、`addresses`、`protocol`、`aliases`と、`Chip`が呼ぶ`build(store=None, **options)`を持つレコード                                                                                                                                                           |
+| `snesrtc.models.lookup(name)`                              | どの綴りに対しても`Model`を返します。`UnknownModelError`を送出します                                                                                                                                                                                                        |
+| `snesrtc.Store(seed=UNSET_SEED, cleared=False, held=None)` | カートリッジがバッテリーで保持する20バイト。[最初からクリアされているものはない](#nothing-starts-cleared)を参照してください                                                                                                                                                 |
+| `snesrtc.Built`                                            | `Chip`が返す型。`epson.Chip`または`sharp.Chip`                                                                                                                                                                                                                              |
+| `snesrtc.UnknownModelError`                                | パッケージが送出する唯一のエラーで、モデル名がない場合や未知の場合に使います。`snesrtc.errors`にあります                                                                                                                                                                    |
+| `snesrtc.__version__`                                      | インストール済みのバージョン                                                                                                                                                                                                                                                |
+| `snesrtc.sharp`, `snesrtc.epson`                           | 各チップの`Chip`クラス、アドレス、コマンドコード、レジスタ定数                                                                                                                                                                                                              |
+| `snesrtc.store`                                            | `Store`とその定数`SIZE`、`STAMP_AT`、`STAMP_BYTES`、`UNSET_SEED`                                                                                                                                                                                                            |
+| `snesrtc.calendar`                                         | 両方のチップが共有する暦の計算                                                                                                                                                                                                                                              |
+| `snesrtc.crystal`                                          | `CRYSTAL_HZ`、ピンのレベル`LOW`と`OPEN`、印刷された`LOW_SECONDS`と`LOCKOUT_SECONDS`、`FAST_HZ`、`WHOLE_SECONDS`、`NANOSECONDS`、`whole_ticks(rate, seconds)`、`rate`のカウントでマシンの時刻を返す`machine_clock(rate)`、エプソンのチップが持つ1秒未満の状態`Crystal(rate)` |
 
 ### シャープS-RTC
 
@@ -193,17 +193,17 @@ SPC7110は、このチップの3線式シリアルインターフェースを3�
 | `CE`     | 14   | t1     | t0        | INT/STND  | MASK  |              |
 | `CF`     | 15   | TEST   | 24/12     | STOP      | RESET |              |
 
-`snesrtc.epson`は各レジスタを番号で`S1`から`CF`まで名付け、各制御ビットをマスクで名付けています。CDには`HOLD`、`CAL_HW`、`IRQ_F`、`ADJUST`、CFには`RESET`、`STOP`、`HOURS_24`、`TEST`、CEには`MASK`、`INT_STND`があります。ほかに`ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`CALENDAR_READ_FLAG_AT`、`PM`、`H20`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`HOUR`、`WHOLE_SECONDS_PER_PERIOD`、`PERIOD_SHIFT`、`PERIOD_BITS`、`NOON`、`YEAR_PIVOT`、`STAMP_LIMIT`、`STAMP_MASK`、`CLOCK_REGISTERS`、`FAST_PERIOD`、`CRYSTAL_HZ`と、`state`の5つの値`INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING`、`WRITING`があります。
+`snesrtc.epson`は各レジスタを番号で`S1`から`CF`まで名付け、各制御ビットをマスクで名付けています。CDには`HOLD`、`CAL_HW`、`IRQ_F`、`ADJUST`、CFには`RESET`、`STOP`、`HOURS_24`、`TEST`、CEには`MASK`、`INT_STND`があります。ほかに`ENABLE`、`DATA`、`STATUS`、`WRITE_MODE`、`READ_MODE`、`READY`、`REGISTERS`、`DIGIT_MASK`、`OSC_FLAG`、`READ_FLAG`、`READ_FLAG_AT`、`CALENDAR_READ_FLAG_AT`、`PM`、`H20`、`STOPPED`、`NIBBLE`、`HALF_MINUTE`、`MINUTE`、`HOUR`、`WHOLE_SECONDS_PER_PERIOD`、`PERIOD_SHIFT`、`PERIOD_BITS`、`NOON`、`YEAR_PIVOT`、`STAMP_LIMIT`、`STAMP_MASK`、`CLOCK_REGISTERS`、`FAST_PERIOD`、`CRYSTAL_HZ`、`WHOLE_SECONDS`と、`state`の5つの値`INACTIVE`、`MODE_SELECT`、`INDEX_SELECT`、`READING`、`WRITING`があります。
 
 ```python
 from snesrtc import Chip, Store, epson
 
-seconds = [1_000_000_000]
+cycles = [1_000_000_000 * epson.CRYSTAL_HZ]
 held = Store(cleared=True)
 held.write(epson.CF, epson.HOURS_24)
 held.write(epson.CD, epson.CAL_HW)
-held.stamp = seconds[0]
-clock = Chip("rtc-4513", held, now=lambda: seconds[0])
+held.stamp = 1_000_000_000
+clock = Chip("rtc-4513", held, now=lambda: cycles[0])
 
 
 def session(mode, values=()):
@@ -219,18 +219,16 @@ def session(mode, values=()):
 
 session(epson.WRITE_MODE, (0, 5, 9, 5, 3, 2, 1, 3, 2, 1, 9, 9, 5))
 print(session(epson.READ_MODE))
-seconds[0] += 15
-print(session(epson.READ_MODE))
+cycles[0] += 15 * epson.CRYSTAL_HZ
 print(session(epson.READ_MODE))
 ```
 
 ```
-5991231235950
 5991231235950
 6000101000005
 ```
 
-各行はW、Y10からS1までの順です。曜日5、99-12-31、23:59:50です。15秒後の最初の読み出しはまだ古い時刻を示します。チップが追いつくのは選択解除されたときだからです。その次の読み出しは曜日6、00-01-01、00:00:05を示します。
+各行はW、Y10からS1までの順です。曜日5、99-12-31、23:59:50です。15秒後の読み出しは曜日6、00-01-01、00:00:05を示します。部品は水晶を数えていて、読まれるたびに現在の時刻になっているからです。`rate=epson.WHOLE_SECONDS`で作ったチップなら、その読み出しは古い時刻を示し、新しい時刻は一度選択解除されてから示します。
 
 | 属性または呼び出し                                                          | 意味                                                                                                                                                               |
 | :-------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -263,7 +261,8 @@ held.write(epson.D1, 1)
 held.write(epson.MO1, 1)
 held.write(epson.S10, 4)
 held.stamp = 1_000_000_000
-clock = Chip("rtc-4513", held, now=lambda: 1_000_000_000)
+cycles = [1_000_000_000 * epson.CRYSTAL_HZ]
+clock = Chip("rtc-4513", held, now=lambda: cycles[0])
 
 clock.write(epson.ENABLE, 0x01)
 print(f"{clock.read(epson.STATUS):#04x} {clock.read(epson.STATUS):#04x}")
@@ -273,17 +272,18 @@ clock.write(epson.DATA, epson.CAL_HW | epson.IRQ_F | epson.ADJUST)
 clock.write(epson.DATA, 0x0F)
 clock.write(epson.DATA, epson.HOURS_24 | epson.TEST)
 print(f"CD={held.read(epson.CD):#x} CF={held.read(epson.CF):#x}")
+cycles[0] += 5
 clock.write(epson.ENABLE, 0x00)
-print(f"CF={held.read(epson.CF):#x}", clock.moment())
+print(f"CD={held.read(epson.CD):#x} CF={held.read(epson.CF):#x}", clock.moment())
 ```
 
 ```
 0x80 0x00
-CD=0x2 CF=0xc
-CF=0x4 <2000-01-01 00:01:00 weekday=0>
+CD=0xa CF=0xc
+CD=0x2 CF=0x4 <2000-01-01 00:01:00 weekday=0>
 ```
 
-ステータスは選択後に1回だけ`0x80`を返します。CDへの書き込みはCAL/HWに加えてIRQ-Fと30ADJ.も立てます。IRQ-Fは保存されず、30ADJ.は40秒を次の分に切り上げて自分自身をクリアします。TESTはCFへの書き込みで立ち、選択解除でクリアされます。
+ステータスは選択後に1回だけ`0x80`を返します。CDへの書き込みはCAL/HWに加えてIRQ-Fと30ADJ.も立てます。IRQ-Fは保存されません。30ADJ.は125マイクロ秒のロックアウト、つまり水晶の4周期の間1を返し、その後40秒を次の分に切り上げて自分自身をクリアします。TESTはCFへの書き込みで立ち、選択解除でクリアされます。
 
 ### 暦
 
@@ -350,16 +350,16 @@ False True 29 0
 ```python
 from snesrtc import Chip, Store, epson
 
-seconds = [1_000_000_000]
+cycles = [1_000_000_000 * epson.CRYSTAL_HZ]
 held = Store(cleared=True)
-held.stamp = seconds[0]
+held.stamp = 1_000_000_000
 written = {epson.S1: 9, epson.S10: 5, epson.MI1: 9, epson.MI10: 5, epson.H1: 1, epson.D1: 1}
 for index, digit in written.items():
     held.write(index, digit)
 held.write(epson.H10, 1 | epson.PM)
-clock = Chip("rtc-4513", held, now=lambda: seconds[0])
+clock = Chip("rtc-4513", held, now=lambda: cycles[0])
 
-seconds[0] += 1
+cycles[0] += epson.CRYSTAL_HZ
 clock.write(epson.ENABLE, 0x01)
 clock.write(epson.ENABLE, 0x00)
 
@@ -402,7 +402,7 @@ print(advance(Moment(1996, 8, 18, 12, 100, 59, 0), 1))
 <1996-08-18 13:00:00 weekday=0>
 ```
 
-**エプソンの時計は、選択されたときではなく選択解除されたときに追いつきます。**上のセッションの例が示すとおり、セッションは前のセッションが残した時刻を読みます。実物のチップは連続して計時するので、このような継ぎ目はありません。
+**整数の秒を数えるエプソンの時計は、選択されたときではなく選択解除されたときに追いつきます。**`rate=epson.WHOLE_SECONDS`で作ると、セッションは前のセッションが残した時刻を読みます。デフォルトのチップは水晶を数え、上のセッションの例が示すとおりアクセスのたびに追いつくので、このような継ぎ目はなく、実物のチップにもありません。整数の秒での追いつき方が残っているのは、記録との比較がその形で行われるからです。
 
 **モードコードはバイト全体で比較されます。**シリアルチップは常に4ビットしか見ないので、これはどの文書にも記述されていないSPC7110ラッパーの性質です。
 
@@ -410,17 +410,17 @@ print(advance(Moment(1996, 8, 18, 12, 100, 59, 0), 1))
 
 これらは異なるメーカーの部品で、異なるパブリッシャーのカートリッジに載っています。
 
-|                           | シャープS-RTC                        | エプソンRTC-4513                                    |
-| :------------------------ | :----------------------------------- | :-------------------------------------------------- |
-| メーカーの文書            | 知られていない                       | アプリケーションマニュアル、1999年                  |
-| アクセス先                | `$2800`と`$2801`                     | SPC7110経由で`$4840`から`$4842`                     |
-| 形                        | マーカーで囲まれた固定シーケンス     | 16個の4ビットレジスタからなるアドレス指定のファイル |
-| 1つのフィールドを得る方法 | シーケンス全体を読んで数える         | そのレジスタを指定する                              |
-| 曜日                      | 日付が書き込まれたときに日付から計算 | 0から6の独立したカウンタで、意味は付与されていない  |
-| 年                        | 3桁に1000を加算                      | 2桁。世紀はどこにも印刷されていない                 |
-| 時間                      | 24                                   | 12または24。制御ビットで選択                        |
-| 制御レジスタ              | なし                                 | 3個。名前付きのビットが16個                         |
-| 追いつくとき              | 読み出しが始まるとき                 | チップが選択解除されたとき                          |
+|                           | シャープS-RTC                        | エプソンRTC-4513                                                 |
+| :------------------------ | :----------------------------------- | :--------------------------------------------------------------- |
+| メーカーの文書            | 知られていない                       | アプリケーションマニュアル、1999年                               |
+| アクセス先                | `$2800`と`$2801`                     | SPC7110経由で`$4840`から`$4842`                                  |
+| 形                        | マーカーで囲まれた固定シーケンス     | 16個の4ビットレジスタからなるアドレス指定のファイル              |
+| 1つのフィールドを得る方法 | シーケンス全体を読んで数える         | そのレジスタを指定する                                           |
+| 曜日                      | 日付が書き込まれたときに日付から計算 | 0から6の独立したカウンタで、意味は付与されていない               |
+| 年                        | 3桁に1000を加算                      | 2桁。世紀はどこにも印刷されていない                              |
+| 時間                      | 24                                   | 12または24。制御ビットで選択                                     |
+| 制御レジスタ              | なし                                 | 3個。名前付きのビットが16個                                      |
+| 追いつくとき              | 読み出しが始まるとき                 | アクセスのたび。`rate=epson.WHOLE_SECONDS`では選択解除されたとき |
 
 <a id="nothing-starts-cleared"></a>
 

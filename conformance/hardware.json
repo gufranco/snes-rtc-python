@@ -652,7 +652,7 @@
           "heldBy": [
             "snesrtc/crystal.test.py::PeriodTest.test_the_crystal_is_the_printed_frequency"
           ],
-          "why": "The rate of the counter chain. A chip built with rate=epson.CRYSTAL_HZ takes its time in cycles of this crystal, and every sub-second figure the manual prints is counted in them. The quote says 32 kHz; 32,768 is the frequency of the watch crystal a 1/64 s period and a 7.8 ms pulse divide down from, and it is the one figure here that rests on that rather than on the page."
+          "why": "The rate of the counter chain. An Epson chip takes its time in cycles of this crystal unless it is built with rate=epson.WHOLE_SECONDS, and every sub-second figure the manual prints is counted in them. The quote says 32 kHz; 32,768 is the frequency of the watch crystal a 1/64 s period and a 7.8 ms pulse divide down from, and it is the one figure here that rests on that rather than on the page."
         },
         "frequencyTolerancePpm": {
           "value": 25,

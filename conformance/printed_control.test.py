@@ -8,6 +8,7 @@ from conformance.driving import (
     CAL_HW,
     CD,
     CF,
+    CRYSTAL,
     DATA,
     DIGITS,
     ENABLE,
@@ -17,11 +18,13 @@ from conformance.driving import (
     HOUR,
     HOURS_24,
     MI1,
+    PAST_THE_LOCKOUT,
     S1,
     S10,
     TEST,
     WRITE_MODE,
     a_clock,
+    a_crystal_clock,
     opened,
     written,
 )
@@ -39,9 +42,11 @@ def hours_moved(*control_f: int) -> int:
 
 
 def adjusted(seconds: int, mask: int) -> tuple[int, int, int]:
-    chip = a_clock([FROZEN])
+    hand = [FROZEN * CRYSTAL]
+    chip = a_crystal_clock(hand)
     written(chip, S1, seconds % 10, seconds // 10, *DIGITS[2:])
     written(chip, CD, CAL_HW | mask)
+    hand[0] += PAST_THE_LOCKOUT
     chip.write(ENABLE, 0x00)
     second = chip.digit(S1) + chip.digit(S10) * 10
     return second, chip.digit(MI1), chip.store.read(CD) & mask

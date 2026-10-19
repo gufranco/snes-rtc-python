@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +47,20 @@ REGISTERS: int = FACTS["registerCount"]["value"]
 
 NIBBLE = (1 << FACTS["registerWidthBits"]["value"]) - 1
 
+CRYSTAL: int = FACTS["crystalHz"]["value"]
+
+WHOLE_SECONDS = 1
+
+LOCKOUT_MICROSECONDS: int = FACTS["controlRegisterD"]["bits"]["thirtySecondAdjust"][
+    "lockoutMicroseconds"
+]
+
+PAST_THE_LOCKOUT = math.ceil(CRYSTAL * LOCKOUT_MICROSECONDS / 1_000_000)
+
+LOW_MILLISECONDS: float = FACTS["controlRegisterE"]["fixedPeriodLowMilliseconds"]["value"]
+
+PAST_THE_PULSE = math.ceil(CRYSTAL * LOW_MILLISECONDS / 1_000)
+
 
 def register(name: str) -> int:
     return next(int(row["address"]) for row in ROWS if row["name"] == name)
@@ -85,12 +100,29 @@ READ_FLAG = mask_of("fr")
 READ_FLAG_AT = tuple(int(row["address"]) for row in ROWS if row["d3"] == "fr")
 
 
-def a_clock(hand: list[int], control_f: int = HOURS_24, control_d: int = CAL_HW) -> Any:
+def a_store(second: int, control_f: int, control_d: int) -> Store:
     held = Store(cleared=True)
-    held.stamp = hand[0]
+    held.stamp = second
     held.write(CF, control_f)
     held.write(CD, control_d)
+    return held
+
+
+def a_clock(hand: list[int], control_f: int = HOURS_24, control_d: int = CAL_HW) -> Any:
+    held = a_store(hand[0], control_f, control_d)
+    return Chip("rtc-4513", held, now=lambda: hand[0] * CRYSTAL)
+
+
+def a_crystal_clock(hand: list[int]) -> Any:
+    held = a_store(hand[0] // CRYSTAL, HOURS_24, CAL_HW)
     return Chip("rtc-4513", held, now=lambda: hand[0])
+
+
+def a_whole_second_clock(
+    hand: list[int], control_f: int = HOURS_24, control_d: int = CAL_HW
+) -> Any:
+    held = a_store(hand[0], control_f, control_d)
+    return Chip("rtc-4513", held, now=lambda: hand[0], rate=WHOLE_SECONDS)
 
 
 def opened(chip: Any, mode: int, index: int) -> None:
