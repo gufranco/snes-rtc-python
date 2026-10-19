@@ -112,6 +112,17 @@ stamp. Do not close one by argument.
 
 A change that looks like it applies to both almost certainly applies to one.
 
+## Test cartridges
+
+[`conformance/testroms.json`](conformance/testroms.json) keeps an empty list,
+and its `none` says why: no test cartridge exercises either clock. The 18 images
+in `snes-roms/5 Tools & Service Test Carts/` declare no coprocessor or an SA-1,
+or carry no header, and the 1,414 files of the [higan snes-test-roms
+mirror](https://gitlab.com/higan/snes-test-roms) at `26e8aa91` hold nothing for
+a cartridge clock. The two clocks are reached only through the retail games that
+carry them. There is no test cartridge runner here. A test cartridge for a
+cartridge clock that appears goes in the record, by SHA-256, and gets one.
+
 ## Every gate, in the order to run them
 
 ```bash

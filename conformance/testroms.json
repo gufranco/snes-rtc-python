@@ -1,0 +1,4 @@
+{
+  "cartridges": [],
+  "none": "No test cartridge exercises the S-RTC or the RTC-4513. Every one on disk declares no coprocessor or an SA-1, or carries no header, and the community mirror holds none for a cartridge clock. The two clocks are reached only by the retail games that carry them. Searched on 2026-10-19: the 18 images in snes-roms/5 Tools & Service Test Carts/, with its BIOS/ and CPU/ folders, and the 1,414 files of the higan snes-test-roms mirror at 26e8aa91e0d3b90b901e7e693bc4a8244b391d7b."
+}
