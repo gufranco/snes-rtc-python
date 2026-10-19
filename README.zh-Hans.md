@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** 个时钟，**329,630** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**1,019** 个测试，**100%** 语句与分支覆盖率，无依赖
+**2** 个时钟，**329,630** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**1,036** 个测试，**100%** 语句与分支覆盖率，无依赖
 
 ```python
 from snesrtc import Chip, Store
@@ -506,7 +506,7 @@ print(len(script), reference.render(script).splitlines()[:4])
 
 该脚本先设置时间并配置 Epson 控制寄存器，然后向 `$2801`（即 10241）写入 `0x0C`。
 
-[`conformance/cartridge.json`](conformance/cartridge.json) 记录了《Tengai Makyou Zero》的时钟例程写入该部件的内容，这些内容是在不运行程序的情况下从程序中读出的：五次对控制寄存器的常量写入，其中包括把 CF 设为 `0x07` 再设为 `0x04`，以及把 CD 设为 `0x06`。该文件保存的是镜像的摘要值，不含镜像的任何字节。
+[`conformance/cartridge.json`](conformance/cartridge.json) 记录了《Tengai Makyou Zero》的时钟例程写入该部件的内容，这些内容是在不运行程序的情况下从程序中读出的：五次对控制寄存器的常量写入，其中包括把 CF 设为 `0x07` 再设为 `0x04`，以及把 CD 设为 `0x06`。它还记录：程序的五个读取会话各自只写数据端口一次，用于选择索引，部件处于读取模式时不再写入；程序把两位数年份读作 1995 到 2094 年，95 及以上加 1900，以下加 2000；其初始化载入 1995-12-22 12:00:00。该文件保存的是镜像的摘要值，不含镜像的任何字节。
 
 ## 参与开发
 

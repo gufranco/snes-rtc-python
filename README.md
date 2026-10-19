@@ -8,7 +8,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **1,019** tests, **100%** statement and branch coverage, no dependencies
+**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **1,036** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from snesrtc import Chip, Store
@@ -504,7 +504,7 @@ print(len(script), reference.render(script).splitlines()[:4])
 
 The script opens by setting the time and configuring the Epson control registers, then writes `0x0C` to `$2801`, which is 10241.
 
-[`conformance/cartridge.json`](conformance/cartridge.json) records what the clock routine of Tengai Makyou Zero writes to the part, read out of the program without running it: five constant writes to the control registers, among them CF set to `0x07` and then `0x04`, and CD set to `0x06`. The file holds digests of the image and no byte of it.
+[`conformance/cartridge.json`](conformance/cartridge.json) records what the clock routine of Tengai Makyou Zero writes to the part, read out of the program without running it: five constant writes to the control registers, among them CF set to `0x07` and then `0x04`, and CD set to `0x06`. It also records that each of the program's five read sessions writes the data port once, to choose the index, and never again while the part is in read mode; that the program reads a two-digit year as 1995 to 2094, adding 1900 at 95 and above and 2000 below; and that its initialisation loads 1995-12-22 12:00:00. The file holds digests of the image and no byte of it.
 
 ## Working on it
 

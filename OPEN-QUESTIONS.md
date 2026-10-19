@@ -195,10 +195,16 @@ forward.
 **What this project follows.** The document, in the sense of the nearest
 statement it does make.
 
+**The shipped program never does it.** Read out of its own code on 2026-10-19 by
+[`conformance/cartridge.py`](conformance/cartridge.py), each of the program's
+five read sessions writes the data port once, to choose the index, and closes
+the chip without writing it again. Two further openings have no close within
+reach of the scan; no `jsr`, `jmp`, `jsl` or `jml` in the image reaches either.
+So the question matters to no software that shipped for this part.
+
 **What would settle or reopen it.** A capture driving the data pin as an input
 while the chip is in read mode, which is a bus contention a real board would
-avoid, or a read of the shipped cartridge program establishing whether it ever
-does this.
+avoid.
 
 ## Where nobody wrote it down
 

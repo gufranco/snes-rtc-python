@@ -1,6 +1,7 @@
 import collections
 import hashlib
 import json
+import re
 import sys
 import zlib
 from collections.abc import Callable, Sequence
@@ -31,6 +32,26 @@ LOAD_X_IMMEDIATE = 0xA2
 LOAD_A_IMMEDIATE = 0xA9
 
 CONTROL_NAMES = {0x0D: "CD", 0x0E: "CE", 0x0F: "CF"}
+
+DATA_STORES = (0x8D, 0x8E, 0x8C, 0x9C)
+
+CLOSING = bytes((LOAD_A_IMMEDIATE, 0x00, STORE_ABSOLUTE, 0x40, 0x48))
+
+SESSION_REACH = 0x80
+
+YEAR_FOLD = re.compile(rb"\x85\x00\x38\xe9(.)\xb0\x05\xa5\x00\x18\x69(.)\x18\x69(.)\x60", re.S)
+
+YEAR_BASE = re.compile(rb"\xc2\x20\x29\xff\x00\x18\x69(..)", re.S)
+
+LOAD_LONG_X = 0xBF
+
+PUSH_X = 0xDA
+
+CLOCK_DIGITS = 13
+
+CENTURY = 100
+
+HIROM_BANK = 0x3F
 
 CONTROL_BITS: dict[str, tuple[tuple[int, str], ...]] = {
     "CD": (
@@ -89,6 +110,99 @@ def written(image: bytes, where: int) -> list[tuple[int, int]]:
     return found
 
 
+def opening(mode: int) -> bytes:
+    return bytes((LOAD_A_IMMEDIATE, mode, STORE_ABSOLUTE, 0x41, 0x48))
+
+
+def data_stores(span: bytes) -> int:
+    return sum(
+        1
+        for at in range(len(span) - 2)
+        if span[at] in DATA_STORES and span[at + 1 : at + 3] == bytes((0x41, 0x48))
+    )
+
+
+def openings(image: bytes, mode: int) -> list[int]:
+    found = []
+    start = image.find(opening(mode))
+    while start >= 0:
+        found.append(start)
+        start = image.find(opening(mode), start + 1)
+    return found
+
+
+def sessions(image: bytes, mode: int) -> list[dict[str, int]]:
+    found = []
+    for start in openings(image, mode):
+        close = image.find(CLOSING, start, start + SESSION_REACH)
+        if close >= 0:
+            span = image[start + len(opening(mode)) : close]
+            found.append({"at": start, "dataWrites": data_stores(span)})
+    return found
+
+
+def unclosed(image: bytes, mode: int) -> int:
+    return len(openings(image, mode)) - len(sessions(image, mode))
+
+
+def reading(digits: "Sequence[int]", window: dict[str, int]) -> str:
+    def pair(at: int) -> int:
+        return digits[at] + digits[at + 1] * 10
+
+    year = pair(epson.Y1)
+    year += window["base"] + (0 if year >= window["pivot"] else CENTURY)
+    return (
+        f"{year:04d}-{pair(epson.MO1):02d}-{pair(epson.D1):02d}"
+        f" {pair(epson.H1):02d}:{pair(epson.MI1):02d}:{pair(epson.S1):02d}"
+    )
+
+
+def findings(image: bytes, where: int) -> dict[str, Any]:
+    window = century(image)
+    digits = loaded(image, where)
+    found: dict[str, Any] = {
+        "readSessions": [
+            {"at": f"{one['at']:#08x}", "dataWrites": one["dataWrites"]}
+            for one in sessions(image, epson.READ_MODE)
+        ],
+        "unclosedOpenings": {
+            "read": unclosed(image, epson.READ_MODE),
+            "write": unclosed(image, epson.WRITE_MODE),
+        },
+        "century": None if window is None else {**window, "foldAt": f"{window['foldAt']:#08x}"},
+    }
+    if digits is not None and window is not None:
+        found["loadedOnInitialisation"] = {"digits": digits, "reads": reading(digits, window)}
+    return found
+
+
+def century(image: bytes) -> dict[str, int] | None:
+    fold = YEAR_FOLD.search(image)
+    if fold is None:
+        return None
+    pivot, carry, again = (one[0] for one in fold.groups())
+    base = YEAR_BASE.match(image, fold.end())
+    if base is None or again != pivot or pivot + carry != CENTURY:
+        return None
+    first = int.from_bytes(base.group(1), "little")
+    return {
+        "foldAt": fold.start(),
+        "pivot": pivot,
+        "base": first,
+        "first": first + pivot,
+        "last": first + CENTURY + pivot - 1,
+    }
+
+
+def loaded(image: bytes, where: int) -> list[int] | None:
+    call = bytes((PUSH_X, CALL_LONG, where & 0xFF, (where >> 8) & 0xFF, 0xC0))
+    at = image.find(call)
+    if at < 4 or image[at - 4] != LOAD_LONG_X:
+        return None
+    table = ((image[at - 1] & HIROM_BANK) << 16) | image[at - 2] << 8 | image[at - 3]
+    return list(image[table : table + CLOCK_DIGITS])
+
+
 def controls(pairs: "Sequence[tuple[int, int]]") -> list[dict[str, Any]]:
     said = []
     for index, value in pairs:
@@ -145,6 +259,7 @@ def main(argv: Sequence[str], say: Callable[[str], object] = print) -> int:
         "modes": {"write": f"{epson.WRITE_MODE:#04x}", "read": f"{epson.READ_MODE:#04x}"},
         "writes": [{"index": f"{index:#04x}", "value": f"{value:#04x}"} for index, value in pairs],
         "controls": named,
+        **findings(image, where),
     }
     out.write_text(json.dumps(found, indent=2) + "\n")
 
@@ -156,7 +271,18 @@ def main(argv: Sequence[str], say: Callable[[str], object] = print) -> int:
         bits = one["bits"]
         assert isinstance(bits, list)
         say(f"    {one['register']} = {one['value']}  {' '.join(bits) or 'nothing set'}")
+    summarise(found, say)
     return 0
+
+
+def summarise(found: dict[str, Any], say: Callable[[str], object]) -> None:
+    writes = sorted({one["dataWrites"] for one in found["readSessions"]})
+    say(f"  {len(found['readSessions'])} read sessions, data writes in each: {writes}")
+    window = found["century"]
+    if window is None:
+        say("  no year fold was found")
+        return
+    say(f"  years read as {window['first']} to {window['last']}")
 
 
 if __name__ == "__main__":

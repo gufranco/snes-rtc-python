@@ -303,10 +303,9 @@
         "source": "pinned.json"
       },
       "packageFollows": "document",
-      "consequence": "A write to the data port during a read-mode session is ignored, and the address keeps whatever the single index selection set it to.",
+      "consequence": "A write to the data port during a read-mode session is ignored, and the address keeps whatever the single index selection set it to. The shipped program never does this: read out of its code on 2026-10-19 by conformance/cartridge.py, each of its five read sessions writes the data port once, to choose the index, and closes the chip without writing it again.",
       "wouldSettleIt": [
-        "A logic capture driving DATA as an input while the chip is in read mode, which is a bus contention a real board would avoid.",
-        "A read of the shipped cartridge program establishing whether it ever does this."
+        "A logic capture driving DATA as an input while the chip is in read mode, which is a bus contention a real board would avoid."
       ],
       "why": "The SPC7110 wrapper turns a bidirectional pin into a write-only address, so the host can perform an operation the chip has no pin state for. Neither reading is derivable from the manual, and following it rather than the reference is the smaller invention.",
       "parts": ["Epson RTC-4513"]

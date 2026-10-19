@@ -69,5 +69,42 @@
       "value": "0x06",
       "bits": ["CAL_HW", "IRQ_F"]
     }
-  ]
+  ],
+  "readSessions": [
+    {
+      "at": "0x002da7",
+      "dataWrites": 1
+    },
+    {
+      "at": "0x002ddf",
+      "dataWrites": 1
+    },
+    {
+      "at": "0x002e3c",
+      "dataWrites": 1
+    },
+    {
+      "at": "0x0ffe3d",
+      "dataWrites": 1
+    },
+    {
+      "at": "0x0ffe73",
+      "dataWrites": 1
+    }
+  ],
+  "unclosedOpenings": {
+    "read": 1,
+    "write": 1
+  },
+  "century": {
+    "foldAt": "0x015f4f",
+    "pivot": 95,
+    "base": 1900,
+    "first": 1995,
+    "last": 2094
+  },
+  "loadedOnInitialisation": {
+    "digits": [0, 0, 0, 0, 2, 1, 2, 2, 2, 1, 5, 9, 5],
+    "reads": "1995-12-22 12:00:00"
+  }
 }

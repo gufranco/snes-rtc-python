@@ -8,7 +8,7 @@ Sharp S-RTC 與 Epson RTC-4513，即 Super Nintendo 卡帶可搭載的兩款實�
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** 個時鐘，**329,630** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**1,019** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
+**2** 個時鐘，**329,630** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**1,036** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
 
 ```python
 from snesrtc import Chip, Store
@@ -506,7 +506,7 @@ print(len(script), reference.render(script).splitlines()[:4])
 
 該腳本先設定時間並配置 Epson 控制暫存器，然後向 `$2801` 寫入 `0x0C`，即 10241。
 
-[`conformance/cartridge.json`](conformance/cartridge.json) 記錄了 Tengai Makyou Zero 的時鐘例程寫入該部件的內容，這是在不執行程式的情況下從程式中讀出的：五次對控制暫存器的常數寫入，其中包括把 CF 設為 `0x07` 再設為 `0x04`，以及把 CD 設為 `0x06`。該檔案保存映像檔的摘要值，不含映像檔的任何位元組。
+[`conformance/cartridge.json`](conformance/cartridge.json) 記錄了 Tengai Makyou Zero 的時鐘例程寫入該部件的內容，這是在不執行程式的情況下從程式中讀出的：五次對控制暫存器的常數寫入，其中包括把 CF 設為 `0x07` 再設為 `0x04`，以及把 CD 設為 `0x06`。它亦記錄：程式的五個讀取工作階段各自只寫入資料埠一次，用以選擇索引，部件處於讀取模式時不再寫入；程式把兩位數年份讀作 1995 至 2094 年，95 及以上加 1900，以下加 2000；其初始化載入 1995-12-22 12:00:00。該檔案保存映像檔的摘要值，不含映像檔的任何位元組。
 
 ## 參與開發
 
