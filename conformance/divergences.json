@@ -333,10 +333,15 @@
       "wouldSettleIt": [
         "A Sharp data book entry for the part.",
         "A decapsulation naming a catalogue part number under the Nintendo marking.",
-        "A logic capture of the cartridge bus while the one shipped title reads and writes the clock."
+        "A logic capture of the cartridge bus while the program sends one of the six commands the recording ignores, 0x01, 0x02, 0x03, 0x05, 0x06 or 0x07. The program's side of the protocol is read; the part's answer is not."
       ],
       "why": "The two clocks in this package now rest on very different evidence, and a reader must be able to see that without reading the source. Reporting one strength for both would read as uniform when it is not.",
-      "parts": ["Sharp S-RTC"]
+      "parts": ["Sharp S-RTC"],
+      "cartridgeDoes": {
+        "rung": 2,
+        "claim": "The program keeps its clock traffic as a table of nine scripts. It reads the marker 0x0F, thirteen digits and the marker again. It writes 0x0E, 0x00, the twelve digits from seconds to the hundreds of years and 0x0D, without the weekday. It sends 0x0E and 0x04 alone. It also sends 0x01, 0x02 and 0x03, each followed by the eight digits from hours to the hundreds of years, and 0x05, 0x06 and 0x07 alone, none of which the recording interprets.",
+        "source": "conformance/sharp_cartridge.json, read out of Daikaijuu Monogatari II's code on 2026-10-19 by conformance/sharp_cartridge.py"
+      }
     },
     {
       "id": "stamp-width-platform-dependent",

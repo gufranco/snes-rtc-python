@@ -1,0 +1,24 @@
+{
+  "note": "The command scripts the shipped program sends the clock and the reading it expects back, read out of its own code without running any of it. No cartridge byte is recorded here.",
+  "readFrom": {
+    "name": "Daikaijuu Monogatari II (Japan).sfc",
+    "bytes": 5242880,
+    "crc32": "a6c98ffe",
+    "md5": "a356461694f781eb64ee75a29aa984ff",
+    "sha1": "673c48a373b7da7e0e934c55f7182587e07bb9ab",
+    "sha256": "b8f31f3292609890e6321e6d925d60266c93e91f1a0e5999f7473adc7bb265f3"
+  },
+  "tableAt": "0x330774",
+  "scripts": [
+    ["0x0e", "0x04", "0x0d"],
+    ["0x0e", "0x05", "0x0d"],
+    ["0x0e", "0x06", "0x0d"],
+    ["0x0e", "0x07", "0x0d"],
+    ["0x0e", "0x00", "send 0 to 11", "0x0d"],
+    ["0x0e", "0x01", "send 4 to 11", "0x0d"],
+    ["0x0e", "0x02", "send 4 to 11", "0x0d"],
+    ["0x0e", "0x03", "send 4 to 11", "0x0d"],
+    ["marker", "take 0 to 12", "marker"]
+  ],
+  "commands": ["0x00", "0x01", "0x02", "0x03", "0x04", "0x05", "0x06", "0x07"]
+}

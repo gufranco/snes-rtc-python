@@ -217,6 +217,8 @@ conformance/
   printed_*.test.py each printed behaviour, driven through the model, one subject per file
   driving.py        the record loaded once, the register and bit names read from it, and the helpers that drive a chip
   divergences.json  every place the manual and the recording part, and what would settle each
+  cartridge.py      what Tengai Makyou Zero's code does to the Epson part, read without running it
+  sharp_cartridge.py  the scripts Daikaijuu Monogatari II's code sends the Sharp part, read the same way
   reference.py      the differential runner, and what it refuses to compare
   excusal.py        the fields the runner excuses where the model follows the manual
   reading.py        how a quote and a recogniser's reading of a page are compared

@@ -251,9 +251,24 @@ the three-digit year.
 test asserts it still does, because filling that block in from an emulator would
 make a guess indistinguishable from a fact.
 
+**What the shipped program sends it.** Read out of Daikaijuu Monogatari II's own
+code on 2026-10-19 by
+[`conformance/sharp_cartridge.py`](conformance/sharp_cartridge.py), which records
+it in [`conformance/sharp_cartridge.json`](conformance/sharp_cartridge.json). The
+program keeps its clock traffic as a table of steps holding nine scripts. Three of
+them agree with the recording: it reads the marker `0x0F`, thirteen digits and the
+marker again; it writes `0x0E`, `0x00`, the twelve digits from seconds to the
+hundreds of years and `0x0D`, leaving out the weekday the recording derives; and
+it sends `0x0E` and `0x04` alone, which the recording reads as clearing the
+clock. The other six send commands the recording ignores: `0x01`, `0x02` and
+`0x03`, each followed by the eight digits from hours to the hundreds of years,
+and `0x05`, `0x06` and `0x07` alone. The program's half of the protocol is now
+read rather than inferred; the part's answer to those six is not.
+
 **What would settle or reopen it.** A Sharp data book entry for the part, a
 decapsulation naming a catalogue number under the Nintendo marking, or a capture
-of the cartridge bus while the one shipped title reads and writes the clock.
+of the cartridge bus while the program sends one of the six commands the
+recording ignores.
 
 ## Where the question is a modelling choice, not a fact
 

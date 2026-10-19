@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-rtc-python)](https://github.com/gufranco/snes-rtc-python/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**2** 个时钟，**329,630** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**1,036** 个测试，**100%** 语句与分支覆盖率，无依赖
+**2** 个时钟，**329,630** 次操作与参考实现比对，**0** 处不一致，**15** 处手册与该参考实现不同，每一处都有记录，**1,055** 个测试，**100%** 语句与分支覆盖率，无依赖
 
 ```python
 from snesrtc import Chip, Store
@@ -482,14 +482,15 @@ Epson 脚本的上限为 200 个操作。比较平均在大约 30 个操作后�
 
 两个时钟由各自的脚本驱动。在测试框架和录制结果中，它们共用一个 20 字节的存储区，而没有哪个卡带是这样的，因为没有卡带同时搭载这两个部件。时间也由脚本给出，因为参考实现读取的是挂钟时间。参考源码在构建时获取，从不纳入仓库。只有 [`conformance/ref/driver.cpp`](conformance/ref/driver.cpp) 中的驱动程序属于本仓库。
 
-| 命令                                                  | 参数                                                                                   | 退出码                                                                                 |
-| :---------------------------------------------------- | :------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------- |
-| `python3 -m conformance.build`                        | `--sources DIR`, `--output PATH`, `--pinned FILE`, `--driver-source FILE`              | 0 构建成功，1 编译失败，2 参数错误或获取失败                                           |
-| `python3 -m conformance.reference`                    | `--runs N`，默认 200，`--from N`, `--seed N`, `--length N`，默认 4000，`--driver PATH` | 0 无不一致，1 有不一致或未声明的分歧，2 没有驱动程序或参数错误                         |
-| `python3 -m conformance.documents`                    | `--check` 只验证不获取，`--only SUBSTRING`                                             | 0 每个摘要值都匹配，1 有文件被拒绝、没有匹配或参数错误                                 |
-| `python3 -m conformance.quotes`                       | 无                                                                                     | 记录中的引文在其文档中找不到或引用核对不通过时为 1，否则为 0，包括磁盘上没有文档的情况 |
-| `python3 -m conformance.speed`                        | 无                                                                                     | 读取速度超过每秒 500,000 次的下限时为 0，否则为 1                                      |
-| `python3 -m conformance.cartridge CARTRIDGE OUT.json` | 一个卡带镜像和一个输出路径                                                             | 0 已写入，1 未找到时钟例程，2 参数错误或文件不存在                                     |
+| 命令                                                        | 参数                                                                                   | 退出码                                                                                 |
+| :---------------------------------------------------------- | :------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------- |
+| `python3 -m conformance.build`                              | `--sources DIR`, `--output PATH`, `--pinned FILE`, `--driver-source FILE`              | 0 构建成功，1 编译失败，2 参数错误或获取失败                                           |
+| `python3 -m conformance.reference`                          | `--runs N`，默认 200，`--from N`, `--seed N`, `--length N`，默认 4000，`--driver PATH` | 0 无不一致，1 有不一致或未声明的分歧，2 没有驱动程序或参数错误                         |
+| `python3 -m conformance.documents`                          | `--check` 只验证不获取，`--only SUBSTRING`                                             | 0 每个摘要值都匹配，1 有文件被拒绝、没有匹配或参数错误                                 |
+| `python3 -m conformance.quotes`                             | 无                                                                                     | 记录中的引文在其文档中找不到或引用核对不通过时为 1，否则为 0，包括磁盘上没有文档的情况 |
+| `python3 -m conformance.speed`                              | 无                                                                                     | 读取速度超过每秒 500,000 次的下限时为 0，否则为 1                                      |
+| `python3 -m conformance.cartridge CARTRIDGE OUT.json`       | 一个卡带镜像和一个输出路径                                                             | 0 已写入，1 未找到时钟例程，2 参数错误或文件不存在                                     |
+| `python3 -m conformance.sharp_cartridge CARTRIDGE OUT.json` | 一个卡带镜像和一个输出路径                                                             | 0 已写入，1 未找到时钟脚本表，2 参数错误或文件不存在                                   |
 
 失败的脚本可以根据其种子重新生成。`reference.generate(seed, length, part)` 返回操作序列，`reference.render(script)` 返回驱动程序从标准输入读取的文本。
 
@@ -507,6 +508,8 @@ print(len(script), reference.render(script).splitlines()[:4])
 该脚本先设置时间并配置 Epson 控制寄存器，然后向 `$2801`（即 10241）写入 `0x0C`。
 
 [`conformance/cartridge.json`](conformance/cartridge.json) 记录了《Tengai Makyou Zero》的时钟例程写入该部件的内容，这些内容是在不运行程序的情况下从程序中读出的：五次对控制寄存器的常量写入，其中包括把 CF 设为 `0x07` 再设为 `0x04`，以及把 CD 设为 `0x06`。它还记录：程序的五个读取会话各自只写数据端口一次，用于选择索引，部件处于读取模式时不再写入；程序把两位数年份读作 1995 到 2094 年，95 及以上加 1900，以下加 2000；其初始化载入 1995-12-22 12:00:00。该文件保存的是镜像的摘要值，不含镜像的任何字节。
+
+[`conformance/sharp_cartridge.json`](conformance/sharp_cartridge.json) 为大贝兽物语 II 和 Sharp 部件记录了同类解读：程序把与时钟的往来存成一张步骤表，表中有九个脚本。它读取标记 `0x0F`、十三位数字，再读标记，与记录给出的序列相同。它写入 `0x0E`，然后 `0x00` 和从秒到年份百位的十二位数字，再写 `0x0D`，不写入记录会自行推导的星期。它还单独发送 `0x0E` 和 `0x04`，记录把它解读为清除时钟；另外还发送记录会忽略的六个命令：`0x01`、`0x02` 和 `0x03`，各自带有从小时到年份百位的八位数字，以及单独的 `0x05`、`0x06` 和 `0x07`。部件如何处理这六个命令尚不清楚。该文件保存的是镜像的摘要值，不含镜像的任何字节。
 
 ## 参与开发
 
