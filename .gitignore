@@ -21,3 +21,4 @@ specs/
 *.sfc
 *.smc
 conformance/ref/driver
+external/

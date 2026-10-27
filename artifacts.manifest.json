@@ -1,0 +1,15 @@
+{
+  "externalNote": "Every file this repository reads and may not ship, or fetches rather than carries. Each lives under external/, which git and Dropbox both ignore. python3 -m conformance.external reports which are here, which are missing and which are not the file named; SHA-256 alone decides a file, and HEAD decides a checkout.",
+  "external": {
+    "reference-snes9x": {
+      "kind": "checkout",
+      "required": false,
+      "purpose": "The snes9x sources the reference build lifts its functions from, a sparse checkout.",
+      "usedBy": ["conformance/build.py"],
+      "path": "snes9x",
+      "repository": "https://github.com/snes9xgit/snes9x.git",
+      "commit": "2971061cf07fdc6fc7d18883edf4e648eb16a6d2",
+      "fetchedBy": "python3 -m conformance.build, which fetches the pinned commit when the folder is empty"
+    }
+  }
+}

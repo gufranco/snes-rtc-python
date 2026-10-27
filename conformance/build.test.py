@@ -198,5 +198,23 @@ class EntryTest(unittest.TestCase):
         )
 
 
+class TheManifestPinTest(unittest.TestCase):
+    def test_the_manifest_pins_the_reference_at_the_commit_the_definition_names(self) -> None:
+        # Arrange
+        root = Path(__file__).resolve().parent.parent
+        manifest = json.loads((root / "artifacts.manifest.json").read_text())["external"]
+        reference = json.loads((root / "conformance" / "pinned.json").read_text())["reference"]
+
+        # Act
+        pinned = {
+            one["repository"]: one["commit"]
+            for one in manifest.values()
+            if one.get("kind") == "checkout"
+        }
+
+        # Assert
+        self.assertEqual(pinned, {reference["repository"]: reference["commit"]})
+
+
 if __name__ == "__main__":
     unittest.main()

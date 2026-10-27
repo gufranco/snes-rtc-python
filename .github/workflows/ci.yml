@@ -129,7 +129,7 @@ jobs:
       - name: Cache the reference sources
         uses: actions/cache@v6
         with:
-          path: ~/.cache/snes-rtc-reference
+          path: external/snes9x
           key: reference-${{ steps.pin.outputs.commit }}
 
       - name: Build the driver the comparison tests need
@@ -211,7 +211,7 @@ jobs:
         id: cache
         uses: actions/cache@v6
         with:
-          path: ~/.cache/snes-rtc-reference
+          path: external/snes9x
           key: reference-${{ steps.pin.outputs.commit }}
 
       - name: Build the driver around them

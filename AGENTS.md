@@ -123,6 +123,26 @@ a cartridge clock. The two clocks are reached only through the retail games that
 carry them. There is no test cartridge runner here. A test cartridge for a
 cartridge clock that appears goes in the record, by SHA-256, and gets one.
 
+## Files kept in `external/`
+
+Everything this member reads and may not ship sits in `external/`, which git
+ignores and Dropbox is told to leave alone, per FAMILY.md's "Where the files a
+member reads are kept". [`artifacts.manifest.json`](artifacts.manifest.json)
+names it by size, CRC32, MD5, SHA-1 and SHA-256:
+
+- `external/snes9x`, the reference sources, a sparse git checkout at the
+  commit [`conformance/pinned.json`](conformance/pinned.json) pins. A test
+  holds its commit to that record.
+
+```bash
+python3 -m conformance.external
+python3 -m conformance.external --describe external/<file>
+```
+
+The first says which are here, verified, missing or wrong. The second prints
+the manifest entry for a file being added, which gets its entry in the same
+change.
+
 ## Every gate, in the order to run them
 
 ```bash
@@ -248,6 +268,9 @@ conformance/
   ref/driver.cpp    the driver that wraps the reference implementations
   links.py          the weekly check that every cited address still answers
   speed.py          the throughput floor
+  external.py       which files in external/ are here, verified, missing or wrong
+external/           the reference sources, never committed
+artifacts.manifest.json  every file in external/, by size and every digest
 ```
 
 ## Things that will bite you
