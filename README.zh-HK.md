@@ -10,7 +10,7 @@ Sharp S-RTC 與 Epson RTC-4513，即 Super Nintendo 卡帶可搭載的兩款實�
 [![openssf scorecard](https://img.shields.io/ossf-scorecard/github.com/gufranco/snes-rtc-python?style=flat-square&label=openssf%20scorecard)](https://scorecard.dev/viewer/?uri=github.com/gufranco/snes-rtc-python)
 [![license](https://img.shields.io/github/license/gufranco/snes-rtc-python?style=flat-square&label=license)](LICENSE)
 
-**2** 個時鐘，**329,630** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**1,160** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
+**2** 個時鐘，**329,630** 次操作與參照實現比對，**0** 處不一致，**15** 處手冊與該參照實現不同之處，每處均有記錄，**1,161** 個測試，**100%** 語句及分支覆蓋率，無任何依賴
 
 ```python
 from snesrtc import Chip, Store

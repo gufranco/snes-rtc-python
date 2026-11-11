@@ -10,7 +10,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 [![openssf scorecard](https://img.shields.io/ossf-scorecard/github.com/gufranco/snes-rtc-python?style=flat-square&label=openssf%20scorecard)](https://scorecard.dev/viewer/?uri=github.com/gufranco/snes-rtc-python)
 [![license](https://img.shields.io/github/license/gufranco/snes-rtc-python?style=flat-square&label=license)](LICENSE)
 
-**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **1,160** tests, **100%** statement and branch coverage, no dependencies
+**2** clocks, **329,630** operations compared against the reference, **0** disagreements, **15** places where the manual and that reference differ, each one written down, **1,161** tests, **100%** statement and branch coverage, no dependencies
 
 ```python
 from snesrtc import Chip, Store
